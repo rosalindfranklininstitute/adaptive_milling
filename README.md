@@ -1,6 +1,6 @@
-# python-template
+# Adaptive polishing
 
-This is an example python repository that can be used as a template for other projects
+Adaptive polishing for FIB milling lamellae, compatible with fibsem and autolamella
 
 ![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)
 [![Building](https://github.com/rosalindfranklininstitute/python-template/actions/workflows/python-package.yml/badge.svg)](https://github.com/rosalindfranklininstitute/python-template/actions/workflows/python-package.yml)
