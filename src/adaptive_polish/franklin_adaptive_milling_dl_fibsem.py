@@ -28,6 +28,30 @@ import os
 # import threading
 # import multiprocessing
 
+# root routines that configure when package is imported
+config = AdaptiveMillingConfig()
+# Set up config, folders to save everything
+
+# Set up logger
+# TODO: Consider using fibsem logger instead
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s: %(message)s",
+    handlers=[
+        logging.FileHandler(f"{config.folders['lamella_folder']}/adaptive_milling.log"),
+        logging.StreamHandler(sys.stdout),
+    ],
+)
+logging.info(
+    f"Starting adaptive milling for {Path(config.folders['lamella_folder']).stem}"
+)
+logging.info("Config parameters: %s\n", config.config)
+logging.info("Image acquisition settings: %s\n", config.all_gfs)
+logging.info("Data saved to: %s\n", config.folders)
+
+logging.info("Initialising DL model")
+
+gm.init_model_with_path(config.config["model_path"])
 
 def test_mill():
     print("I AM MILLING!!!!!!")
@@ -37,27 +61,7 @@ def test_mill():
         time.sleep(1)
 
 def adaptive_polish_run(microscope_in=None, settings_in=None, patterns_in=None, image_settings_sem=None):
-    config = AdaptiveMillingConfig()
-    # Set up config, folders to save everything
-
-    # Set up logger
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s: %(message)s",
-        handlers=[
-            logging.FileHandler(f"{config.folders['lamella_folder']}/adaptive_milling.log"),
-            logging.StreamHandler(sys.stdout),
-        ],
-    )
-    logging.info(
-        f"Starting adaptive milling for {Path(config.folders['lamella_folder']).stem}"
-    )
-    logging.info("Config parameters: %s\n", config.config)
-    logging.info("Image acquisition settings: %s\n", config.all_gfs)
-    logging.info("Data saved to: %s\n", config.folders)
-
-    logging.info("Initialising DL model")
-    gm.init_model_with_path(config.config["model_path"])
+    global config
 
     # Set up spoof mode or live mode, import Autoscript
     # try:
@@ -321,8 +325,15 @@ def adaptive_polish_run(microscope_in=None, settings_in=None, patterns_in=None, 
             break
 
         # Continue milling
-        milling.run_milling(microscope, settings.milling.milling_current, settings.milling.milling_voltage)
-
+        #milling.run_milling(microscope, settings.milling.milling_current, settings.milling.milling_voltage)
+        
+        #Mill for a predetermined amoutn of time
+        millmilling_interval_s = config.config['milling_interval_s']
+        logging.info(f"Sleeping {millmilling_interval_s} seconds to mill")
+        #milling.run_milling(microscope, settings.milling.milling_current, settings.milling.milling_voltage, asynch=True)
+        microscope.run_milling(microscope, settings.milling.milling_current, settings.milling.milling_voltage, asynch=True)
+        time.sleep(millmilling_interval_s)
+        microscope.stop_milling() # dont use milling.finish_milling as it would clear patterns
 
         # microscope.patterning.start()
         # logging.info(f"Sleeping {config.config['milling_interval_s']} seconds to mill")
@@ -370,6 +381,7 @@ def adaptive_polish_run(microscope_in=None, settings_in=None, patterns_in=None, 
     # microscope.patterning.stop()
 
     # finish milling (fibsem)
+    # LMAP: Not sure but this line below may be needed
     # milling.finish_milling(microscope, microscope.system.ion.beam.beam_current)
 
 
