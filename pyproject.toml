@@ -1,0 +1,111 @@
+#
+# Build system requirements
+#
+[build-system]
+
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+#
+#
+# Basic project metadata
+#
+[project]
+
+name = "adaptive_polish"
+
+description = "Adaptive polishing"
+
+readme = "README.md"
+
+requires-python = ">=3.9"
+
+license = {file = "LICENSE"}
+
+keywords = [
+]
+
+authors = [
+  {name = "Elaine Ho", email = "elaine.ho@rfi.ac.uk"},
+  {name = "Luis Perdigao", email = "luis.perdigao@rfi.ac.uk"}
+]
+
+classifiers = [
+  "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: Apache Software License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+]
+
+dependencies = [
+  "pandas",
+  "matplotlib",
+  "PyYAML",
+  "numpy",
+  "scikit-image",
+  "Pillow",
+  "opencv-python",
+  "scipy",
+  "tifffile",
+  "albumentations",
+  "segmentation-models-pytorch",
+]
+
+dynamic = [
+  "version"
+]
+
+#
+# Project urls
+#
+[project.urls]
+
+"Source" = "https://github.com/rosalindfranklininstitute/adaptive_polish"
+"Tracker" = "https://github.com/rosalindfranklininstitute/adaptive_polish/issues"
+
+#
+# Project additional optional dependencies
+#
+[project.optional-dependencies]
+
+test = [
+  "pytest",
+  "pytest-cov",
+]
+
+#
+# Project command line scripts
+#
+# [project.scripts]
+
+# python-template = "template.command_line:main"
+
+#
+# Configure setup tools
+#
+[tool.setuptools.packages.find]
+
+where = ["src"]
+
+#
+# Set the package version from git tag
+#
+#[tool.setuptools.dynamic]
+
+#version = {attr = "adaptive_polish._version.__version__"}
+
+#
+# Configure setuptools-scm to generate version file
+#
+#[tool.setuptools_scm]
+
+#write_to = "src/adaptive_polish/_version.py"
+
+#
+# Configure pytest
+#
+[tool.pytest.ini_options]
+
+addopts = "--cov=src --cov-report term --cov-report html"
+
+testpaths = [ "tests" ]
