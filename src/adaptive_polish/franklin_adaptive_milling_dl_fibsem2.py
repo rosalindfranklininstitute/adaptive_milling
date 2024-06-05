@@ -58,7 +58,7 @@ class AdaptiveMilling():
         if not ("imaging_settings" in ap_config_dict):
             ValueError("No imaging_settings in ap_config. Please check protocol yaml file")
         else:
-            self._imaging_settings = self.ap_config_dict["imaging_settings"] 
+            self._imaging_settings = self.config_dict["imaging_settings"] 
 
         logging.info("Config parameters: %s\n", self.config_dict)
 
@@ -119,9 +119,7 @@ class AdaptiveMilling():
                 logging.info("Could not initialise Thermo microscope with fibsem. Defaulting to use the Demo")
                 microscope, settings = utils.setup_session(session_path="../temp", manufacturer="Demo", ip_address="localhost", setup_logging=False)
 
-
         # Initialise results
-
         results = pd.DataFrame(
             {
                 "image": [],
@@ -146,47 +144,68 @@ class AdaptiveMilling():
         scan_count = 0
         total_time = 0
 
-        # set pattern
-        microscope.connection.imaging.set_active_view(BeamType.ION.value)  # the ion beam view
-        microscope.connection.imaging.set_active_device(BeamType.ION.value)
-        # milling.draw_patterns(microscope, patterns_in)
-
-        while scan_count <= self.config_dict["max_milling_cycles"]:
+        while scan_count <= int(self.config_dict["max_milling_cycles"]):
             # Set detector
             #microscope.detector.type.value = "ETD"
             # fibsem detector is set in configuration file "detector_type". No need to set here
 
             #logging.info(f"Changing to {microscope.detector.type.value} detector")
             # place pattern (temporary because run_milling clears them!)
-            milling.draw_patterns(microscope, patterns_in)
+            #milling.draw_patterns(microscope, patterns_in)
             # Acquire images
             imgs = {}
+            SEM_img=None
+
+            img_sett0 = None
+            f_basename= f"adapt_mill_img_{scan_count:03}"
 
             #for gfs_set, gfs in _ap_config.all_gfs.items():
-            for img_set0 in self._imaging_settings:
+            for img_set_name in self._imaging_settings:
                 logging.info(
-                    f"Acquiring image with {img_set0} settings for milling cycle "
-                    f"{scan_count}/{self.config_dict['max_milling_cycles']}"
+                    f"Acquiring image with {img_set_name} settings for milling cycle "
+                    f"{scan_count}/{int(self.config_dict['max_milling_cycles'])}"
                 )
-                img_name = f"{self.config_dict.folders['lamella_folder'].stem}_img_{scan_count:03}"
-                logging.info(f"Image is {img_name}")
+                #img_name = f"{self.config_dict.folders['lamella_folder'].stem}_img_{scan_count:03}"
+                #logging.info(f"Image is {img_name}")
 
-                if 'SEM' in img_set0.keys() or "electron" in img_set0.keys():
+                if 'SEM' in img_set_name or "electron" in img_set_name:
+                    logging.info(f"SEM (electron) image to be acquired")
                     #settings.image.beam_type = BeamType.ELECTRON
                     img_settings = microscope.get_imaging_settings(BeamType.ELECTRON)
-                    img = acquire.new_image(microscope, img_settings)
+                    img_sett0 = self._imaging_settings[img_set_name]
                     # note that by new_image() can save images
                     # but the img_settings.save must be True, and will save to f"{settings.filename}_eb" .tif
-                    #img.save(f"{config.folders[gfs_set]}/{img_name}.tif")  # save to disk
-                    # TODO: Save to a AP folder
+                    # TODO: Save to a AP folder?
 
-                    imgs[img_set0] = img
-                elif "FIB" in img_set0.keys() or "ion" in img_set0.keys():
+                elif "FIB" in img_set_name or "ion" in img_set_name:
+                    logging.info(f"FIB (ion) image to be acquired")
                     #settings.image.beam_type = BeamType.ION
                     img_settings = microscope.get_imaging_settings(BeamType.ION)
-                    img = acquire.new_image(microscope, img_settings)
+                    img_sett0 = self._imaging_settings[img_set_name]
+                
+                else:
+                    raise ValueError(f"img_set0: {img_set_name} is invalid")
 
-                    # TODO: Save to a AP folder, probably doing automatically
+                # TODO: Save to a AP folder, probably doing automatically
+                
+                img_settings.resolution= img_sett0.get("resolution", img_settings.resolution)
+                img_settings.hfw= img_sett0.get("hfw", img_settings.hfw)
+                img_settings.dwell_time= img_sett0.get("dwell_time", img_settings.dwell_time)
+                img_settings.frame_integration= img_sett0.get("frame_integration", img_settings.frame_integration)
+
+                img_settings.path = settings_in.image.path
+
+                img_settings.filename = f"{f_basename}_{img_set_name}_{scan_count:03}.tif"
+                #TODO. Check the settings_in and microscope_in paramaters top figure out where and how to generate a filename
+                img_settings.save=True
+
+                logging.info("Acquiring new image, and saving")
+                img = acquire.new_image(microscope, img_settings)
+
+                imgs[img_set_name]= img
+
+                if 'SEM' in img_set_name or "electron" in img_set_name:
+                    SEM_img=img
 
                 #please note that the imgs will not contain AdornedImage but FibsemImage object
                 #Depending on the settings.save, this image is automatically saved
@@ -195,12 +214,12 @@ class AdaptiveMilling():
             #microscope.detector.type.value = "ETD"
             #logging.info(f"Changing to {microscope.detector.type.value} detector")
 
-            if len(imgs) < 1:
-                # If there are no images to look at, exit while loop
+            if SEM_img is None:
+                # If there are no SEM images to look at, exit while loop
                 # Shouldn't happen in a real session, this is only for when there are no
                 # more example images to look at
 
-                logging.info("No images acquired, exiting loop")
+                logging.info("No SEM images acquired, exiting loop.")
                 break
 
             # Measure GIS thickness on SEM image ---------------------------------------
@@ -208,26 +227,28 @@ class AdaptiveMilling():
             #SEM_adornimg = imgs["SEM"]  # find the SEM images in RAM to measure GIS
             #pixel_size_m = gm.get_pixel_width(SEM_adornimg)
             #Try to get pixel size:
-            SEM_img = imgs["SEM"]
+            
             pixel_size_m = SEM_img.metadata.pixel_size.x #untested
 
             if pixel_size_m:
                 logging.info(f"Using pixel size {pixel_size_m} m")
             else:
-                pixel_size_m = _ap_config["fallback_pixel_size_m"]
+                pixel_size_m = float(self.config_dict["fallback_pixel_size_m"])
                 logging.info(f"Using fallback pixel size of {pixel_size_m} m")
 
             # Segmentation
+            logging.info("Starting segmentation")
             prediction = gm.segment(SEM_img.data)
             logging.info("Segmentation complete")
             mask_gis_clean = gm.clean_prediction(
-                prediction, pixel_size_m,
-                _ap_config["lam_height_min_m"],
-                _ap_config["reject_GIS_distance_m"]
+                prediction,
+                pixel_size_m,
+                float(self.config_dict["lam_height_min_m"]),
+                float(self.config_dict["reject_GIS_distance_m"])
             )
             logging.info(
                 f"Cleaned mask to only include GIS "
-                f"{_ap_config['reject_GIS_distance_m']} m below "
+                f"{self.config_dict['reject_GIS_distance_m']} m below "
                 f"GIS-lamella transition"
             )
 
@@ -240,8 +261,12 @@ class AdaptiveMilling():
                 break #Shouold we stop or continue?
 
             # GIS thickness measurement
-            #GIS_m = gm.measure_GIS(mask_gis_clean, _ap_config["window_size_m"], pixel_size_m)
-            GIS_m, xlims = gm.measure_GIS(mask_gis_clean, _ap_config["window_size_m"], pixel_size_m)
+            #GIS_m = gm.measure_GIS(mask_gis_clean, self.config_dict["window_size_m"], pixel_size_m)
+            GIS_m, xlims = gm.measure_GIS(
+                mask_gis_clean,
+                float(self.config_dict["window_size_m"]),
+                float(pixel_size_m)
+            )
 
             min_GIS_m = np.nanmin(GIS_m)
             logging.info(f"Took {len(GIS_m)} GIS measurements along x")
@@ -255,29 +280,34 @@ class AdaptiveMilling():
                 f"Area of cracks found in milling cycle {scan_count} = {crack_area_m2} m2"
             )
 
+            img_path = img.get_save_path()
+            save_folder = os.path.dirname(img.get_save_folder())
+
             # Save results
             results.loc[scan_count] = {
-                "image": img_name,
+                "image": img_path,
                 "milling_time_s": total_time,
                 "min_GIS_m": min_GIS_m,
                 "crack_area_m2": crack_area_m2,
             }
-            results.to_csv(f"{config.folders['lamella_folder']}/GIS_thickness.csv")
+            results.to_csv( f"{save_folder}/GIS_thickness.csv" )
 
             # Save GIS thickness for each window
             for window, gis_thickness in enumerate(GIS_m):
                 if gis_thickness > 0:
                     gis_results_detailed.loc[len(gis_results_detailed)] = {
-                        "image": img_name,
+                        "image": img_path,
                         "milling_time_s": total_time,
                         "window": window,
                         "gis_windowed_m": gis_thickness,
                     }
                 else:
                     pass
-            gis_results_detailed.to_csv(
-                f"{config.folders['lamella_folder']}/GIS_thickness_detailed.csv"
-            )
+            # gis_results_detailed.to_csv(
+            #     f"{config.folders['lamella_folder']}/GIS_thickness_detailed.csv"
+            # )
+
+            gis_results_detailed.to_csv( f"{save_folder}/GIS_thickness_detailed.csv" )
 
             # Generate plots
             gm.milling_cycle_plot(
@@ -286,22 +316,22 @@ class AdaptiveMilling():
                 clean_prediction=mask_gis_clean,
                 fib_image=imgs["FIB"].data,
                 gis_thickness_m=GIS_m,
-                gis_stop_m=_ap_config["gis_stop_m"],
+                gis_stop_m=float(self.config_dict["gis_stop_m"]),
                 crack_area_m2=crack_area_m2,
-                img_name=img_name,
-                save_path=f"{config.folders['plots_folder']}/{img_name}_plot.png",
+                img_name=img_path,
+                save_path=f"{save_folder}/{img_path}_plot.png",
             )
 
             # Should we continue?
-            if min_GIS_m < _ap_config["gis_stop_m"]:
+            if min_GIS_m < float(self.config_dict["gis_stop_m"]):
                 logging.info(
-                    f"Stopping as minimum GIS (m) {min_GIS_m} < threshold {_ap_config['gis_stop_m']}"
+                    f"Stopping as minimum GIS (m) {min_GIS_m} < threshold {self.config_dict['gis_stop_m']}"
                 )
                 break
 
-            if crack_area_m2 > _ap_config["max_crack_area_m2"]:
+            if crack_area_m2 > float(self.config_dict["max_crack_area_m2"]):
                 logging.info(
-                    f"Stopping as crack area (m2) {crack_area_m2} > threshold {_ap_config['max_crack_area_m2']}"
+                    f"Stopping as crack area (m2) {crack_area_m2} > threshold { self.config_dict['max_crack_area_m2']}"
                 )
                 break
 
@@ -309,7 +339,7 @@ class AdaptiveMilling():
             #milling.run_milling(microscope, settings.milling.milling_current, settings.milling.milling_voltage)
             
             #Mill for a predetermined amoutn of time
-            millmilling_interval_s = _ap_config['milling_interval_s']
+            millmilling_interval_s = int(self.config_dict['milling_interval_s'])
             logging.info(f"Sleeping {millmilling_interval_s} seconds to mill")
             #milling.run_milling(microscope, settings.milling.milling_current, settings.milling.milling_voltage, asynch=True)
             microscope.run_milling(microscope, settings.milling.milling_current, settings.milling.milling_voltage, asynch=True)
@@ -320,8 +350,6 @@ class AdaptiveMilling():
             # logging.info(f"Sleeping {_ap_config['milling_interval_s']} seconds to mill")
             # time.sleep(_ap_config["milling_interval_s"])
             # microscope.patterning.stop()
-
-
 
             # run milling (fibsem)
             # start = time.time()
@@ -351,11 +379,11 @@ class AdaptiveMilling():
             # time.sleep(_ap_config["milling_interval_s"])
 
             # Adjust milling interval
-            if min_GIS_m <= 1.2 * _ap_config["gis_stop_m"]:
-                _ap_config["milling_interval_s"] = _ap_config["milling_interval_s"] / 2
+            if min_GIS_m <= 1.2 * float(self.config_dict["gis_stop_m"]):
+                self.config_dict["milling_interval_s"] = int(self.config_dict["milling_interval_s"]) / 2
 
             scan_count += 1
-            total_time += _ap_config["milling_interval_s"]
+            total_time += int(self.config_dict["milling_interval_s"])
 
         # If we reached the stopping condition of min lamella thickness or max number of cycles
         # microscope.imaging.set_active_view(2)
@@ -367,13 +395,15 @@ class AdaptiveMilling():
 
 
 
-        if _ap_config["do_plots"] is True:
+        if self.config_dict["do_plots"] is True:
             plt.figure()
             plt.plot(
                 results.milling_time_s, results.min_GIS_m, label="Minimum GIS thickness (m)"
             )
             plt.xlabel("Milling Time (s)")
             plt.ylabel("GIS Thickness (m)")
-            plt.title(f"Lamella {config.folders['lamella_folder'].stem}")
-            plt.savefig(f"{config.folders['lamella_folder']}/GIS_thickness.png")
+            #plt.title(f"Lamella {config.folders['lamella_folder'].stem}")
+            plt.title(f_basename)
+            #plt.savefig(f"{config.folders['lamella_folder']}/GIS_thickness.png")
+            plt.savefig(f"{f_basename}_GIS_thickness.png")
             plt.close()

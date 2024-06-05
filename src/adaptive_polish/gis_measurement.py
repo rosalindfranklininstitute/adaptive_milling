@@ -63,6 +63,7 @@ def segment(img: np.array) -> np.array:
 def clean_prediction(
     prediction: np.array, pixel_size_m: float, lam_height_min_m: float = 1e-7, reject_GIS_distance_m: float = 1e-6
 ) -> np.array:
+    logging.info(f"clean_prediction with prediction.shape:{prediction.shape}, pixel_size_m:{pixel_size_m}, lam_height_min_m:{lam_height_min_m}, reject_GIS_distance_m:{reject_GIS_distance_m}")
     # Generate bool masks for GIS and lamella
     mask_gis = prediction == 1
     mask_lamella = prediction == 2
@@ -105,7 +106,7 @@ def clean_prediction(
     #This code below will mask GIS layer segmentation beyond the heigth established by reject_GIS_height_mask
     # Note that it starts measuring from the transition minus shiftup height coordinate.
     mask0 = np.cumsum(transition_cumsum, axis=0)
-    height_px = int(reject_GIS_distance_m/pixel_size_m)
+    height_px = int(reject_GIS_distance_m/pixel_size_m) #throwing error
     reject_GIS_height_mask = mask0<=height_px
     mask_gis_under_transition =  np.logical_and(mask_gis, reject_GIS_height_mask)
 
