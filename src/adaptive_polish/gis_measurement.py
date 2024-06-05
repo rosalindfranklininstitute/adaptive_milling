@@ -224,6 +224,7 @@ def milling_cycle_plot(
     img_name: str = None,
     save_path: Path = None,
 ):
+    logging.info("milling_cycle_plot()")
     fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(12, 8), tight_layout=True)
     fig.suptitle(img_name)
 

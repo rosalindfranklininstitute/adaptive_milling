@@ -155,6 +155,7 @@ class AdaptiveMilling():
             # Acquire images
             imgs = {}
             SEM_img=None
+            FIB_img=None
 
             img_sett0 = None
             f_basename= f"adapt_mill_img_{scan_count:03}"
@@ -206,6 +207,8 @@ class AdaptiveMilling():
 
                 if 'SEM' in img_set_name or "electron" in img_set_name:
                     SEM_img=img
+                elif "FIB" in img_set_name or "ion" in img_set_name:
+                    FIB_img=img
 
                 #please note that the imgs will not contain AdornedImage but FibsemImage object
                 #Depending on the settings.save, this image is automatically saved
@@ -314,12 +317,13 @@ class AdaptiveMilling():
                 sem_image=SEM_img.data,
                 first_prediction=prediction,
                 clean_prediction=mask_gis_clean,
-                fib_image=imgs["FIB"].data,
+                fib_image=FIB_img.data,
                 gis_thickness_m=GIS_m,
                 gis_stop_m=float(self.config_dict["gis_stop_m"]),
                 crack_area_m2=crack_area_m2,
                 img_name=img_path,
-                save_path=f"{save_folder}/{img_path}_plot.png",
+                #save_path=f"{save_folder}/{img_path}_plot.png",
+                save_path=f"{img_path}_plot.png",
             )
 
             # Should we continue?
