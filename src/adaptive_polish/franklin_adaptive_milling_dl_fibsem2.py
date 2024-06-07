@@ -347,7 +347,7 @@ class AdaptiveMilling():
             logging.info(f"Sleeping {millmilling_interval_s} seconds to mill")
             #milling.run_milling(microscope, settings.milling.milling_current, settings.milling.milling_voltage, asynch=True)
             try:
-                microscope.run_milling(microscope, settings.milling.milling_current, settings.milling.milling_voltage, asynch=True)
+                microscope.run_milling(settings.milling.milling_current, settings.milling.milling_voltage, asynch=True)
                 time.sleep(millmilling_interval_s)
                 logging.info("Completed milling.")
             except Exception as e:
