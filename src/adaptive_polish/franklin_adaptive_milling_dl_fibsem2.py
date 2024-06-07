@@ -346,9 +346,14 @@ class AdaptiveMilling():
             millmilling_interval_s = int(self.config_dict['milling_interval_s'])
             logging.info(f"Sleeping {millmilling_interval_s} seconds to mill")
             #milling.run_milling(microscope, settings.milling.milling_current, settings.milling.milling_voltage, asynch=True)
-            microscope.run_milling(microscope, settings.milling.milling_current, settings.milling.milling_voltage, asynch=True)
-            time.sleep(millmilling_interval_s)
-            microscope.stop_milling() # dont use milling.finish_milling as it would clear patterns
+            try:
+                microscope.run_milling(microscope, settings.milling.milling_current, settings.milling.milling_voltage, asynch=True)
+                time.sleep(millmilling_interval_s)
+                logging.info("Completed milling.")
+            except Exception as e:
+                logging.error(f"The following error occurred doing milling. {str(e)}")
+            finally:
+                microscope.stop_milling() # dont use milling.finish_milling as it would clear patterns
 
             # microscope.patterning.start()
             # logging.info(f"Sleeping {_ap_config['milling_interval_s']} seconds to mill")
