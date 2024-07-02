@@ -235,13 +235,27 @@ def milling_cycle_plot(
 
     # SEM + 1st pass prediction
     axs[0, 1].imshow(sem_image, cmap="Greys_r")
-    axs[0, 1].imshow(first_prediction, alpha=0.4, cmap="tab10", vmin=0, vmax=10)
+    axs[0, 1].imshow(
+        first_prediction, 
+        alpha=0.4, 
+        cmap="tab10", 
+        vmin=0, 
+        vmax=10, 
+        interpolation="nearest"
+    )
     axs[0, 1].axis("off")
     axs[0, 1].set_title("SEM, 1st prediction")
 
     # SEM + clean prediction
     axs[0, 2].imshow(sem_image, cmap="Greys_r")
-    axs[0, 2].imshow(clean_prediction, alpha=0.4, cmap="tab10", vmin=0, vmax=10)
+    axs[0, 2].imshow(
+        clean_prediction, 
+        alpha=0.4, 
+        cmap="tab10", 
+        vmin=0, 
+        vmax=10, 
+        interpolation="nearest"
+    )
     axs[0, 2].axis("off")
     axs[0, 2].set_title(f"SEM, clean, crack area $\mu$m2 = {crack_area_m2*1e12:5}")
 
