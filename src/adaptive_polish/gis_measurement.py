@@ -157,17 +157,17 @@ def measure_GIS(
     # Calculate average GIS thickness in windows
 
     #Sum to get thickness along x in pixels
-    GIS_pxbypx = np.sum(mask_gis_clean, axis=0)
+    GIS_pxbypx = np.sum(mask_gis_clean, axis=0).astype(np.float32)
 
     # Pad with zeros to fulfil window size criteria
     GIS_pxbypx_pad = np.pad(
         GIS_pxbypx,
         (0, window_size_px - len(GIS_pxbypx) % window_size_px),
-        constant_values=0,
+        constant_values=np.nan,
     )
 
     #Get left and right limits from where the mean should be calculated from
-    GIS_pxbypx_where_above_zero = np.where(GIS_pxbypx_pad)
+    GIS_pxbypx_where_above_zero = np.where(GIS_pxbypx_pad > 0)
     xlim_min = GIS_pxbypx_where_above_zero[0][0]  # first occurrence along x
     xlim_max = GIS_pxbypx_where_above_zero[0][-1]  # last occurrence along x
 
@@ -176,7 +176,7 @@ def measure_GIS(
     GIS_pxbypx_NaNed[xlim_max:]=np.nan
 
     # This mean will discard nan areas
-    GIS_windowed = np.nanmean(GIS_pxbypx_NaNed.reshape(-1, window_size_px), axis=1)
+    GIS_windowed = np.nanmedian(GIS_pxbypx_NaNed.reshape(-1, window_size_px), axis=1)
 
     # Convert to m
     GIS_m = GIS_windowed * pixel_size_m
@@ -279,7 +279,7 @@ def milling_cycle_plot(
     # TODO
 
     # GIS thickness
-    axs[1, 2].plot(gis_thickness_m * 1e6)
+    axs[1, 2].plot(gis_thickness_m * 1e6, ".-")
     axs[1, 2].set_xlabel("Distance along x (px)")
     axs[1, 2].set_ylabel("GIS thickness ($\mu$m)")
     axs[1, 2].set_xlim(0, len(gis_thickness_m))

@@ -23,8 +23,9 @@ import numpy as np
 model_path = Path(r"C:\Users\dmv31621\OneDrive - The Rosalind Franklin Institute\2024\00_Adaptive-milling\adaptive_polish\src\adaptive_polish\dl_segmentation\2024-02-24_0013_gis_lamela_crack_pytorch_AUnet.ptchkp")
 reject_GIS_distance_m = 1e-5
 lam_height_min_m = 2e-6
-window_size_m = 1e-7
+# window_size_m = 1e-7
 gis_stop_m = 2e-7
+window_size_m = 5*gis_stop_m
 pixel_size_m = 1.3020833333333335e-08
 sem_image = Path(r"C:\Users\dmv31621\OneDrive - The Rosalind Franklin Institute\2024\00_Adaptive-milling\test_images\04-easy-orca\adapt_mill_img_003_electron_003.tif")
 fib_image = Path(r"C:\Users\dmv31621\OneDrive - The Rosalind Franklin Institute\2024\00_Adaptive-milling\test_images\04-easy-orca\adapt_mill_img_003_ion_003.tif")
