@@ -17,6 +17,7 @@ from pathlib import Path
 from datetime import datetime
 import adaptive_polish.gis_measurement as gm
 import tifffile
+import numpy as np
 
 # Set parameters
 model_path = Path(r"C:\Users\dmv31621\OneDrive - The Rosalind Franklin Institute\2024\00_Adaptive-milling\adaptive_polish\src\adaptive_polish\dl_segmentation\2024-02-24_0013_gis_lamela_crack_pytorch_AUnet.ptchkp")
@@ -43,6 +44,9 @@ sem_image_data = tifffile.imread(sem_image)
 prediction = gm.segment(sem_image_data)
 tifffile.imwrite(f"{out_folder}/prediction.tiff", prediction)
 print("Created segmentation prediction")
+
+gis_mask_only = prediction == 1
+tifffile.imwrite(f"{out_folder}/gis.tiff", gis_mask_only)
 
 # Clean segmentation
 mask_gis_clean = gm.clean_prediction(

@@ -19,6 +19,7 @@ import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 import logging
+import skimage
 
 def get_pixel_width(img):
     """Gets the pixel width of an AdornedImage, or if not possible, returns None
@@ -79,61 +80,71 @@ def clean_prediction(
         logging.info("No GIS layer detected. Returning NaN")
         return None
     
-    # Find the transition between lamella and GIS
-    transition_gis_lamella = np.logical_and(mask_lamella[:-1, :], mask_gis[1:, :])
-
-    # Only take GIS below reject_GIS_distance_um above the transition line
-
-    # The code below can be a bit confusing.
-    # It is for selecting all GIS layer below the transition only,
-    # with a slight padding of trans_shiftup.
-    # We are using the transition line a starting y coordinate for the valid GIS layer
-    # This transition line could be one pixel above the GIS layer,
-    # hence we create a mask where we shift the y starting coordinates up a bit
-    transition_cumsum = np.cumsum(transition_gis_lamella, axis=0)
-    trans_shiftup=2
-    transition_cumsum = (
-        np.pad(
-            transition_cumsum[trans_shiftup:, :],
-            pad_width=((0, trans_shiftup + 1), (0, 0)),
-            mode="edge",
-        )
-        > 0
+    # Only keep the largest object in the GIS segmentation
+    instances = skimage.measure.label(mask_gis)
+    instance_properties = skimage.measure.regionprops(instances)
+    areas = [i.area for i in instance_properties]
+    largest_area = max(areas)
+    mask_gis_largest_only = skimage.morphology.remove_small_objects(
+        instances,
+        min_size = 0.99 * largest_area
     )
+    mask_gis_largest_only[mask_gis_largest_only > 0] = 1  # 1 is GIS
+
+    return mask_gis_largest_only
+
+    # # Find the transition between lamella and GIS
+    # transition_gis_lamella = np.logical_and(mask_lamella[:-1, :], mask_gis[1:, :])
+
+    # # Only take GIS below reject_GIS_distance_um above the transition line
+
+    # # The code below can be a bit confusing.
+    # # It is for selecting all GIS layer below the transition only,
+    # # with a slight padding of trans_shiftup.
+    # # We are using the transition line a starting y coordinate for the valid GIS layer
+    # # This transition line could be one pixel above the GIS layer,
+    # # hence we create a mask where we shift the y starting coordinates up a bit
+    # transition_cumsum = np.cumsum(transition_gis_lamella, axis=0)
+    # trans_shiftup=2
+    # transition_cumsum = (
+    #     np.pad(
+    #         transition_cumsum[trans_shiftup:, :],
+    #         pad_width=((0, trans_shiftup + 1), (0, 0)),
+    #         mode="edge",
+    #     )
+    #     > 0
+    # )
     # plt.imshow(transition_cumsum)
     # plt.show()
 
     #This code below will mask GIS layer segmentation beyond the heigth established by reject_GIS_height_mask
     # Note that it starts measuring from the transition minus shiftup height coordinate.
-    mask0 = np.cumsum(transition_cumsum, axis=0)
-    height_px = int(reject_GIS_distance_m/pixel_size_m) #throwing error
-    reject_GIS_height_mask = mask0<=height_px
-    mask_gis_under_transition =  np.logical_and(mask_gis, reject_GIS_height_mask)
+    # mask0 = np.cumsum(transition_cumsum, axis=0)
+    # height_px = int(reject_GIS_distance_m/pixel_size_m) #throwing error
+    # reject_GIS_height_mask = mask0<=height_px
+    # mask_gis_under_transition =  np.logical_and(mask_gis, reject_GIS_height_mask)
+    
 
-    #mask_gis_under_transition = np.logical_and(mask_gis, transition_cumsum)
-    # plt.imshow(mask_gis_under_transition)
-    # plt.show()
+    # # Filter GIS layer by the amount of lamella height  above
+    # lam_abov_gis_x = np.any(transition_gis_lamella, axis=0)  
 
-    # Filter GIS layer by the amount of lamella height  above
-    lam_abov_gis_x = np.any(transition_gis_lamella, axis=0)  
+    # # Consider only GIS which have lamella areas with more than N pixels vertical
+    # lam_height_threshold_px = int(np.ceil(lam_height_min_m / pixel_size_m))  # pixels
+    # lam_height_along_x = np.sum(mask_lamella, axis=0) >= lam_height_threshold_px
 
-    # Consider only GIS which have lamella areas with more than N pixels vertical
-    lam_height_threshold_px = int(np.ceil(lam_height_min_m / pixel_size_m))  # pixels
-    lam_height_along_x = np.sum(mask_lamella, axis=0) >= lam_height_threshold_px
+    # large_lam_above_gis_mask_along_x = np.logical_and(lam_abov_gis_x, lam_height_along_x)
+    # logging.info(f"np.sum(large_lam_above_gis_mask_along_x): {np.sum(large_lam_above_gis_mask_along_x)}")
 
-    large_lam_above_gis_mask_along_x = np.logical_and(lam_abov_gis_x, lam_height_along_x)
-    logging.info(f"np.sum(large_lam_above_gis_mask_along_x): {np.sum(large_lam_above_gis_mask_along_x)}")
+    # #mask along x
+    # mask = np.tile(large_lam_above_gis_mask_along_x, (mask_gis_under_transition.shape[0],1) )
+    # mask_gis_clean = np.logical_and(mask_gis_under_transition, mask)
 
-    #mask along x
-    mask = np.tile(large_lam_above_gis_mask_along_x, (mask_gis_under_transition.shape[0],1) )
-    mask_gis_clean = np.logical_and(mask_gis_under_transition, mask)
+    # # debug
+    # #fig, axs = plt.subplots(1,1, sharex=True, sharey=True)
+    # # plt.imshow(mask_gis_clean)
+    # # plt.show()
 
-    # debug
-    #fig, axs = plt.subplots(1,1, sharex=True, sharey=True)
-    # plt.imshow(mask_gis_clean)
-    # plt.show()
-
-    return mask_gis_clean
+    # return mask_gis_clean
 
 
 def measure_GIS(
