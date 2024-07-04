@@ -33,13 +33,6 @@ from fibsem.microscope import FibsemMicroscope
 from fibsem.structures import MicroscopeSettings
 from fibsem.patterning import BasePattern
 
-# def test_mill():
-#     print("I AM MILLING!!!!!!")
-#     start = time.time()
-#     for i in range(100):
-#         print(time.time() - start)
-#         time.sleep(1)
-
 #adaptive polish configuration setup
 #Is it better to run in a class using __init__ and others?
 

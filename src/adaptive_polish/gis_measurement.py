@@ -232,6 +232,7 @@ def milling_cycle_plot(
     gis_thickness_m: np.array,
     gis_stop_m: float,
     crack_area_m2: float,
+    fib_screenshot: np.array = None,
     img_name: str = None,
     save_path: Path = None,
 ):
@@ -276,7 +277,20 @@ def milling_cycle_plot(
     axs[1, 0].set_title("FIB")
 
     # FIB + milling box
-    # TODO
+    if fib_screenshot is not None:
+        # Doesn't work -> for some reason I can't open a new napari.Viewer()
+        # pattern_viewer = napari.Viewer()
+        # pattern_viewer.add_image(fib_image, name="fib_image")
+        # _draw_patterns_in_napari(
+        #     viewer=pattern_viewer,
+        #     ib_image=FibsemImage(data=fib_image),
+        #     eb_image=None,
+        #     milling_stages=list(adaptive_polish_stage)
+        # )
+        # screenshot = pattern_viewer.screenshot()
+        # axs[1, 1].imshow(screenshot)
+        # pattern_viewer.close()
+        axs[1, 1].imshow(fib_screenshot[:, int(fib_screenshot.shape[1]/2):, :])
 
     # GIS thickness
     axs[1, 2].plot(gis_thickness_m * 1e6, ".-")
