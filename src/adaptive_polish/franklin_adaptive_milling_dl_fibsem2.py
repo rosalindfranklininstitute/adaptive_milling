@@ -200,9 +200,8 @@ class AdaptiveMilling():
                 img = acquire.new_image(microscope, img_settings)
 
                 img_path = img.get_save_path()
-                experiment_folder = Path(settings_in.image.path)
-                lamellae = sorted(list(experiment_folder.iterdir()))
-                lamella_ap_folder = Path(f"{lamellae[-1]}/adaptive_polish")
+                lamella_folder = Path(settings_in.image.path)
+                lamella_ap_folder = Path(f"{lamella_folder}/adaptive_polish")
                 if lamella_ap_folder.exists() is False:
                     lamella_ap_folder.mkdir()
                     Path(f"{lamella_ap_folder}/plots").mkdir()              
