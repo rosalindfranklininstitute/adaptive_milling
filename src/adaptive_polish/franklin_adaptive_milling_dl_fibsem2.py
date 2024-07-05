@@ -25,6 +25,7 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 import os
+import napari
 
 from fibsem import acquire, utils
 from fibsem.structures import BeamType
@@ -94,9 +95,12 @@ class AdaptiveMilling():
 
         return config_dict
 
-    def adaptive_polish_run(self, microscope_in: FibsemMicroscope = None,
-                                settings_in : MicroscopeSettings = None,
-                                patterns_in : BasePattern = None):
+    def adaptive_polish_run(
+            self, 
+            microscope_in: FibsemMicroscope = None,
+            settings_in : MicroscopeSettings = None,
+            patterns_in : BasePattern = None,
+            viewer: napari.Viewer = None):
 
         if microscope_in is not None:
             microscope = microscope_in
@@ -153,7 +157,6 @@ class AdaptiveMilling():
             img_sett0 = None
             f_basename= f"adapt_mill_img_{scan_count:03}"
 
-            #for gfs_set, gfs in _ap_config.all_gfs.items():
             for img_set_name in self._imaging_settings:
                 logging.info(
                     f"Acquiring image with {img_set_name} settings for milling cycle "
@@ -186,15 +189,24 @@ class AdaptiveMilling():
                 img_settings.hfw= img_sett0.get("hfw", img_settings.hfw)
                 img_settings.dwell_time= img_sett0.get("dwell_time", img_settings.dwell_time)
                 img_settings.frame_integration= img_sett0.get("frame_integration", img_settings.frame_integration)
-
                 img_settings.path = settings_in.image.path
 
-                img_settings.filename = f"{f_basename}_{img_set_name}_{scan_count:03}.tif"
+                img_settings.filename = f"{f_basename}_{img_set_name}.tif"
+
                 #TODO. Check the settings_in and microscope_in paramaters top figure out where and how to generate a filename
                 img_settings.save=True
 
                 logging.info("Acquiring new image, and saving")
                 img = acquire.new_image(microscope, img_settings)
+
+                img_path = img.get_save_path()
+                experiment_folder = Path(settings_in.image.path)
+                lamellae = sorted(list(experiment_folder.iterdir()))
+                lamella_ap_folder = Path(f"{lamellae[-1]}/adaptive_polish")
+                if lamella_ap_folder.exists() is False:
+                    lamella_ap_folder.mkdir()
+                    Path(f"{lamella_ap_folder}/plots").mkdir()              
+
 
                 imgs[img_set_name]= img
 
@@ -276,9 +288,6 @@ class AdaptiveMilling():
                 f"Area of cracks found in milling cycle {scan_count} = {crack_area_m2} m2"
             )
 
-            img_path = img.get_save_path()
-            save_folder = os.path.dirname(img.get_save_folder())
-
             # Save results
             results.loc[scan_count] = {
                 "image": img_path,
@@ -286,7 +295,7 @@ class AdaptiveMilling():
                 "min_GIS_m": min_GIS_m,
                 "crack_area_m2": crack_area_m2,
             }
-            results.to_csv( f"{save_folder}/GIS_thickness.csv" )
+            results.to_csv( f"{lamella_ap_folder}/GIS_thickness.csv" )
 
             # Save GIS thickness for each window
             for window, gis_thickness in enumerate(GIS_m):
@@ -303,9 +312,13 @@ class AdaptiveMilling():
             #     f"{config.folders['lamella_folder']}/GIS_thickness_detailed.csv"
             # )
 
-            gis_results_detailed.to_csv( f"{save_folder}/GIS_thickness_detailed.csv" )
+            gis_results_detailed.to_csv( f"{lamella_ap_folder}/GIS_thickness_detailed.csv" )
 
             # Generate plots
+            if viewer is not None:
+                fib_screenshot = viewer.screenshot()
+            else:
+                fib_screenshot = None
             gm.milling_cycle_plot(
                 sem_image=SEM_img.data,
                 first_prediction=prediction,
@@ -315,8 +328,8 @@ class AdaptiveMilling():
                 gis_stop_m=float(self.config_dict["gis_stop_m"]),
                 crack_area_m2=crack_area_m2,
                 img_name=img_path,
-                #save_path=f"{save_folder}/{img_path}_plot.png",
-                save_path=f"{img_path}_plot.png",
+                fib_screenshot=fib_screenshot,
+                save_path=f"{lamella_ap_folder}/plots/{Path(img_path).stem}_plot.png",
             )
 
             # Should we continue?
