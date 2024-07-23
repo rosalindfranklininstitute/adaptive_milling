@@ -49,16 +49,18 @@ class AdaptiveMilling():
     def __init__(self, ap_config_dict: dict = None):
 
         if ap_config_dict is None:
-            ap_config_dict=self.get_default_config_dict()
+            self.config_dict = self.get_default_config_dict()
+
         else:
+            # Check dictionary is ok
+            if not ("imaging_settings" in ap_config_dict):
+                raise ValueError("No imaging_settings in ap_config. Please check protocol yaml file.")
+
             assert type(ap_config_dict)==dict
             self.config_dict=ap_config_dict.copy()
+        
 
-        # Check dictionary is ok
-        if not ("imaging_settings" in ap_config_dict):
-            ValueError("No imaging_settings in ap_config. Please check protocol yaml file")
-        else:
-            self._imaging_settings = self.config_dict["imaging_settings"] 
+        self._imaging_settings = self.config_dict["imaging_settings"] 
 
         logging.info("Config parameters: %s\n", self.config_dict)
 
