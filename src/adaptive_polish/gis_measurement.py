@@ -171,6 +171,12 @@ def measure_GIS(
     xlim_min = GIS_pxbypx_where_above_zero[0][0]  # first occurrence along x
     xlim_max = GIS_pxbypx_where_above_zero[0][-1]  # last occurrence along x
 
+    # make the L and R limits of the lamella x% smaller
+    lamella_width_px = xlim_max - xlim_min
+    lamella_width_to_cut = int(0.05 * lamella_width_px)  # cut 5% from each end
+    xlim_min = lamella_width_to_cut + xlim_min
+    xlim_max = xlim_max - lamella_width_to_cut    
+
     GIS_pxbypx_NaNed = np.copy(GIS_pxbypx_pad).astype(np.float32)
     GIS_pxbypx_NaNed[:xlim_min]=np.nan
     GIS_pxbypx_NaNed[xlim_max:]=np.nan
@@ -232,6 +238,7 @@ def milling_cycle_plot(
     gis_thickness_m: np.array,
     gis_stop_m: float,
     crack_area_m2: float,
+    xlims = None,
     fib_screenshot: np.array = None,
     img_name: str = None,
     save_path: Path = None,
@@ -268,8 +275,11 @@ def milling_cycle_plot(
         vmax=10, 
         interpolation="nearest"
     )
+    if xlims is not None:
+        axs[0, 2].axvline(x=xlims[0])
+        axs[0, 2].axvline(x=xlims[1])
     axs[0, 2].axis("off")
-    axs[0, 2].set_title(f"SEM, clean, crack area $\mu$m2 = {crack_area_m2*1e12:5}")
+    axs[0, 2].set_title(f"SEM, clean, crack area $\mu$m2 = {crack_area_m2*1e12:.2f}")
 
     # FIB image
     axs[1, 0].imshow(fib_image, cmap="Greys_r")
@@ -291,6 +301,7 @@ def milling_cycle_plot(
         # axs[1, 1].imshow(screenshot)
         # pattern_viewer.close()
         axs[1, 1].imshow(fib_screenshot[:, int(fib_screenshot.shape[1]/2):, :])
+    axs[1, 1].axis("off")
 
     # GIS thickness
     axs[1, 2].plot(gis_thickness_m * 1e6, ".-")
