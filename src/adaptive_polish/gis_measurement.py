@@ -210,6 +210,8 @@ def get_crack_area_m2(prediction: np.array, pixel_size_m: float, xlim_min_px, xl
     This helps reject annotated cracks outside the lamella area.
     These limits can be determined in measure_GIS()
     
+    EDIT 2/8/2024: crack area is no longer limited to only xlims
+
     Params:
         prediction
         pixel_size_m: pixel to meter
@@ -221,9 +223,10 @@ def get_crack_area_m2(prediction: np.array, pixel_size_m: float, xlim_min_px, xl
     """
     
     crack_area_px = prediction == 3
-    crack_area_lammellamask = crack_area_px[:, xlim_min_px:xlim_max_px]
+    # crack_area_lammellamask = crack_area_px[:, xlim_min_px:xlim_max_px]
 
-    crack_area_px2 = np.sum(crack_area_lammellamask)
+    # crack_area_px2 = np.sum(crack_area_lammellamask)
+    crack_area_px2 = np.sum(crack_area_px)
 
     crack_area_m2 = crack_area_px2 *pixel_size_m*pixel_size_m
 
