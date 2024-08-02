@@ -135,6 +135,14 @@ class AdaptiveMilling():
             }
         )
 
+        lamella_folder = Path(settings_in.image.path)
+        lamella_ap_folder = Path(f"{lamella_folder}/adaptive_polish")
+        if lamella_ap_folder.exists() is False:
+            lamella_ap_folder.mkdir()
+            Path(f"{lamella_ap_folder}/plots").mkdir()
+            Path(f"{lamella_ap_folder}/sem").mkdir()
+            Path(f"{lamella_ap_folder}/fib").mkdir()        
+
         # Running ---------------------------------------------------------------------
 
         # Initialise counts
@@ -173,12 +181,14 @@ class AdaptiveMilling():
                     # note that by new_image() can save images
                     # but the img_settings.save must be True, and will save to f"{settings.filename}_eb" .tif
                     # TODO: Save to a AP folder?
+                    img_settings.path = Path(f"{lamella_ap_folder}/sem")
 
                 elif "FIB" in img_set_name or "ion" in img_set_name:
                     logging.info(f"FIB (ion) image to be acquired")
                     #settings.image.beam_type = BeamType.ION
                     img_settings = microscope.get_imaging_settings(BeamType.ION)
                     img_sett0 = self._imaging_settings[img_set_name]
+                    img_settings.path = Path(f"{lamella_ap_folder}/fib")
                 
                 else:
                     raise ValueError(f"img_set0: {img_set_name} is invalid")
@@ -189,8 +199,7 @@ class AdaptiveMilling():
                 img_settings.hfw= img_sett0.get("hfw", img_settings.hfw)
                 img_settings.dwell_time= img_sett0.get("dwell_time", img_settings.dwell_time)
                 img_settings.frame_integration= img_sett0.get("frame_integration", img_settings.frame_integration)
-                img_settings.path = settings_in.image.path
-
+                # img_settings.path = settings_in.image.path
                 img_settings.filename = f"{f_basename}_{img_set_name}.tif"
 
                 #TODO. Check the settings_in and microscope_in paramaters top figure out where and how to generate a filename
@@ -200,13 +209,7 @@ class AdaptiveMilling():
                 img = acquire.new_image(microscope, img_settings)
 
                 img_path = img.get_save_path()
-                lamella_folder = Path(settings_in.image.path)
-                lamella_ap_folder = Path(f"{lamella_folder}/adaptive_polish")
-                if lamella_ap_folder.exists() is False:
-                    lamella_ap_folder.mkdir()
-                    Path(f"{lamella_ap_folder}/plots").mkdir()              
-
-
+                
                 imgs[img_set_name]= img
 
                 if 'SEM' in img_set_name or "electron" in img_set_name:
