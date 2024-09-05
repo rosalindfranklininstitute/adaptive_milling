@@ -19,6 +19,7 @@ import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 import logging
+import skimage
 
 def get_pixel_width(img):
     """Gets the pixel width of an AdornedImage, or if not possible, returns None
@@ -63,6 +64,7 @@ def segment(img: np.array) -> np.array:
 def clean_prediction(
     prediction: np.array, pixel_size_m: float, lam_height_min_m: float = 1e-7, reject_GIS_distance_m: float = 1e-6
 ) -> np.array:
+    logging.info(f"clean_prediction with prediction.shape:{prediction.shape}, pixel_size_m:{pixel_size_m}, lam_height_min_m:{lam_height_min_m}, reject_GIS_distance_m:{reject_GIS_distance_m}")
     # Generate bool masks for GIS and lamella
     mask_gis = prediction == 1
     mask_lamella = prediction == 2
@@ -78,61 +80,71 @@ def clean_prediction(
         logging.info("No GIS layer detected. Returning NaN")
         return None
     
-    # Find the transition between lamella and GIS
-    transition_gis_lamella = np.logical_and(mask_lamella[:-1, :], mask_gis[1:, :])
-
-    # Only take GIS below reject_GIS_distance_um above the transition line
-
-    # The code below can be a bit confusing.
-    # It is for selecting all GIS layer below the transition only,
-    # with a slight padding of trans_shiftup.
-    # We are using the transition line a starting y coordinate for the valid GIS layer
-    # This transition line could be one pixel above the GIS layer,
-    # hence we create a mask where we shift the y starting coordinates up a bit
-    transition_cumsum = np.cumsum(transition_gis_lamella, axis=0)
-    trans_shiftup=2
-    transition_cumsum = (
-        np.pad(
-            transition_cumsum[trans_shiftup:, :],
-            pad_width=((0, trans_shiftup + 1), (0, 0)),
-            mode="edge",
-        )
-        > 0
+    # Only keep the largest object in the GIS segmentation
+    instances = skimage.measure.label(mask_gis)
+    instance_properties = skimage.measure.regionprops(instances)
+    areas = [i.area for i in instance_properties]
+    largest_area = max(areas)
+    mask_gis_largest_only = skimage.morphology.remove_small_objects(
+        instances,
+        min_size = 0.99 * largest_area
     )
+    mask_gis_largest_only[mask_gis_largest_only > 0] = 1  # 1 is GIS
+
+    return mask_gis_largest_only
+
+    # # Find the transition between lamella and GIS
+    # transition_gis_lamella = np.logical_and(mask_lamella[:-1, :], mask_gis[1:, :])
+
+    # # Only take GIS below reject_GIS_distance_um above the transition line
+
+    # # The code below can be a bit confusing.
+    # # It is for selecting all GIS layer below the transition only,
+    # # with a slight padding of trans_shiftup.
+    # # We are using the transition line a starting y coordinate for the valid GIS layer
+    # # This transition line could be one pixel above the GIS layer,
+    # # hence we create a mask where we shift the y starting coordinates up a bit
+    # transition_cumsum = np.cumsum(transition_gis_lamella, axis=0)
+    # trans_shiftup=2
+    # transition_cumsum = (
+    #     np.pad(
+    #         transition_cumsum[trans_shiftup:, :],
+    #         pad_width=((0, trans_shiftup + 1), (0, 0)),
+    #         mode="edge",
+    #     )
+    #     > 0
+    # )
     # plt.imshow(transition_cumsum)
     # plt.show()
 
     #This code below will mask GIS layer segmentation beyond the heigth established by reject_GIS_height_mask
     # Note that it starts measuring from the transition minus shiftup height coordinate.
-    mask0 = np.cumsum(transition_cumsum, axis=0)
-    height_px = int(reject_GIS_distance_m/pixel_size_m)
-    reject_GIS_height_mask = mask0<=height_px
-    mask_gis_under_transition =  np.logical_and(mask_gis, reject_GIS_height_mask)
+    # mask0 = np.cumsum(transition_cumsum, axis=0)
+    # height_px = int(reject_GIS_distance_m/pixel_size_m) #throwing error
+    # reject_GIS_height_mask = mask0<=height_px
+    # mask_gis_under_transition =  np.logical_and(mask_gis, reject_GIS_height_mask)
+    
 
-    #mask_gis_under_transition = np.logical_and(mask_gis, transition_cumsum)
-    # plt.imshow(mask_gis_under_transition)
-    # plt.show()
+    # # Filter GIS layer by the amount of lamella height  above
+    # lam_abov_gis_x = np.any(transition_gis_lamella, axis=0)  
 
-    # Filter GIS layer by the amount of lamella height  above
-    lam_abov_gis_x = np.any(transition_gis_lamella, axis=0)  
+    # # Consider only GIS which have lamella areas with more than N pixels vertical
+    # lam_height_threshold_px = int(np.ceil(lam_height_min_m / pixel_size_m))  # pixels
+    # lam_height_along_x = np.sum(mask_lamella, axis=0) >= lam_height_threshold_px
 
-    # Consider only GIS which have lamella areas with more than N pixels vertical
-    lam_height_threshold_px = int(np.ceil(lam_height_min_m / pixel_size_m))  # pixels
-    lam_height_along_x = np.sum(mask_lamella, axis=0) >= lam_height_threshold_px
+    # large_lam_above_gis_mask_along_x = np.logical_and(lam_abov_gis_x, lam_height_along_x)
+    # logging.info(f"np.sum(large_lam_above_gis_mask_along_x): {np.sum(large_lam_above_gis_mask_along_x)}")
 
-    large_lam_above_gis_mask_along_x = np.logical_and(lam_abov_gis_x, lam_height_along_x)
-    logging.info(f"np.sum(large_lam_above_gis_mask_along_x): {np.sum(large_lam_above_gis_mask_along_x)}")
+    # #mask along x
+    # mask = np.tile(large_lam_above_gis_mask_along_x, (mask_gis_under_transition.shape[0],1) )
+    # mask_gis_clean = np.logical_and(mask_gis_under_transition, mask)
 
-    #mask along x
-    mask = np.tile(large_lam_above_gis_mask_along_x, (mask_gis_under_transition.shape[0],1) )
-    mask_gis_clean = np.logical_and(mask_gis_under_transition, mask)
+    # # debug
+    # #fig, axs = plt.subplots(1,1, sharex=True, sharey=True)
+    # # plt.imshow(mask_gis_clean)
+    # # plt.show()
 
-    # debug
-    #fig, axs = plt.subplots(1,1, sharex=True, sharey=True)
-    # plt.imshow(mask_gis_clean)
-    # plt.show()
-
-    return mask_gis_clean
+    # return mask_gis_clean
 
 
 def measure_GIS(
@@ -145,26 +157,32 @@ def measure_GIS(
     # Calculate average GIS thickness in windows
 
     #Sum to get thickness along x in pixels
-    GIS_pxbypx = np.sum(mask_gis_clean, axis=0)
+    GIS_pxbypx = np.sum(mask_gis_clean, axis=0).astype(np.float32)
 
     # Pad with zeros to fulfil window size criteria
     GIS_pxbypx_pad = np.pad(
         GIS_pxbypx,
         (0, window_size_px - len(GIS_pxbypx) % window_size_px),
-        constant_values=0,
+        constant_values=np.nan,
     )
 
     #Get left and right limits from where the mean should be calculated from
-    GIS_pxbypx_where_above_zero = np.where(GIS_pxbypx_pad)
+    GIS_pxbypx_where_above_zero = np.where(GIS_pxbypx_pad > 0)
     xlim_min = GIS_pxbypx_where_above_zero[0][0]  # first occurrence along x
     xlim_max = GIS_pxbypx_where_above_zero[0][-1]  # last occurrence along x
+
+    # make the L and R limits of the lamella x% smaller
+    lamella_width_px = xlim_max - xlim_min
+    lamella_width_to_cut = int(0.05 * lamella_width_px)  # cut 5% from each end
+    xlim_min = lamella_width_to_cut + xlim_min
+    xlim_max = xlim_max - lamella_width_to_cut    
 
     GIS_pxbypx_NaNed = np.copy(GIS_pxbypx_pad).astype(np.float32)
     GIS_pxbypx_NaNed[:xlim_min]=np.nan
     GIS_pxbypx_NaNed[xlim_max:]=np.nan
 
     # This mean will discard nan areas
-    GIS_windowed = np.nanmean(GIS_pxbypx_NaNed.reshape(-1, window_size_px), axis=1)
+    GIS_windowed = np.nanmedian(GIS_pxbypx_NaNed.reshape(-1, window_size_px), axis=1)
 
     # Convert to m
     GIS_m = GIS_windowed * pixel_size_m
@@ -192,6 +210,8 @@ def get_crack_area_m2(prediction: np.array, pixel_size_m: float, xlim_min_px, xl
     This helps reject annotated cracks outside the lamella area.
     These limits can be determined in measure_GIS()
     
+    EDIT 2/8/2024: crack area is no longer limited to only xlims
+
     Params:
         prediction
         pixel_size_m: pixel to meter
@@ -203,9 +223,10 @@ def get_crack_area_m2(prediction: np.array, pixel_size_m: float, xlim_min_px, xl
     """
     
     crack_area_px = prediction == 3
-    crack_area_lammellamask = crack_area_px[:, xlim_min_px:xlim_max_px]
+    # crack_area_lammellamask = crack_area_px[:, xlim_min_px:xlim_max_px]
 
-    crack_area_px2 = np.sum(crack_area_lammellamask)
+    # crack_area_px2 = np.sum(crack_area_lammellamask)
+    crack_area_px2 = np.sum(crack_area_px)
 
     crack_area_m2 = crack_area_px2 *pixel_size_m*pixel_size_m
 
@@ -220,9 +241,12 @@ def milling_cycle_plot(
     gis_thickness_m: np.array,
     gis_stop_m: float,
     crack_area_m2: float,
+    xlims = None,
+    fib_screenshot: np.array = None,
     img_name: str = None,
     save_path: Path = None,
 ):
+    logging.info("milling_cycle_plot()")
     fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(12, 8), tight_layout=True)
     fig.suptitle(img_name)
 
@@ -233,15 +257,32 @@ def milling_cycle_plot(
 
     # SEM + 1st pass prediction
     axs[0, 1].imshow(sem_image, cmap="Greys_r")
-    axs[0, 1].imshow(first_prediction, alpha=0.4, cmap="tab10", vmin=0, vmax=10)
+    axs[0, 1].imshow(
+        first_prediction, 
+        alpha=0.4, 
+        cmap="tab10", 
+        vmin=0, 
+        vmax=10, 
+        interpolation="nearest"
+    )
     axs[0, 1].axis("off")
     axs[0, 1].set_title("SEM, 1st prediction")
 
     # SEM + clean prediction
     axs[0, 2].imshow(sem_image, cmap="Greys_r")
-    axs[0, 2].imshow(clean_prediction, alpha=0.4, cmap="tab10", vmin=0, vmax=10)
+    axs[0, 2].imshow(
+        clean_prediction, 
+        alpha=0.4, 
+        cmap="tab10", 
+        vmin=0, 
+        vmax=10, 
+        interpolation="nearest"
+    )
+    if xlims is not None:
+        axs[0, 2].axvline(x=xlims[0])
+        axs[0, 2].axvline(x=xlims[1])
     axs[0, 2].axis("off")
-    axs[0, 2].set_title(f"SEM, clean, crack area $\mu$m2 = {crack_area_m2*1e12:5}")
+    axs[0, 2].set_title(f"SEM, clean, crack area $\mu$m2 = {crack_area_m2*1e12:.2f}")
 
     # FIB image
     axs[1, 0].imshow(fib_image, cmap="Greys_r")
@@ -249,10 +290,24 @@ def milling_cycle_plot(
     axs[1, 0].set_title("FIB")
 
     # FIB + milling box
-    # TODO
+    if fib_screenshot is not None:
+        # Doesn't work -> for some reason I can't open a new napari.Viewer()
+        # pattern_viewer = napari.Viewer()
+        # pattern_viewer.add_image(fib_image, name="fib_image")
+        # _draw_patterns_in_napari(
+        #     viewer=pattern_viewer,
+        #     ib_image=FibsemImage(data=fib_image),
+        #     eb_image=None,
+        #     milling_stages=list(adaptive_polish_stage)
+        # )
+        # screenshot = pattern_viewer.screenshot()
+        # axs[1, 1].imshow(screenshot)
+        # pattern_viewer.close()
+        axs[1, 1].imshow(fib_screenshot[:, int(fib_screenshot.shape[1]/2):, :])
+    axs[1, 1].axis("off")
 
     # GIS thickness
-    axs[1, 2].plot(gis_thickness_m * 1e6)
+    axs[1, 2].plot(gis_thickness_m * 1e6, ".-")
     axs[1, 2].set_xlabel("Distance along x (px)")
     axs[1, 2].set_ylabel("GIS thickness ($\mu$m)")
     axs[1, 2].set_xlim(0, len(gis_thickness_m))
