@@ -27,12 +27,12 @@ import matplotlib.pyplot as plt
 import os
 import napari
 
-from fibsem import acquire, utils
+from fibsem import acquire, utils, milling, conversions
 from fibsem.structures import BeamType
-from fibsem import milling
 from fibsem.microscope import FibsemMicroscope
 from fibsem.structures import MicroscopeSettings
 from fibsem.patterning import BasePattern
+from fibsem.detection.detection import AdaptiveLamellaCentre
 
 #adaptive polish configuration setup
 #Is it better to run in a class using __init__ and others?
@@ -141,7 +141,8 @@ class AdaptiveMilling():
             lamella_ap_folder.mkdir()
             Path(f"{lamella_ap_folder}/plots").mkdir()
             Path(f"{lamella_ap_folder}/sem").mkdir()
-            Path(f"{lamella_ap_folder}/fib").mkdir()        
+            Path(f"{lamella_ap_folder}/fib").mkdir()      
+            Path(f"{lamella_ap_folder}/centering").mkdir()  
 
         # Running ---------------------------------------------------------------------
 
@@ -250,6 +251,7 @@ class AdaptiveMilling():
             logging.info("Starting segmentation")
             prediction = gm.segment(SEM_img.data)
             logging.info("Segmentation complete")
+
             mask_gis_clean = gm.clean_prediction(
                 prediction,
                 pixel_size_m,
@@ -315,6 +317,27 @@ class AdaptiveMilling():
             # )
 
             gis_results_detailed.to_csv( f"{lamella_ap_folder}/GIS_thickness_detailed.csv" )
+
+            # Center the lamella with beamshift
+            feature = AdaptiveLamellaCentre()
+            centre_px = feature.detect(SEM_img.data, prediction, None)
+            # Convert to microscope image coordinates (0, 0 at centre of image)
+            centre_m = conversions.image_to_microscope_image_coordinates(
+                centre_px, SEM_img.data, SEM_img.metadata.pixel_size.x
+            )
+
+            # shift beam
+            dx, dy = centre_m.x, centre_m.y
+            microscope.beam_shift(dx, dy, settings.image.beam_type)
+
+            # Plot centering stuff
+            plt.figure()
+            plt.imshow(prediction, cmap="gray")
+            plt.scatter(centre_px.x, centre_px.y, c="r", marker="+", label="lamella_centre")
+            plt.scatter(SEM_img.data.shape[1]//2, SEM_img.data.shape[0]//2, c="g", marker="+", label="image_centre")
+            plt.legend()
+            plt.savefig(f"{lamella_ap_folder}/centering/{Path(img_path).stem}_centering.png")
+            plt.close()
 
             # Generate plots
             if viewer is not None:
