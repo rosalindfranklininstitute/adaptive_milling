@@ -68,8 +68,6 @@ class AdaptiveMilling():
             "milling_interval_s": 30,
             "gis_stop_m": 2e-7,
             "max_milling_cycles": 30,
-            "reject_GIS_distance_m": 1e-5,
-            "lam_height_min_m": 2e-6,
             "window_size_m": 1e-7,
             "max_crack_area_m2": 2e-12,
             "model_path": f"{Path(__file__).parent}/dl_segmentation/2024-02-24_0013_gis_lamela_crack_pytorch_AUnet.ptchkp",
@@ -86,17 +84,19 @@ class AdaptiveMilling():
                     "dwell_time":200.0e-9,
                     "frame_integration":8
                 }
-            }
+            },
+            "use_sem_beam_shift_alignment_adaptive_polish": True,
         }
 
         return config_dict
-
+ 
     def adaptive_polish_run(
-            self, 
-            microscope_in: FibsemMicroscope = None,
-            settings_in : MicroscopeSettings = None,
-            patterns_in : BasePattern = None,
-            viewer: napari.Viewer = None):
+        self, 
+        microscope_in: FibsemMicroscope = None,
+        settings_in : MicroscopeSettings = None,
+        patterns_in : BasePattern = None,
+        viewer: napari.Viewer = None
+    ):
 
         if microscope_in is not None:
             microscope = microscope_in
@@ -141,6 +141,51 @@ class AdaptiveMilling():
             Path(f"{lamella_ap_folder}/centering").mkdir()  
 
         # Running ---------------------------------------------------------------------
+        # Align with beamshift
+        try:
+            align_at_adaptive_polish = self.config_dict["use_sem_beam_shift_alignment_adaptive_polish"]
+        except Exception as e:
+            align_at_adaptive_polish = False
+            logging.warning(
+                "Protocol does not specify if beamshift alignment is to be used"
+                " in adaptive polishing. Defaulting to no beamshift alignment. "
+                "Please specify use_sem_beam_shift_alignment_adaptive_polish in protocol.yaml"
+            )
+
+        if align_at_adaptive_polish is True:
+            logging.info("Using sem beam shift alignment for adaptive polishing")
+            
+            # Take reference images
+            SEM_img, FIB_img = acquire.take_reference_images(
+                microscope=microscope_in,
+                image_settings=settings_in.image,
+            )
+
+            # Find center
+            logging.info("Starting segmentation")
+            prediction = gm.segment(SEM_img.data)
+            logging.info("Segmentation complete")
+            feature = AdaptiveLamellaCentre()
+            centre_px = feature.detect(SEM_img.data, prediction, None)
+            
+            # Convert to microscope image coordinates (0, 0 at centre of image)
+            centre_m = conversions.image_to_microscope_image_coordinates(
+                centre_px, SEM_img.data, SEM_img.metadata.pixel_size.x
+            )
+
+            # shift beam
+            dx, dy = centre_m.x, centre_m.y
+            microscope.beam_shift(dx, dy, settings.image.beam_type)
+            logging.info(f"Beamshift {settings.image.beam_type} by dx={dx}, dy={dy}")
+
+            # Plot centering stuff
+            plt.figure()
+            plt.imshow(prediction, cmap="gray")
+            plt.scatter(centre_px.x, centre_px.y, c="r", marker="+", label="lamella_centre")
+            plt.scatter(SEM_img.data.shape[1]//2, SEM_img.data.shape[0]//2, c="g", marker="+", label="image_centre")
+            plt.legend()
+            plt.savefig(f"{lamella_ap_folder}/centering.png")
+            plt.close()
 
         # Initialise counts
         scan_count = 0
@@ -230,14 +275,11 @@ class AdaptiveMilling():
             mask_gis_clean = gm.clean_prediction(
                 prediction,
                 pixel_size_m,
-                float(self.config_dict["lam_height_min_m"]),
-                float(self.config_dict["reject_GIS_distance_m"])
+                # following params are deprecated
+                # float(self.config_dict["lam_height_min_m"]),
+                # float(self.config_dict["reject_GIS_distance_m"])
             )
-            logging.info(
-                f"Cleaned mask to only include GIS "
-                f"{self.config_dict['reject_GIS_distance_m']} m below "
-                f"GIS-lamella transition"
-            )
+            logging.info("Finished cleaning mask")
 
             if mask_gis_clean is None:
                 logging.info("mask_gis_clean is None. Stopping")
@@ -287,27 +329,6 @@ class AdaptiveMilling():
                     pass
 
             gis_results_detailed.to_csv( f"{lamella_ap_folder}/GIS_thickness_detailed.csv" )
-
-            # Center the lamella with beamshift
-            feature = AdaptiveLamellaCentre()
-            centre_px = feature.detect(SEM_img.data, prediction, None)
-            # Convert to microscope image coordinates (0, 0 at centre of image)
-            centre_m = conversions.image_to_microscope_image_coordinates(
-                centre_px, SEM_img.data, SEM_img.metadata.pixel_size.x
-            )
-
-            # shift beam
-            dx, dy = centre_m.x, centre_m.y
-            microscope.beam_shift(dx, dy, settings.image.beam_type)
-
-            # Plot centering stuff
-            plt.figure()
-            plt.imshow(prediction, cmap="gray")
-            plt.scatter(centre_px.x, centre_px.y, c="r", marker="+", label="lamella_centre")
-            plt.scatter(SEM_img.data.shape[1]//2, SEM_img.data.shape[0]//2, c="g", marker="+", label="image_centre")
-            plt.legend()
-            plt.savefig(f"{lamella_ap_folder}/centering/{Path(img_path).stem}_centering.png")
-            plt.close()
 
             # Generate plots
             if viewer is not None:
