@@ -49,8 +49,6 @@ class AdaptiveMilling():
         # Check dictionary is ok
         if not ("imaging_settings" in ap_config_dict):
             ValueError("No imaging_settings in ap_config. Please check protocol yaml file")
-        else:
-            self._imaging_settings = self.config_dict["imaging_settings"] 
 
         logging.info("Config parameters: %s\n", self.config_dict)
 
@@ -189,67 +187,40 @@ class AdaptiveMilling():
             plt.savefig(f"{lamella_ap_folder}/centering.png")
             plt.close()
 
+        # Set imaging settings according to the adaptive_polish part of the protocol.yaml
+        SEM_settings = microscope.get_imaging_settings(BeamType.ELECTRON)
+        FIB_settings = microscope.get_imaging_settings(BeamType.ION)
+        for key, value in self.config_dict["imaging_settings"]["electron"].items():
+            setattr(SEM_settings, key, value)
+        for key, value in self.config_dict["imaging_settings"]["ion"].items():
+            setattr(FIB_settings, key, value)
+        SEM_settings.save = True
+        FIB_settings.save = True
+        SEM_settings.path = Path(f"{lamella_ap_folder}/sem")
+        FIB_settings.path = Path(f"{lamella_ap_folder}/fib")
+
         # Initialise counts
         scan_count = 0
         total_time = 0
 
         while scan_count <= int(self.config_dict["max_milling_cycles"]):
-            # Acquire images
-            imgs = {}
-            SEM_img=None
-            FIB_img=None
+            f_basename= f"{lamella_folder.stem}_AP_img_{scan_count:03}"
 
-            img_sett0 = None
-            f_basename= f"adapt_mill_img_{scan_count:03}"
+            # Acquire SEM image
+            logging.info(
+                "Acquiring SEM image for milling cycle "
+                f"{scan_count}/{int(self.config_dict['max_milling_cycles'])}"
+            )
+            SEM_settings.filename = f"{f_basename}_SEM.tif"
+            SEM_img = acquire.new_image(microscope, SEM_settings)
 
-            for img_set_name in self._imaging_settings:
-                logging.info(
-                    f"Acquiring image with {img_set_name} settings for milling cycle "
-                    f"{scan_count}/{int(self.config_dict['max_milling_cycles'])}"
-                )
-                #img_name = f"{self.config_dict.folders['lamella_folder'].stem}_img_{scan_count:03}"
-                #logging.info(f"Image is {img_name}")
-
-                if 'SEM' in img_set_name or "electron" in img_set_name:
-                    logging.info(f"SEM (electron) image to be acquired")
-                    img_settings = microscope.get_imaging_settings(BeamType.ELECTRON)
-                    img_sett0 = self._imaging_settings[img_set_name]
-                    # note that by new_image() can save images
-                    # but the img_settings.save must be True, and will save to f"{settings.filename}_eb" .tif
-                    # TODO: Save to a AP folder?
-                    img_settings.path = Path(f"{lamella_ap_folder}/sem")
-
-                elif "FIB" in img_set_name or "ion" in img_set_name:
-                    logging.info(f"FIB (ion) image to be acquired")
-                    img_settings = microscope.get_imaging_settings(BeamType.ION)
-                    img_sett0 = self._imaging_settings[img_set_name]
-                    img_settings.path = Path(f"{lamella_ap_folder}/fib")
-                
-                else:
-                    raise ValueError(f"img_set0: {img_set_name} is invalid")
-                
-                img_settings.resolution= img_sett0.get("resolution", img_settings.resolution)
-                img_settings.hfw= img_sett0.get("hfw", img_settings.hfw)
-                img_settings.dwell_time= img_sett0.get("dwell_time", img_settings.dwell_time)
-                img_settings.frame_integration= img_sett0.get("frame_integration", img_settings.frame_integration)
-                img_settings.filename = f"{f_basename}_{img_set_name}.tif"
-
-                img_settings.save=True
-
-                logging.info("Acquiring new image, and saving")
-                img = acquire.new_image(microscope, img_settings)
-
-                img_path = img.get_save_path()
-                
-                imgs[img_set_name]= img
-
-                if 'SEM' in img_set_name or "electron" in img_set_name:
-                    SEM_img=img
-                elif "FIB" in img_set_name or "ion" in img_set_name:
-                    FIB_img=img
-
-                #please note that the imgs will not contain AdornedImage but FibsemImage object
-                #Depending on the settings.save, this image is automatically saved
+            # Acquire FIB image
+            logging.info(
+                "Acquiring FIB image for milling cycle "
+                f"{scan_count}/{int(self.config_dict['max_milling_cycles'])}"
+            )
+            FIB_settings.filename = f"{f_basename}_FIB.tif"
+            FIB_img = acquire.new_image(microscope, FIB_settings)            
 
             if SEM_img is None:
                 # If there are no SEM images to look at, exit while loop
@@ -308,7 +279,7 @@ class AdaptiveMilling():
 
             # Save results
             results.loc[scan_count] = {
-                "image": img_path,
+                "image": f"adapt_mill_img_{scan_count:03}",
                 "milling_time_s": total_time,
                 "min_GIS_m": min_GIS_m,
                 "crack_area_m2": crack_area_m2,
@@ -319,7 +290,7 @@ class AdaptiveMilling():
             for window, gis_thickness in enumerate(GIS_m):
                 if gis_thickness > 0:
                     gis_results_detailed.loc[len(gis_results_detailed)] = {
-                        "image": img_path,
+                        "image": f_basename,
                         "milling_time_s": total_time,
                         "window": window,
                         "gis_windowed_m": gis_thickness,
@@ -342,9 +313,9 @@ class AdaptiveMilling():
                 gis_thickness_m=GIS_m,
                 gis_stop_m=float(self.config_dict["gis_stop_m"]),
                 crack_area_m2=crack_area_m2,
-                img_name=img_path,
+                img_name=f_basename,
                 fib_screenshot=fib_screenshot,
-                save_path=f"{lamella_ap_folder}/plots/{Path(img_path).stem}_plot.png",
+                save_path=f"{lamella_ap_folder}/plots/{f_basename}_plot.png",
             )
 
             # Should we continue?
