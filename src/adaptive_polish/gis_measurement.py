@@ -61,10 +61,34 @@ def segment(img: np.array) -> np.array:
     return prediction
 
 
+def keep_only_largest_object(mask: np.array, fill_value: int = 1) -> np.array:
+    """Find the largest object in a mask and sets everything in that object to
+    `fill_value`, background is 0.
+
+    Args:
+        mask (np.array): Segmentation mask
+        fill_value (int, optional): Everything inside the largest object
+            is set to this value. Defaults to 1.
+
+    Returns:
+        np.array: Mask with the largest object only
+    """
+    instances = skimage.measure.label(mask)
+    instance_properties = skimage.measure.regionprops(instances)
+    areas = [i.area for i in instance_properties]
+    largest_area = max(areas)
+    mask_largest_only = skimage.morphology.remove_small_objects(
+        instances,
+        min_size = 0.99 * largest_area
+    )
+    mask_largest_only[mask_largest_only > 0] = fill_value
+    return mask_largest_only
+
+
 def clean_prediction(
-    prediction: np.array, pixel_size_m: float, lam_height_min_m: float = 1e-7, reject_GIS_distance_m: float = 1e-6
+    prediction: np.array, pixel_size_m: float,
 ) -> np.array:
-    logging.info(f"clean_prediction with prediction.shape:{prediction.shape}, pixel_size_m:{pixel_size_m}, lam_height_min_m:{lam_height_min_m}, reject_GIS_distance_m:{reject_GIS_distance_m}")
+    logging.info(f"clean_prediction with prediction.shape:{prediction.shape}, pixel_size_m:{pixel_size_m}")
     # Generate bool masks for GIS and lamella
     mask_gis = prediction == 1
     mask_lamella = prediction == 2
@@ -81,70 +105,9 @@ def clean_prediction(
         return None
     
     # Only keep the largest object in the GIS segmentation
-    instances = skimage.measure.label(mask_gis)
-    instance_properties = skimage.measure.regionprops(instances)
-    areas = [i.area for i in instance_properties]
-    largest_area = max(areas)
-    mask_gis_largest_only = skimage.morphology.remove_small_objects(
-        instances,
-        min_size = 0.99 * largest_area
-    )
-    mask_gis_largest_only[mask_gis_largest_only > 0] = 1  # 1 is GIS
+    mask_gis_largest_only = keep_only_largest_object(mask_gis)
 
     return mask_gis_largest_only
-
-    # # Find the transition between lamella and GIS
-    # transition_gis_lamella = np.logical_and(mask_lamella[:-1, :], mask_gis[1:, :])
-
-    # # Only take GIS below reject_GIS_distance_um above the transition line
-
-    # # The code below can be a bit confusing.
-    # # It is for selecting all GIS layer below the transition only,
-    # # with a slight padding of trans_shiftup.
-    # # We are using the transition line a starting y coordinate for the valid GIS layer
-    # # This transition line could be one pixel above the GIS layer,
-    # # hence we create a mask where we shift the y starting coordinates up a bit
-    # transition_cumsum = np.cumsum(transition_gis_lamella, axis=0)
-    # trans_shiftup=2
-    # transition_cumsum = (
-    #     np.pad(
-    #         transition_cumsum[trans_shiftup:, :],
-    #         pad_width=((0, trans_shiftup + 1), (0, 0)),
-    #         mode="edge",
-    #     )
-    #     > 0
-    # )
-    # plt.imshow(transition_cumsum)
-    # plt.show()
-
-    #This code below will mask GIS layer segmentation beyond the heigth established by reject_GIS_height_mask
-    # Note that it starts measuring from the transition minus shiftup height coordinate.
-    # mask0 = np.cumsum(transition_cumsum, axis=0)
-    # height_px = int(reject_GIS_distance_m/pixel_size_m) #throwing error
-    # reject_GIS_height_mask = mask0<=height_px
-    # mask_gis_under_transition =  np.logical_and(mask_gis, reject_GIS_height_mask)
-    
-
-    # # Filter GIS layer by the amount of lamella height  above
-    # lam_abov_gis_x = np.any(transition_gis_lamella, axis=0)  
-
-    # # Consider only GIS which have lamella areas with more than N pixels vertical
-    # lam_height_threshold_px = int(np.ceil(lam_height_min_m / pixel_size_m))  # pixels
-    # lam_height_along_x = np.sum(mask_lamella, axis=0) >= lam_height_threshold_px
-
-    # large_lam_above_gis_mask_along_x = np.logical_and(lam_abov_gis_x, lam_height_along_x)
-    # logging.info(f"np.sum(large_lam_above_gis_mask_along_x): {np.sum(large_lam_above_gis_mask_along_x)}")
-
-    # #mask along x
-    # mask = np.tile(large_lam_above_gis_mask_along_x, (mask_gis_under_transition.shape[0],1) )
-    # mask_gis_clean = np.logical_and(mask_gis_under_transition, mask)
-
-    # # debug
-    # #fig, axs = plt.subplots(1,1, sharex=True, sharey=True)
-    # # plt.imshow(mask_gis_clean)
-    # # plt.show()
-
-    # return mask_gis_clean
 
 
 def measure_GIS(
@@ -192,42 +155,31 @@ def measure_GIS(
 
     return GIS_m, (xlim_min, xlim_max)
 
-# This will always return zero!!
-# def find_cracks(prediction: np.array, pixel_size_m: float) -> float:
-#     mask_crack = prediction == 3
-#     mask_lamella = prediction == 2
-#     mask_crack_within_lamella = np.logical_and(mask_crack, mask_lamella)  
-#     crack_area_px = np.sum(mask_crack_within_lamella)
-#     crack_area_m2 = crack_area_px * pixel_size_m * pixel_size_m
 
-#     return crack_area_m2
+def get_crack_area_m2(prediction: np.array, pixel_size_m: float) -> float:
+    """Measure the area in the prediction for cracks in m2.
 
-def get_crack_area_m2(prediction: np.array, pixel_size_m: float, xlim_min_px, xlim_max_px) -> float:
-    """
-    Gets the crack area from a DL prediction where crack is annotated as integer 3
+    Cracks are only considered if they are within the largest combined lamella+
+    GIS+crack object in the prediction.
 
-    xlim_min_px, xlim_max_px set the windows where to consider the crack area
-    This helps reject annotated cracks outside the lamella area.
-    These limits can be determined in measure_GIS()
-    
-    EDIT 2/8/2024: crack area is no longer limited to only xlims
-
-    Params:
-        prediction
-        pixel_size_m: pixel to meter
-        xlim_min_px, xlim_max_px: window limits in pixel units
+    Args:
+        prediction (np.array): Segmentation mask 
+        pixel_size_m (float): Pixel size in m
 
     Returns:
-        crack_area_m2: float value with the crack area in m2 units
-    
+        float: Crack area in m2
     """
-    
-    crack_area_px = prediction == 3
-    # crack_area_lammellamask = crack_area_px[:, xlim_min_px:xlim_max_px]
+    # Restrict crack search area to the largest object which is not background
+    mask_anything = prediction > 0
+    mask_anything_largest_only = keep_only_largest_object(mask_anything)
+    mask_crack = prediction == 3
 
-    # crack_area_px2 = np.sum(crack_area_lammellamask)
-    crack_area_px2 = np.sum(crack_area_px)
-
+    # Since crack pixel value is 1 and anything outside largest object is 0
+    mask_crack_inside_largest_object = np.multiply(
+        mask_crack, 
+        mask_anything_largest_only
+    )
+    crack_area_px2 = np.sum(mask_crack_inside_largest_object)
     crack_area_m2 = crack_area_px2 *pixel_size_m*pixel_size_m
 
     return crack_area_m2

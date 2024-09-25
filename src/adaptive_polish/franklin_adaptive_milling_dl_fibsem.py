@@ -24,6 +24,7 @@ import time
 import matplotlib.pyplot as plt
 import os
 import napari
+from importlib.metadata import version
 
 from fibsem import acquire, utils, milling, conversions
 from fibsem.structures import BeamType
@@ -37,6 +38,7 @@ class AdaptiveMilling():
     config_dict=None
 
     def __init__(self, ap_config_dict: dict = None):
+        logging.info(f"Using adaptive_polish version {version('adaptive_polish')}")
 
         if ap_config_dict is None:
             ap_config_dict=self.get_default_config_dict()
@@ -275,9 +277,6 @@ class AdaptiveMilling():
             mask_gis_clean = gm.clean_prediction(
                 prediction,
                 pixel_size_m,
-                # following params are deprecated
-                # float(self.config_dict["lam_height_min_m"]),
-                # float(self.config_dict["reject_GIS_distance_m"])
             )
             logging.info("Finished cleaning mask")
 
@@ -301,7 +300,7 @@ class AdaptiveMilling():
             logging.info(f"Minimum GIS thickness for milling cycle {scan_count} = {min_GIS_m}")
 
             # Crack detection
-            crack_area_m2 = gm.get_crack_area_m2(prediction, pixel_size_m, *xlims)
+            crack_area_m2 = gm.get_crack_area_m2(prediction, pixel_size_m)
 
             logging.info(
                 f"Area of cracks found in milling cycle {scan_count} = {crack_area_m2} m2"
