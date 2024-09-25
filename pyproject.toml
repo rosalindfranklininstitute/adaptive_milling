@@ -90,9 +90,9 @@ where = ["src"]
 #
 # Set the package version from git tag
 #
-#[tool.setuptools.dynamic]
+[tool.setuptools.dynamic]
 
-#version = {attr = "adaptive_polish._version.__version__"}
+version = {attr = "adaptive_polish._version.__version__"}
 
 #
 # Configure setuptools-scm to generate version file
