@@ -361,6 +361,17 @@ class AdaptiveMilling():
                 )
                 break
             
+            # Adjust milling interval
+            if scan_count > 0:
+                if min_GIS_m <= 1.2 * float(self.config_dict["gis_stop_m"]):
+                    new_milling_interval = int(self.config_dict["milling_interval_s"]) / 2
+                    self.config_dict["milling_interval_s"] = max(new_milling_interval, 10)
+                    logging.info(
+                        f"Minimum GIS distance is {10e-6*(min_GIS_m - self.config_dict['gis_stop_m'])} um from target, "
+                        f"Reducing the milling interval from {self.config_dict['milling_interval_s']} s to "
+                        f"{new_milling_interval} s or 10 s, whichever is bigger."
+                    )
+
             #Mill for a predetermined amount of time
             millmilling_interval_s = int(self.config_dict['milling_interval_s'])
             logging.info(f"Sleeping {millmilling_interval_s} seconds to mill")
@@ -372,10 +383,6 @@ class AdaptiveMilling():
                 logging.error(f"The following error occurred doing milling. {str(e)}")
             finally:
                 microscope.stop_milling() # dont use milling.finish_milling as it would clear patterns
-
-            # Adjust milling interval
-            if min_GIS_m <= 1.2 * float(self.config_dict["gis_stop_m"]):
-                self.config_dict["milling_interval_s"] = int(self.config_dict["milling_interval_s"]) / 2
 
             scan_count += 1
             total_time += int(self.config_dict["milling_interval_s"])
