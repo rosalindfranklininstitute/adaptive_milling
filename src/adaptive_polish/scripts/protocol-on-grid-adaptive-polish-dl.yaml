@@ -1,5 +1,5 @@
 options:
-  name: autolamella-base-scan-rotation-0deg
+  name: autolamella-adaptive-polish-only
   method: autolamella-on-grid # autolamella-waffle or autolamella-on-grid
   checkpoint: autolamella-mega-20240107.pt
   alignment_attempts: 3.0
@@ -18,13 +18,13 @@ options:
   use_notch: false 
   supervise:
     trench: false
-    undercut: true
-    setup_lamella: true
-    features: true
-    lamella: true
-    mill_rough: true
-    mill_regular: true
-    mill_polishing: true
+    undercut: false
+    setup_lamella: false
+    features: false
+    lamella: false
+    mill_rough: false
+    mill_regular: false
+    mill_polishing: false
 milling:
   fiducial:
     enabled: true
@@ -40,54 +40,6 @@ milling:
     type: Fiducial
   lamella:
     stages:
-      -   name: Rough Cut
-          application_file: Si-ccs
-          cross_section: CleaningCrossSection
-          depth: 6.5e-07
-          dwell_time: 1.0e-06
-          hfw: 7.999999999999999e-05
-          lamella_height: 6.0e-07
-          lamella_width: 6.0e-06
-          milling_current: 7.4e-10
-          offset: 2.0e-06
-          patterning_mode: Serial
-          preset: ''
-          rate: 0.0001
-          size_ratio: 1.0
-          spot_size: 5.0e-08
-          trench_height: 3.5e-06
-      -   name: Regular Cut
-          application_file: Si-ccs
-          cross_section: CleaningCrossSection
-          depth: 6.5e-07
-          dwell_time: 1.0e-06
-          hfw: 7.999999999999999e-05
-          lamella_height: 6.0e-07
-          lamella_width: 6.0e-06
-          milling_current: 2.0e-10
-          offset: 5.0e-07
-          patterning_mode: Serial
-          preset: ''
-          rate: 0.0001
-          size_ratio: 1.0
-          spot_size: 5.0e-08
-          trench_height: 2.0e-06
-      -   name: Polishing Cut
-          application_file: Si-ccs
-          cross_section: CleaningCrossSection
-          depth: 4.0e-07
-          dwell_time: 1.0e-06
-          hfw: 7.999999999999999e-05
-          lamella_height: 6.0e-07
-          lamella_width: 6.0e-06
-          milling_current: 6.0e-11
-          offset: 0.0
-          patterning_mode: Serial
-          preset: ''
-          rate: 0.0001
-          size_ratio: 1.0
-          spot_size: 5.0e-08
-          trench_height: 5.0e-07
       -   name: Adaptive polishing
           application_file: Si-ccs
           cross_section: CleaningCrossSection
@@ -98,13 +50,12 @@ milling:
           lamella_width: 6.0e-06
           milling_current: 6.0e-11
           offset: 0.0
-          patterning_mode: Serial
+          patterning_mode: Parallel
           preset: ''
           rate: 0.0001
           size_ratio: 1.0
           spot_size: 5.0e-08
           trench_height: 5.0e-07
-          
   microexpansion:
     width: 0.5e-6
     height: 18.e-6
@@ -129,20 +80,13 @@ milling:
     vheight: 2.0e-06
     vwidth: 2.0e-07
     type: WaffleNotch
-
 adaptive_polish:
-    #session_name: f"Franklin_{datetime.date.today()}",
-    #"session_dir": f"Z:/structbio/qmm85263/20240509_autolamella_test/AutoLamella-2024-05-09-11-01/{datetime.date.today()}",
-    # "session_dir": os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop', 'adapt_mill_session_localtest_temp') ,
-    do_plots: True
-    #"display_plots": False,
+    do_plots: true
     fallback_pixel_size_m: 1.8e-8
     # Milling cycle control
     milling_interval_s: 30
     gis_stop_m: 2e-7
     max_milling_cycles: 30
-    reject_GIS_distance_m: 1e-5
-    lam_height_min_m: 2e-6
     window_size_m: 1e-7
     max_crack_area_m2: 2e-12
     #model_path:  # comment for default
@@ -152,9 +96,9 @@ adaptive_polish:
         hfw:                40.0e-6 
         dwell_time:         200.0e-9
         frame_integration:  8
-
       ion:
         resolution:         [3072,2048]
         hfw:                40.0e-6 
         dwell_time:         200.0e-9
         frame_integration:  8
+    use_sem_beam_shift_alignment_adaptive_polish: true
