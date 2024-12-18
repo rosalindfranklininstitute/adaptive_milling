@@ -51,9 +51,7 @@ dependencies = [
   "segmentation-models-pytorch",
 ]
 
-dynamic = [
-  "version"
-]
+version = "2025.01"
 
 #
 # Project urls
@@ -90,9 +88,11 @@ where = ["src"]
 #
 # Set the package version from git tag
 #
-[tool.setuptools.dynamic]
+# [tool.setuptools.dynamic]
 
-version = {attr = "adaptive_polish._version.__version__"}
+# version = {attr = "adaptive_polish._version.__version__"}
+# microscope PC doesn't necessarily have Git so switch to static versioning
+
 
 #
 # Configure setuptools-scm to generate version file
