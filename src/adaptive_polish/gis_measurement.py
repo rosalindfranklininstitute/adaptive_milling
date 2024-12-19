@@ -279,6 +279,6 @@ def milling_cycle_plot(
     )
     axs[1, 2].legend()
 
-    fig.savefig(save_path)
-
-    plt.close(fig)
+    if save_path is not None:
+        fig.savefig(save_path)
+        plt.close(fig)
