@@ -30,7 +30,8 @@ from fibsem import acquire, utils, milling, conversions
 from fibsem.structures import BeamType
 from fibsem.microscope import FibsemMicroscope
 from fibsem.structures import MicroscopeSettings
-from fibsem.patterning import BasePattern
+from fibsem.milling.patterning.patterns2 import BasePattern
+from fibsem.milling import FibsemMillingStage
 from fibsem.detection.detection import AdaptiveLamellaCentre
 
 
@@ -95,7 +96,8 @@ class AdaptiveMilling():
         microscope_in: FibsemMicroscope = None,
         settings_in : MicroscopeSettings = None,
         patterns_in : BasePattern = None,
-        viewer: napari.Viewer = None
+        viewer: napari.Viewer = None,
+        milling_stage: FibsemMillingStage = None 
     ):
 
         if microscope_in is not None:
@@ -131,7 +133,10 @@ class AdaptiveMilling():
             }
         )
 
-        lamella_folder = Path(settings_in.image.path)
+        # get the current imaging settings (for the last path)
+        imaging_settings = microscope.get_imaging_settings(BeamType.ION)
+
+        lamella_folder = Path(imaging_settings.path)
         lamella_ap_folder = Path(f"{lamella_folder}/adaptive_polish")
         if lamella_ap_folder.exists() is False:
             lamella_ap_folder.mkdir()
@@ -158,7 +163,7 @@ class AdaptiveMilling():
             # Take reference images
             SEM_img, FIB_img = acquire.take_reference_images(
                 microscope=microscope_in,
-                image_settings=settings_in.image,
+                image_settings=imaging_settings,
             )
 
             # Find center
@@ -175,8 +180,8 @@ class AdaptiveMilling():
 
             # shift beam
             dx, dy = centre_m.x, centre_m.y
-            microscope.beam_shift(dx, dy, settings.image.beam_type)
-            logging.info(f"Beamshift {settings.image.beam_type} by dx={dx}, dy={dy}")
+            microscope.beam_shift(dx, dy, BeamType.ELECTRON)
+            logging.info(f"Beamshift {BeamType.ELECTRON} by dx={dx}, dy={dy}")
 
             # Plot centering stuff
             plt.figure()
@@ -345,9 +350,14 @@ class AdaptiveMilling():
             #Mill for a predetermined amount of time
             millmilling_interval_s = int(self.config_dict['milling_interval_s'])
             logging.info(f"Sleeping {millmilling_interval_s} seconds to mill")
+
+            # use pattern .time instead of sleeping
+            milling_stage.pattern.time = millmilling_interval_s / 2 
+            milling.draw_patterns(microscope, milling_stage.pattern.define())
             try:
-                microscope.run_milling(settings.milling.milling_current, settings.milling.milling_voltage, asynch=True)
-                time.sleep(millmilling_interval_s)
+                microscope.run_milling(milling_stage.milling.milling_current, 
+                                       milling_stage.milling.milling_voltage, 
+                                       asynch=False)
                 logging.info("Completed milling.")
             except Exception as e:
                 logging.error(f"The following error occurred doing milling. {str(e)}")

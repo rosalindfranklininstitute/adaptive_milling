@@ -1,0 +1,69 @@
+options:
+  name: autolamella-adaptive-polish-only
+  method: autolamella-on-grid # autolamella-waffle or autolamella-on-grid
+  checkpoint: autolamella-mega-20240107.pt
+  alignment_attempts: 3.0
+  alignment_at_milling_current: false
+  take_final_reference_images: true 
+  high_quality_image:
+    enabled: false
+    dwell_time: 2.0e-6
+    resolution: [3072, 2048]
+    hfw: 50.e-6
+    frame_integration: 2
+  take_final_overview_image: true
+  lamella_tilt_angle: 18.0
+  use_fiducial: true
+  use_microexpansion: true
+  use_notch: false 
+  supervise:
+    trench: false
+    undercut: false
+    setup_lamella: false
+    features: false
+    lamella: false
+    mill_rough: false
+    mill_regular: false
+    mill_polishing: false
+milling:
+  mill_polishing:
+      -   milling:
+              application_file: Si-ccs
+              hfw: 8.0e-05
+              milling_current: 6.0e-11
+              patterning_mode: Serial
+          name: Polishing Mill 01
+          pattern:
+              cross_section: CleaningCrossSection
+              depth: 4.0e-07
+              lower_trench_height: 5.0e-07
+              name: Trench
+              spacing: 6.0e-07
+              upper_trench_height: 5.0e-07
+              width: 6.0e-06
+          strategy: {"name": AdaptivePolishing, 
+            config: {
+              do_plots: true,
+              fallback_pixel_size_m: 1.8e-8,
+              # Milling cycle control
+              milling_interval_s: 30,
+              gis_stop_m: 2e-7,
+              max_milling_cycles: 30,
+              window_size_m: 1e-7,
+              max_crack_area_m2: 2e-12,
+              #model_path:  # comment for default
+              imaging_settings: {
+                electron: {
+                  resolution:         [3072,2048],
+                  hfw:                40.0e-6 ,
+                  dwell_time:         200.0e-9,
+                  frame_integration:  8,
+              }},
+                ion: {
+                  resolution:         [3072,2048],
+                  hfw:                40.0e-6 ,
+                  dwell_time:         200.0e-9,
+                  frame_integration:  8
+              },
+              use_sem_beam_shift_alignment_adaptive_polish: true
+            }}
