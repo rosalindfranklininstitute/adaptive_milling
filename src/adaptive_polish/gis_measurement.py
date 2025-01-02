@@ -199,7 +199,7 @@ def milling_cycle_plot(
     save_path: Path = None,
 ):
     logging.info("milling_cycle_plot()")
-    fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(12, 8), tight_layout=True)
+    fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(12, 8), constrained_layout=True)
     fig.suptitle(img_name)
 
     # SEM
@@ -255,7 +255,9 @@ def milling_cycle_plot(
         # screenshot = pattern_viewer.screenshot()
         # axs[1, 1].imshow(screenshot)
         # pattern_viewer.close()
-        axs[1, 1].imshow(fib_screenshot[:, int(fib_screenshot.shape[1]/2):, :])
+        # axs[1, 1].imshow(fib_screenshot[:, int(fib_screenshot.shape[1]/2):, :])
+        axs[1, 1].imshow(fib_screenshot)
+        axs[1, 1].set_title("FIB pattern")
     axs[1, 1].axis("off")
 
     # GIS thickness
@@ -263,9 +265,7 @@ def milling_cycle_plot(
     axs[1, 2].set_xlabel("Distance along x (px)")
     axs[1, 2].set_ylabel("GIS thickness ($\mu$m)")
     axs[1, 2].set_xlim(0, len(gis_thickness_m))
-    axs[1, 2].set_ylim(
-        0,
-    )
+    axs[1, 2].set_ylim(0,)
     axs[1, 2].hlines(
         y=gis_stop_m * 1e6,
         xmin=0,
