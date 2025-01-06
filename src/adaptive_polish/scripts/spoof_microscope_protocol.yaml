@@ -46,7 +46,7 @@ milling:
           depth: 4.0e-07
           dwell_time: 1.0e-06
           hfw: 7.999999999999999e-05
-          lamella_height: 6.0e-07
+          lamella_height: 5.0e-07
           lamella_width: 1.2e-05
           milling_current: 6.0e-11
           offset: 0.0
@@ -58,10 +58,10 @@ milling:
           trench_height: 5.0e-07
 adaptive_polish:
     do_plots: True
-    fallback_pixel_size_m: 1.8e-8
+    fallback_pixel_size_m: 9.765625e-08
     # Milling cycle control
     milling_interval_s: 30
-    gis_stop_m: 2e-7
+    gis_stop_m: 6e-7
     max_milling_cycles: 30
     reject_GIS_distance_m: 1e-5
     lam_height_min_m: 2e-6
