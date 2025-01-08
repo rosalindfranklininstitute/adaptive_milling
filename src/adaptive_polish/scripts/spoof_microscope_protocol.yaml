@@ -40,42 +40,43 @@ milling:
     type: Fiducial
   lamella:
     stages:
-      -   name: Adaptive polishing
-          application_file: Si-ccs
-          cross_section: CleaningCrossSection
-          depth: 4.0e-07
-          dwell_time: 1.0e-06
-          hfw: 7.999999999999999e-05
-          lamella_height: 5.0e-07
-          lamella_width: 1.2e-05
-          milling_current: 6.0e-11
-          offset: 0.0
-          patterning_mode: Serial
-          preset: ''
-          rate: 0.0001
-          size_ratio: 1.0
-          spot_size: 5.0e-08
-          trench_height: 5.0e-07
+      - name: Adaptive polishing
+        application_file: Si-ccs
+        cross_section: CleaningCrossSection
+        depth: 4.0e-07
+        dwell_time: 1.0e-06
+        hfw: 7.999999999999999e-05
+        lamella_height: 5.0e-07
+        lamella_width: 1.2e-05
+        milling_current: 6.0e-11
+        offset: 0.0
+        patterning_mode: Serial
+        preset: ""
+        rate: 0.0001
+        size_ratio: 1.0
+        spot_size: 5.0e-08
+        trench_height: 5.0e-07
 adaptive_polish:
-    do_plots: True
-    fallback_pixel_size_m: 9.765625e-08
-    # Milling cycle control
-    milling_interval_s: 30
-    gis_stop_m: 6e-7
-    max_milling_cycles: 30
-    reject_GIS_distance_m: 1e-5
-    lam_height_min_m: 2e-6
-    window_size_m: 1e-7
-    max_crack_area_m2: 2e-12
-    #model_path:  # comment for default
-    imaging_settings:
-      electron:
-        resolution:         [3072,2048]
-        hfw:                40.0e-6
-        dwell_time:         200.0e-9
-        frame_integration:  8
-      ion:
-        resolution:         [3072,2048]
-        hfw:                40.0e-6
-        dwell_time:         200.0e-9
-        frame_integration:  8
+  do_plots: True
+  fallback_pixel_size_m: 9.765625e-08
+  # Milling cycle control
+  milling_interval_s: 30
+  gis_stop_m: 6e-7
+  gis_full_power_m: 1e-6
+  max_milling_cycles: 30
+  reject_GIS_distance_m: 1e-5
+  lam_height_min_m: 2e-6
+  window_size_m: 1e-7
+  max_crack_area_m2: 2e-12
+  #model_path:  # comment for default
+  imaging_settings:
+    electron:
+      resolution: [3072, 2048]
+      hfw: 40.0e-6
+      dwell_time: 200.0e-9
+      frame_integration: 8
+    ion:
+      resolution: [3072, 2048]
+      hfw: 40.0e-6
+      dwell_time: 200.0e-9
+      frame_integration: 8
