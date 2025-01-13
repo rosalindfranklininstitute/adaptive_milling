@@ -13,7 +13,7 @@ import numpy as np
 from pathlib import Path
 
 # for the fibsem structures
-from fibsem.structures import FibsemImage, MicroscopeSettings
+from fibsem.structures import FibsemImage, MicroscopeSettings, Point
 from fibsem.patterning import get_milling_stages, FibsemMillingStage
 from fibsem.microscope import FibsemMicroscope
 from fibsem.patterns.ui import (
@@ -256,6 +256,7 @@ def plot_bitmap_trench_pattern(
     lamella_width: float,
     settings: MicroscopeSettings,
     ion_beam_image: FibsemImage,
+    centre: tuple[float, float],
 ) -> None:
     # Use TrenchBitmapPattern via protocol
     try:
@@ -278,7 +279,11 @@ def plot_bitmap_trench_pattern(
             settings.protocol["milling"]["lamella"]["stages"][-1]["patterning_mode"] = (
                 "Serial"
             )
-            stages = get_milling_stages("lamella", settings.protocol["milling"])
+            stages = get_milling_stages(
+                "lamella",
+                settings.protocol["milling"],
+                Point(*centre),
+            )
             draw_milling_patterns(ax, ion_beam_image, stages)
             ax.set_title(
                 f"Bitmap trench milling pattern\n(bitmap min, max = {bitmap_array.min()}, {bitmap_array.max()})"
@@ -343,12 +348,29 @@ def milling_cycle_plot(
     axs[1, 0].axis("off")
     axs[1, 0].set_title("FIB")
 
+    # Calculate offset in x
+    xlims_centre = xlims[0] + (xlims[1] - xlims[0]) / 2
+
+    lamella_centre_x = xlims_centre * sem_image.metadata.pixel_size.x
+
+    im_centre_x = (
+        fib_image.metadata.image_settings.resolution[0] / 2
+    ) * fib_image.metadata.pixel_size.x
+
+    centre = (
+        float(-im_centre_x + lamella_centre_x),
+        0,
+    )
+
+    # TODO: Get offset working (technically works assuming the offset is the same on both images but it isn't, so try tiff_description["image"]["electron_beam"]["shift"])
+
     plot_bitmap_trench_pattern(
         axs[1, 1],
         bitmap_array=bitmap_array,
         lamella_width=(xlims[1] - xlims[0]) * sem_image.metadata.pixel_size.x,
         settings=settings,
         ion_beam_image=fib_image,
+        centre=centre,
     )
 
     axs[1, 2].axvline(x=xlims[0], linestyle="--", label="Lamella boundaries")
