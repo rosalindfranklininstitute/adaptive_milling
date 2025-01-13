@@ -269,7 +269,6 @@ def plot_bitmap_trench_pattern(
             # Place pattern on image from edited pattern
             ap_milling_protocol = deepcopy(previous_protocol)
             ap_milling_protocol["lamella_width"] = lamella_width
-            ap_milling_protocol["lamella_width"] = lamella_width
             # ap_milling_protocol["hfw"] = 4e-05
             # ap_milling_protocol["trench_height"] = 5e-7
             ap_milling_protocol["type"] = "TrenchBitmapPattern"
