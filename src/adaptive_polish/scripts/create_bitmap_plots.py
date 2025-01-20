@@ -35,13 +35,13 @@ if typing.TYPE_CHECKING:
     from matplotlib.figure import Axes
 
 
-def create_milling_bitmap_array(
+def create_dwell_time_array(
     gis_m: NDArray[np.floating],
     gis_stop_m: float,
     gis_full_power_m: float,
     gis_resolution_m: typing.Union[float, None] = None,
     bitmap_resolution_m: typing.Union[float, None] = None,
-    dtype: DTypeLike = np.uint8,
+    max_output_range: tuple[float, float] = (0, 255),
     nan_value: float = 0,
 ) -> NDArray[typing.Any]:
     """
@@ -49,9 +49,6 @@ def create_milling_bitmap_array(
 
     If bitmap_resolution_m and gis_resolution_m are None, no pixel interpolation is used.
     """
-    dt = np.dtype(dtype)
-
-    assert np.issubdtype(dt, np.integer), "Only integer dtypes accepted"
 
     n = len(gis_m)
     if gis_resolution_m is None and bitmap_resolution_m is None:
@@ -69,17 +66,13 @@ def create_milling_bitmap_array(
     interpolated = np.interp(x, range(n), gis_m)
 
     # Rescale to uint8 (clips to 0 at gis_stop_m and 255 at gis_full_power_m)
-    rescaled = (
-        np.round(
-            np.interp(
-                interpolated,
-                (gis_stop_m, gis_full_power_m),
-                (np.iinfo(dt).min, np.iinfo(dt).max),
-            )
+    rescaled = np.round(
+        np.interp(
+            interpolated,
+            (gis_stop_m, gis_full_power_m),
+            max_output_range,
         )
-        .astype(dt)
-        .reshape(1, -1)
-    )
+    ).reshape(1, -1)
 
     return rescaled
 
@@ -137,24 +130,99 @@ def measure_GIS_modified(
     return GIS_m, (xlim_min, xlim_max)
 
 
-def create_bitmap(
+@typing.overload
+def create_bitmap_array(
     gis_thickness_m: float,
     xlims: tuple[int, int],
     window_size_m: float,
     pixel_size_m: float,
     settings: MicroscopeSettings,
-):
+    as_image: typing.Literal[True],
+) -> NDArray[np.uint8]: ...
+
+
+@typing.overload
+def create_bitmap_array(
+    gis_thickness_m: float,
+    xlims: tuple[int, int],
+    window_size_m: float,
+    pixel_size_m: float,
+    settings: MicroscopeSettings,
+    as_image: typing.Literal[False],
+) -> NDArray[typing.Any]: ...
+
+
+def create_bitmap_array(
+    gis_thickness_m: float,
+    xlims: tuple[int, int],
+    window_size_m: float,
+    pixel_size_m: float,
+    settings: MicroscopeSettings,
+    as_image: bool = True,
+) -> NDArray[np.uint8] | NDArray[typing.Any]:
+    """
+    Creates bitmap array for TFS AutoScript API.
+    This has two behaviours:
+
+    - Bitmap image (for loading with `BitmapPatternDefinition.load(bitmap_path)`)
+        - 3-channel (RGB) images of type `np.uint8` in the shape (y, x, c)
+        - Channel 0 (R) is not used
+        - Channel 1 (G) is a flag (0 blanks the point, 1 means no flags)
+        - Channel 2 (B) is the dwell time multiplier (255 translates to 1x the pattern value)
+
+    - Bitmap points (for setting a numpy array to `bpd = BitmapPatternDefinition(); bpd.points = bitmap_array`)
+        - 2-channel numpy arrays of type `object` in the shape (y, x, c)
+        - Channel 0 is the dwell time multiplier (now a float with the range of 0-1)
+        - Channel 1 is a flag (0 means no flags, 1 blanks the point)
+        - There is no Channel 2 (this was channel 0)
+
+    The key changes, which are internally made by `BitmapPatternDefinition.load(bitmap_path)`, are:
+    - The channels are flipped around.
+    - The dwell time are floats between 0 and 1.
+    - The flag values have been inverted.
+    - What was previously Channel 0 has been removed.
+    """
+    #
+
     # The bitmap needs to be offset by the window size / 2 (in pixels) as the medium rank filter isn't centred around the pixel
     bitmap_offset = int(np.floor(window_size_m / (2 * pixel_size_m)))
 
-    bitmap_array = create_milling_bitmap_array(
+    if as_image:
+        dwell_time_range = (0, 255)
+        dwell_time_channel = 2
+        bitmap_array = np.ones(  # If flags channel were all 0s, it would blank everything
+            (
+                1,  # This could be expanded if some falloff is wanted
+                len(
+                    gis_thickness_m[xlims[0] - bitmap_offset : xlims[1] - bitmap_offset]
+                ),
+                3,
+            ),
+            dtype=np.uint8,
+        )
+    else:
+        dwell_time_range = (0, 1)
+        dwell_time_channel = 0
+        bitmap_array = np.zeros(
+            (
+                1,  # This could be expanded if some falloff is wanted
+                len(
+                    gis_thickness_m[xlims[0] - bitmap_offset : xlims[1] - bitmap_offset]
+                ),
+                2,
+            ),
+            dtype=object,
+        )
+
+    bitmap_array[:, :, dwell_time_channel] = create_dwell_time_array(
         gis_m=gis_thickness_m[xlims[0] - bitmap_offset : xlims[1] - bitmap_offset],
         gis_stop_m=float(settings.protocol["adaptive_polish"]["gis_stop_m"]),
         gis_full_power_m=float(
             settings.protocol["adaptive_polish"]["gis_full_power_m"]
         ),
+        max_output_range=dwell_time_range,
     )
-    print(f"bitmap min, max: {bitmap_array.min()}, {bitmap_array.max()}")
+
     return bitmap_array
 
 
@@ -263,7 +331,7 @@ def plot_bitmap_trench_pattern(
         with tempfile.NamedTemporaryFile(
             suffix=".bmp", mode="w+b", delete=False
         ) as tmp_f:
-            PIL.Image.fromarray(bitmap_array, mode="L").save(tmp_f, format="BMP")
+            PIL.Image.fromarray(bitmap_array).save(tmp_f, format="BMP")
 
             previous_protocol = settings.protocol["milling"]["lamella"]["stages"][0]
 
@@ -442,7 +510,7 @@ def create_next_plots(
         window_size_m=window_size_m,
     )
 
-    bitmap_array = create_bitmap(
+    bitmap_array = create_bitmap_array(
         gis_thickness_m=gis_thickness_m,
         xlims=xlims,
         window_size_m=window_size_m,
