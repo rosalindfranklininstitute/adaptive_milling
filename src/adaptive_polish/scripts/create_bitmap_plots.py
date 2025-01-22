@@ -12,6 +12,7 @@ from scipy.signal import find_peaks
 from skimage import filters
 from scipy import ndimage as ndi
 import matplotlib.pyplot as plt
+import tifffile as tff
 import numpy as np
 from pathlib import Path
 
@@ -472,8 +473,17 @@ def milling_cycle_plot(
         float(-im_centre_x + lamella_centre_x),
         0,
     )
+    # # Get and apply shifts from tiffs
+    # with tff.TiffFile(fib_image.get_save_path(), mode="r") as tiff:
+    #     fib_shift = tiff.shaped_metadata[0]["microscope_state"]["ion_beam"]["shift"]
 
-    # TODO: Get offset working (technically works assuming the offset is the same on both images but it isn't, so try tiff_description["image"]["electron_beam"]["shift"])
+    # with tff.TiffFile(sem_image.get_save_path(), mode="r") as tiff:
+    #     sem_shift = tiff.shaped_metadata[0]["microscope_state"]["electron_beam"][
+    #         "shift"
+    #     ]
+
+    # centre = (centre[0] - sem_shift["x"], centre[1] - sem_shift["y"])
+    # centre = (centre[0] + fib_shift["x"], centre[1] + fib_shift["y"])
 
     plot_bitmap_trench_pattern(
         axs[1, 1],
