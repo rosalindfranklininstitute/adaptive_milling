@@ -31,7 +31,7 @@ from adaptive_polish import gis_measurement as gm
 
 if typing.TYPE_CHECKING:
     from os import PathLike
-    from numpy.typing import NDArray, DTypeLike
+    from numpy.typing import NDArray
     from matplotlib.figure import Axes
 
 
@@ -356,6 +356,8 @@ def plot_bitmap_trench_pattern(
             ax.set_title(
                 f"Bitmap trench milling pattern\n(bitmap min, max = {bitmap_array.min()}, {bitmap_array.max()})"
             )
+    except Exception as e:
+        print(f"Plotting bitmap pattern raised an exception: {e}")
     finally:
         os.unlink(tmp_f.name)
 
@@ -496,12 +498,11 @@ def milling_cycle_plot(
 
 
 def create_next_plots(
-    microscope: FibsemMicroscope, settings: MicroscopeSettings, save_directory: Path
+    electron_beam_image: FibsemImage,
+    ion_beam_image: FibsemImage,
+    settings: MicroscopeSettings,
+    save_directory: Path,
 ) -> None:
-    electron_beam_image, ion_beam_image = get_next_images(
-        microscope=microscope, settings=settings
-    )
-
     prediction, clean_prediction = make_predictions(electron_beam_image)
 
     gis_thickness_m, xlims = measure_gis(
@@ -542,8 +543,9 @@ if __name__ == "__main__":
         / "adaptive milling"
         / "2024segmentation_testdata"
     )
-    model_path = base_path / "2024-02-24_0013_gis_lamela_crack_pytorch_AUnet.ptchkp"
-    bitmaps_path = base_path.parent / "bitmap_plots" / "modified_GIS_m"
+    model_path = (
+        base_path.parent / "2024-02-24_0013_gis_lamela_crack_pytorch_AUnet.ptchkp"
+    )
     config_path = (
         Path(__file__).parent.parent.parent.parent.parent
         / "fibsem"
@@ -565,9 +567,15 @@ if __name__ == "__main__":
     i = 1
     while True:
         try:
+            electron_beam_image, ion_beam_image = get_next_images(
+                microscope=microscope, settings=settings
+            )
             print(f"Starting plot {i}")
             create_next_plots(
-                microscope=microscope, settings=settings, save_directory=plots_path
+                electron_beam_image=electron_beam_image,
+                ion_beam_image=ion_beam_image,
+                settings=settings,
+                save_directory=plots_path,
             )
             print(f"Completed plot {i}")
             i += 1
