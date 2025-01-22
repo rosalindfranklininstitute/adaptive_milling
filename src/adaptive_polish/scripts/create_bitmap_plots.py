@@ -8,6 +8,9 @@ import typing
 
 # for display
 import PIL
+from scipy.signal import find_peaks
+from skimage import filters
+from scipy import ndimage as ndi
 import matplotlib.pyplot as plt
 import numpy as np
 from pathlib import Path
@@ -362,6 +365,44 @@ def plot_bitmap_trench_pattern(
         os.unlink(tmp_f.name)
 
 
+def find_centre(
+    image: FibsemImage, plot_path: str | PathLike[str] | None = None
+) -> tuple[float, float]:
+    """Finds the centre of the lamella based on the positions of the stress relief cuts. Definitely room for improvement."""
+    # TODO: link sigma and peaks widths to physical scale via pixel size
+    # TODO: handle waffle cuts etc by using the edges of the central void?
+    data = image.data.astype(np.float64)
+    gaussian1 = ndi.gaussian_filter(data, (50, 4), axes=(0, 1))
+    gaussian2 = ndi.gaussian_filter(data, (5, 50), axes=(0, 1))
+    dog = gaussian1 - gaussian2
+    median_flattened2 = np.median(dog, axis=0).flatten()  # get median across y-axis
+    thresholed_value = filters.threshold_li(median_flattened2)
+    thresholded_1d = median_flattened2 < thresholed_value
+    peaks, peak_properties = find_peaks(thresholded_1d, width=(20, 100))
+    lamella_centre_px = peaks[-1] - (peaks[-1] - peaks[0]) / 2
+    assert len(peaks) >= 2, "Too few peaks found"
+
+    if plot_path is not None:
+        fig, ax = plt.subplots(1, 1)
+        plt.imshow(image.data, cmap="Greys_r")
+        ax.axvline(x=peaks[0])
+        ax.axvline(x=peaks[-1])
+        if len(peaks) > 2:
+            for peak in peaks[1:-1]:
+                ax.axvline(x=peak, ls="--")
+        ax.axvline(x=lamella_centre_px, color="C2")
+        ax.hlines(
+            y=[image.data.shape[0] / 2] * len(peaks),
+            xmin=peak_properties["left_ips"],
+            xmax=peak_properties["right_ips"],
+            color="C3",
+        )
+        fig.savefig(plot_path)
+        plt.close()
+
+    return lamella_centre_px * image.metadata.pixel_size.x
+
+
 def milling_cycle_plot(
     sem_image: FibsemImage,
     first_prediction: NDArray[typing.Any],
@@ -553,6 +594,8 @@ if __name__ == "__main__":
         / "config"
         / "microscope-configuration-demo2.yaml"
     )
+    plot_centres = False
+
     protocol_path = Path(__file__).parent / "spoof_microscope_protocol.yaml"
 
     window_size_m = 1e-7
@@ -564,12 +607,51 @@ if __name__ == "__main__":
     plots_path = base_path / "bitmap_plots"
     plots_path.mkdir(exist_ok=True)
 
+    if plot_centres:
+        centre_plots_dir = plots_path / "centres"
+        centre_plots_dir.mkdir(exist_ok=True)
+
+        centre_diffs_path = centre_plots_dir / "diffs.txt"
+        centre_diffs_path.unlink(missing_ok=True)
+
     i = 1
     while True:
         try:
             electron_beam_image, ion_beam_image = get_next_images(
                 microscope=microscope, settings=settings
             )
+
+            try:
+                if plot_centres:
+                    elecron_centre_plot_path = (
+                        centre_plots_dir
+                        / f"{Path(electron_beam_image.get_save_path()).stem}.png"
+                    )
+                    ion_centre_plot_path = (
+                        centre_plots_dir
+                        / f"{Path(ion_beam_image.get_save_path()).stem}.png"
+                    )
+                else:
+                    elecron_centre_plot_path = None
+                    ion_centre_plot_path = None
+                electron_centre = find_centre(
+                    electron_beam_image,
+                    plot_path=elecron_centre_plot_path,
+                )
+                ion_centre = find_centre(
+                    ion_beam_image,
+                    plot_path=ion_centre_plot_path,
+                )
+                if plot_centres:
+                    x_diff = ion_centre - electron_centre
+                    with (centre_diffs_path).open("a+") as f:
+                        f.write(
+                            f"{Path(electron_beam_image.get_save_path()).stem}: {x_diff}\n"
+                        )
+
+            except AssertionError:
+                print("Failed to get centres")
+
             print(f"Starting plot {i}")
             create_next_plots(
                 electron_beam_image=electron_beam_image,
