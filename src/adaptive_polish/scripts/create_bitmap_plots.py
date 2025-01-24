@@ -2,8 +2,10 @@
 from __future__ import annotations
 import os
 import logging
+from contextlib import contextmanager
 from copy import deepcopy
 import tempfile
+from collections.abc import Generator
 import typing
 
 # for display
@@ -39,46 +41,61 @@ if typing.TYPE_CHECKING:
     from matplotlib.figure import Axes
 
 
-def create_dwell_time_array(
+def create_dwell_and_blanking_arrays(
     gis_m: NDArray[np.floating],
-    gis_stop_m: float,
-    gis_full_power_m: float,
+    gis_minimum_m: float,
+    gis_maximum_m: float,
+    gis_blanking_m: typing.Union[float, None] = None,
     gis_resolution_m: typing.Union[float, None] = None,
+    blanking_width_m: typing.Union[float, None] = None,
     bitmap_resolution_m: typing.Union[float, None] = None,
-    max_output_range: tuple[float, float] = (0, 255),
+    max_output_range: tuple[float, float] = (1, 255),
     nan_value: float = 0,
-) -> NDArray[typing.Any]:
+) -> tuple[NDArray[typing.Any], typing.Union[NDArray[np.bool_], None]]:
     """
     Strength multiplier should be between 0 and 1
 
-    If bitmap_resolution_m and gis_resolution_m are None, no pixel interpolation is used.
+    If `bitmap_resolution_m` and `gis_resolution_m` are `None`, no pixel interpolation is used.
+
+    `blanking_width_m` is only used if both `gis_blanking_m` and `bitmap_resolution_m` are not `None`
     """
 
     n = len(gis_m)
-    if gis_resolution_m is None and bitmap_resolution_m is None:
-        factor = 1
-    elif gis_full_power_m is not None and bitmap_resolution_m is not None:
+    if gis_resolution_m is not None and bitmap_resolution_m is not None:
         factor = bitmap_resolution_m / gis_resolution_m
     else:
-        raise TypeError(
-            "gis_resolution_m and bitmap_resolution_m must both be None or floats, the types cannot be mixed"
-        )
+        factor = 1
 
     x = np.linspace(0, n - 1, (n - 1) * factor + 1)
     gis_m = gis_m.copy()
     gis_m[np.isnan(gis_m)] = nan_value
+    # Interpolate over to ensure pixel size
     interpolated = np.interp(x, range(n), gis_m)
 
-    # Rescale to uint8 (clips to 0 at gis_stop_m and 255 at gis_full_power_m)
-    rescaled = np.round(
-        np.interp(
-            interpolated,
-            (gis_stop_m, gis_full_power_m),
-            max_output_range,
-        )
+    # Rescale values to from (gis_minimum_m, gis_maximum_m) to max_output_range
+    rescaled = np.interp(
+        interpolated,
+        (gis_minimum_m, gis_maximum_m),
+        max_output_range,
     ).reshape(1, -1)
 
-    return rescaled
+    if gis_blanking_m is not None:
+        blanking_array = (interpolated < gis_blanking_m).reshape(1, -1)
+        if blanking_width_m is not None and bitmap_resolution_m is not None:
+            blanking_half_width_px = int(
+                np.ceil(blanking_width_m / (2 * bitmap_resolution_m))
+            )
+            ndi.binary_dilation(
+                blanking_array,
+                iterations=blanking_half_width_px - 1,
+                output=blanking_array,
+            )
+
+    else:
+        # Don't blank anything
+        blanking_array = None
+
+    return rescaled, blanking_array
 
 
 def measure_GIS_modified(
@@ -192,8 +209,9 @@ def create_bitmap_array(
     bitmap_offset = int(np.floor(window_size_m / (2 * pixel_size_m)))
 
     if as_image:
-        dwell_time_range = (0, 255)
+        dwell_time_range = (1, 255)
         dwell_time_channel = 2
+        blanking_flag_value = 0
         bitmap_array = np.ones(  # If flags channel were all 0s, it would blank everything
             (
                 1,  # This could be expanded if some falloff is wanted
@@ -205,8 +223,9 @@ def create_bitmap_array(
             dtype=np.uint8,
         )
     else:
-        dwell_time_range = (0, 1)
+        dwell_time_range = (1 / 255, 1)
         dwell_time_channel = 0
+        blanking_flag_value = 1
         bitmap_array = np.zeros(
             (
                 1,  # This could be expanded if some falloff is wanted
@@ -218,14 +237,21 @@ def create_bitmap_array(
             dtype=object,
         )
 
-    bitmap_array[:, :, dwell_time_channel] = create_dwell_time_array(
+    dwell_time_array, blanking_array = create_dwell_and_blanking_arrays(
         gis_m=gis_thickness_m[xlims[0] - bitmap_offset : xlims[1] - bitmap_offset],
-        gis_stop_m=float(settings.protocol["adaptive_polish"]["gis_stop_m"]),
-        gis_full_power_m=float(
-            settings.protocol["adaptive_polish"]["gis_full_power_m"]
-        ),
+        gis_minimum_m=float(settings.protocol["adaptive_polish"]["gis_minimum_m"]),
+        gis_maximum_m=float(settings.protocol["adaptive_polish"]["gis_maximum_m"]),
+        gis_blanking_m=float(settings.protocol["adaptive_polish"]["gis_stop_m"]),
         max_output_range=dwell_time_range,
+        bitmap_resolution_m=pixel_size_m,
+        blanking_width_m=1.6e-6,
+        nan_value=-50000,
     )
+    bitmap_array[:, :, dwell_time_channel] = dwell_time_array
+
+    if blanking_array is not None:
+        # Flags are channel 1 for both types
+        bitmap_array[:, :, 1][blanking_array] = blanking_flag_value
 
     return bitmap_array
 
@@ -322,6 +348,24 @@ def draw_milling_patterns(
             logging.debug("Scalebar not available, skipping")
 
 
+@contextmanager
+def _temp_file_wrapper(bitmap_array: NDArray[np.uint8]) -> Generator[str, None, None]:
+    try:
+        with tempfile.NamedTemporaryFile(
+            suffix=".bmp", mode="w+b", delete=False
+        ) as tmp_f:
+            if bitmap_array.dtype is np.dtype(np.uint8):
+                PIL.Image.fromarray(bitmap_array).save(tmp_f, format="BMP")
+                yield tmp_f.name
+    finally:
+        os.unlink(tmp_f.name)
+
+
+@contextmanager
+def _passthrough_wrapper(arg: typing.Any) -> Generator[typing.Any, None, None]:
+    yield arg
+
+
 def plot_bitmap_trench_pattern(
     ax: Axes,
     bitmap_array: NDArray[np.uint8],
@@ -332,11 +376,11 @@ def plot_bitmap_trench_pattern(
 ) -> None:
     # Use TrenchBitmapPattern via protocol
     try:
-        with tempfile.NamedTemporaryFile(
-            suffix=".bmp", mode="w+b", delete=False
-        ) as tmp_f:
-            PIL.Image.fromarray(bitmap_array).save(tmp_f, format="BMP")
-
+        if bitmap_array.dtype is np.dtype(np.uint8):
+            bitmap_wrapper = _temp_file_wrapper
+        else:
+            bitmap_wrapper = _passthrough_wrapper
+        with bitmap_wrapper(bitmap_array) as bitmap:
             previous_protocol = settings.protocol["milling"]["lamella"]["stages"][0]
 
             # Place pattern on image from edited pattern
@@ -345,7 +389,7 @@ def plot_bitmap_trench_pattern(
             # ap_milling_protocol["hfw"] = 4e-05
             # ap_milling_protocol["trench_height"] = 5e-7
             ap_milling_protocol["type"] = "TrenchBitmapPattern"
-            ap_milling_protocol["path"] = tmp_f.name
+            ap_milling_protocol["bitmap"] = bitmap
             ap_milling_protocol["name"] = "Adjusted adaptive polishing"
             settings.protocol["milling"]["lamella"]["stages"][0] = ap_milling_protocol
             settings.protocol["milling"]["lamella"]["stages"][-1]["patterning_mode"] = (
@@ -360,10 +404,8 @@ def plot_bitmap_trench_pattern(
             ax.set_title(
                 f"Bitmap trench milling pattern\n(bitmap min, max = {bitmap_array.min()}, {bitmap_array.max()})"
             )
-    except Exception as e:
-        print(f"Plotting bitmap pattern raised an exception: {e}")
-    finally:
-        os.unlink(tmp_f.name)
+    except Exception:
+        logging.error("Plotting bitmap pattern raised an exception", exc_info=True)
 
 
 def find_centre(
@@ -485,6 +527,8 @@ def milling_cycle_plot(
     # centre = (centre[0] - sem_shift["x"], centre[1] - sem_shift["y"])
     # centre = (centre[0] + fib_shift["x"], centre[1] + fib_shift["y"])
 
+    bitmap_as_image = bitmap_array.dtype is np.dtype(np.uint8)
+
     plot_bitmap_trench_pattern(
         axs[1, 1],
         bitmap_array=bitmap_array,
@@ -497,50 +541,89 @@ def milling_cycle_plot(
     axs[1, 2].axvline(x=xlims[0], linestyle="--", label="Lamella boundaries")
     axs[1, 2].axvline(x=xlims[1], linestyle="--")
     axs[1, 2].plot(gis_thickness_m * 1e6, ".-", zorder=2)
+    xmax = len(gis_thickness_m)
 
     axs[1, 2].set_xlabel("Distance along x (px)")
     axs[1, 2].set_ylabel("GIS thickness ($\mu$m)")
     axs[1, 2].hlines(
-        y=float(settings.protocol["adaptive_polish"]["gis_stop_m"]) * 1e6,
+        y=float(settings.protocol["adaptive_polish"]["gis_minimum_m"]) * 1e6,
         xmin=0,
-        xmax=len(gis_thickness_m),
+        xmax=xmax,
         label="Minimum GIS thickness",
         linestyles="dashed",
-        colors="C1",
+        colors="orange",
     )
     axs[1, 2].hlines(
-        y=float(settings.protocol["adaptive_polish"]["gis_full_power_m"]) * 1e6,
+        y=float(settings.protocol["adaptive_polish"]["gis_maximum_m"]) * 1e6,
         xmin=0,
-        xmax=len(gis_thickness_m),
+        xmax=xmax,
         label="Full power GIS thickness",
         linestyles="dashed",
-        colors="C2",
+        colors="green",
     )
-    axs[1, 2].set_xlim(0, len(gis_thickness_m))
+    axs[1, 2].hlines(
+        y=float(settings.protocol["adaptive_polish"]["gis_stop_m"]) * 1e6,
+        xmin=0,
+        xmax=xmax,
+        label="Stop GIS thickness",
+        linestyles="dashed",
+        colors="red",
+    )
+    axs[1, 2].set_xlim(0, xmax)
     axs[1, 2].set_ylim(
         0,
     )
     axs[1, 2].set_title(
-        f"GIS thickness, min={np.nanmin(gis_thickness_m) * 1e6:.2f} $\mu$m"
+        f"GIS thickness, min={np.nanmin(gis_thicknesses_m['filtered']) * 1e6:.2f} $\mu$m"
     )
     axs[1, 2].legend()
 
+    blanking_array = bitmap_array[:, :, 1].astype(np.bool_)
+    if bitmap_as_image:
+        blanking_array = ~blanking_array
+    axs[1, 2].imshow(
+        blanking_array,
+        cmap="Reds",
+        extent=(
+            xlims[0],
+            xlims[1],
+            0,
+            float(settings.protocol["adaptive_polish"]["gis_stop_m"]) * 1e6,
+        ),
+        interpolation="none",
+        aspect="auto",
+        zorder=1,
+    )
+
+    if bitmap_as_image:
+        vmax = 255
+        dwell_time_array = bitmap_array[:, :, 2]
+    else:
+        vmax = 1
+        dwell_time_array = bitmap_array[:, :, 0].astype(np.float64)
+
     _ = axs[1, 2].imshow(
-        bitmap_array,
+        dwell_time_array,
         vmin=0,
-        vmax=255,
+        vmax=vmax,
         cmap="cool",
         extent=(
             xlims[0],
             xlims[1],
-            float(settings.protocol["adaptive_polish"]["gis_stop_m"]) * 1e6,
-            float(settings.protocol["adaptive_polish"]["gis_full_power_m"]) * 1e6,
+            float(settings.protocol["adaptive_polish"]["gis_minimum_m"]) * 1e6,
+            float(settings.protocol["adaptive_polish"]["gis_maximum_m"]) * 1e6,
         ),
         interpolation="bilinear",
         aspect="auto",
         zorder=1,
     )
-    fig.colorbar(_, ax=axs[1, 2], orientation="horizontal", label="Bitmap pixel value")
+
+    fig.colorbar(
+        _,
+        ax=axs[1, 2],
+        orientation="horizontal",
+        label="Bitmap pixel value" if bitmap_as_image else "Dwell time multiplier",
+    )
 
     if save_path is not None:
         print(f"Saving {save_path}")
@@ -568,6 +651,7 @@ def create_next_plots(
         window_size_m=window_size_m,
         pixel_size_m=ion_beam_image.metadata.pixel_size.x,
         settings=settings,
+        as_image=False,
     )
 
     file_stem = Path(electron_beam_image.get_save_path()).stem

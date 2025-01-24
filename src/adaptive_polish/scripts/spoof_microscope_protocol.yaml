@@ -62,7 +62,8 @@ adaptive_polish:
   # Milling cycle control
   milling_interval_s: 30
   gis_stop_m: 6e-7
-  gis_full_power_m: 1e-6
+  gis_minimum_m: 7e-7
+  gis_maximum_m: 1e-6
   max_milling_cycles: 30
   reject_GIS_distance_m: 1e-5
   lam_height_min_m: 2e-6
