@@ -40,6 +40,10 @@ if typing.TYPE_CHECKING:
     from numpy.typing import NDArray
     from matplotlib.figure import Axes
 
+stream_handler = logging.StreamHandler()
+stream_handler.setLevel(logging.INFO)
+logging.basicConfig(handlers=[stream_handler])
+
 
 def create_dwell_and_blanking_arrays(
     gis_m: NDArray[np.floating],
