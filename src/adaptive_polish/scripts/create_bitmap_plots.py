@@ -692,6 +692,7 @@ def create_next_plots(
     ion_beam_image: FibsemImage,
     settings: MicroscopeSettings,
     save_directory: Path,
+    window_size_m: float,
 ) -> None:
     prediction, clean_prediction = make_predictions(electron_beam_image)
 
@@ -748,7 +749,7 @@ if __name__ == "__main__":
 
     protocol_path = Path(__file__).parent / "spoof_microscope_protocol.yaml"
 
-    window_size_m = 1e-7
+    window_size_m = 2e-7
 
     microscope, settings = setup(
         model_path=model_path, config_path=config_path, protocol_path=protocol_path
@@ -808,6 +809,7 @@ if __name__ == "__main__":
                 ion_beam_image=ion_beam_image,
                 settings=settings,
                 save_directory=plots_path,
+                window_size_m=window_size_m,
             )
             print(f"Completed plot {i}")
             i += 1
