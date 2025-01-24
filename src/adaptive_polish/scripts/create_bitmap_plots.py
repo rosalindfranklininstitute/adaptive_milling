@@ -11,7 +11,7 @@ import typing
 # for display
 import PIL
 from scipy.signal import find_peaks
-from skimage import filters
+from skimage import filters, morphology
 from scipy import ndimage as ndi
 import matplotlib.pyplot as plt
 import tifffile as tff
@@ -27,7 +27,6 @@ from fibsem.patterns.ui import (
     COLOURS,
     PROPERTIES,
 )
-
 
 # Set up test microscope
 from fibsem import utils, acquire
@@ -102,29 +101,42 @@ def create_dwell_and_blanking_arrays(
     return rescaled, blanking_array
 
 
-def measure_GIS_modified(
+def measure_gis_thickness_modified(
     mask_gis_clean: np.array, window_size_m: int, pixel_size_m: float
-) -> np.array:
+) -> tuple[NDArray[np.uint16], NDArray[np.uint16]]:
+    # Get window size in px
+    window_size_px = int(round(window_size_m / pixel_size_m))
+    logging.info(f"window_size_px: {window_size_px}")
+    opened_gis = morphology.binary_opening(
+        mask_gis_clean,
+        footprint=[
+            (np.ones((window_size_px, 1)), 1),
+            (np.ones((1, window_size_px)), 1),
+        ],
+        mode="ignore",
+    )
+
+    gis_thickness = np.sum(mask_gis_clean, axis=0, dtype=np.uint16)
+    opened_gis_thickness = np.sum(opened_gis, axis=0, dtype=np.uint16)
+
+    # Sum to get thickness along x in pixels
+    return gis_thickness, opened_gis_thickness
+
+
+def filter_gis_thickness(
+    gis_thickness_px: NDArray[np.integer], window_size_m: int, pixel_size_m: float
+) -> tuple[NDArray[np.float64], tuple[int, int]]:
     # Get window size in px
     window_size_px = int(window_size_m / pixel_size_m)
     logging.info(f"window_size_px: {window_size_px}")
 
-    # Calculate average GIS thickness in windows
-
-    # Sum to get thickness along x in pixels
-    GIS_pxbypx = np.sum(mask_gis_clean, axis=0).astype(np.float32)
-
-    # Pad with zeros to fulfil window size criteria
-    GIS_pxbypx_pad = np.pad(
-        GIS_pxbypx,
-        (0, window_size_px - len(GIS_pxbypx) % window_size_px),
-        constant_values=np.nan,
-    )
-
     # Get left and right limits from where the mean should be calculated from
-    GIS_pxbypx_where_above_zero = np.where(GIS_pxbypx_pad > 0)
-    xlim_min = GIS_pxbypx_where_above_zero[0][0]  # first occurrence along x
-    xlim_max = GIS_pxbypx_where_above_zero[0][-1]  # last occurrence along x
+    window_size_px_where_above_zero = np.where(gis_thickness_px > 0)
+    xlim_min = window_size_px_where_above_zero[0][0]  # first occurrence along x
+    if len(window_size_px_where_above_zero[0]) > 1:
+        xlim_max = window_size_px_where_above_zero[0][-1]  # last occurrence along x
+    else:
+        xlim_max = len(gis_thickness_px) - 1
 
     # make the L and R limits of the lamella x% smaller
     lamella_width_px = xlim_max - xlim_min
@@ -132,27 +144,27 @@ def measure_GIS_modified(
     xlim_min = lamella_width_to_cut + xlim_min
     xlim_max = xlim_max - lamella_width_to_cut
 
-    GIS_pxbypx_NaNed = np.copy(GIS_pxbypx_pad).astype(np.float32)
-    GIS_pxbypx_NaNed[:xlim_min] = np.nan
-    GIS_pxbypx_NaNed[xlim_max:] = np.nan
-
-    # This mean will discard nan areas
-    # GIS_windowed = np.nanmedian(GIS_pxbypx_NaNed.reshape(-1, window_size_px), axis=1)
-    stack = [
-        GIS_pxbypx_NaNed[_ : _ + window_size_px]
-        for _ in range(GIS_pxbypx_NaNed.size - window_size_px)
-    ]
-    GIS_windowed = np.nanmedian(
-        stack,
-        axis=1,
+    # Use median filter to reduce spikiness/remove outliers
+    filtered_gis_thickness_px = ndi.median_filter(
+        gis_thickness_px, size=window_size_px, mode="nearest"
     )
-    # Convert to m
-    GIS_m = GIS_windowed * pixel_size_m
 
-    # Make any value with 0's, i.e. no GIS measured, NaNs
-    GIS_m[np.where(GIS_m == 0)] = np.nan
+    # Pad with half the window size to ensure the mean values are centred
+    pad_size = int(np.ceil(window_size_px / 2))
+    padded_filtered_gis_thickness_px = np.pad(
+        filtered_gis_thickness_px, pad_width=pad_size, mode="edge"
+    )
+    # Create stack for windowed averaging
+    stack = [
+        padded_filtered_gis_thickness_px[_ : _ + window_size_px]
+        for _ in range(
+            padded_filtered_gis_thickness_px.size - pad_size * 2
+        )  # Ensure the same length as `gis_thickness_px` in the case of odd `window_size_px`
+    ]
 
-    return GIS_m, (xlim_min, xlim_max)
+    averaged_gis_px = np.nanmean(stack, axis=1, dtype=np.float64)
+
+    return averaged_gis_px, (xlim_min, xlim_max)
 
 
 @typing.overload
@@ -295,15 +307,28 @@ def measure_gis(
     electron_beam_image: FibsemImage,
     clean_prediction: NDArray[typing.Any],
     window_size_m: float,
-) -> tuple[NDArray[np.floating], tuple[int, int]]:
-    gis_thickness_m, xlims = measure_GIS_modified(
+) -> tuple[dict[str, NDArray[np.floating]], tuple[int, int]]:
+    pixel_size_m = electron_beam_image.metadata.pixel_size.x
+    gis_thickness_px, opened_gis_thickness_px = measure_gis_thickness_modified(
         mask_gis_clean=clean_prediction,
         window_size_m=window_size_m,
-        pixel_size_m=electron_beam_image.metadata.pixel_size.x,
+        pixel_size_m=pixel_size_m,
     )
-    lamella_width = (xlims[1] - xlims[0]) * electron_beam_image.metadata.pixel_size.x
+    filtered_gis_thickness_px, xlims = filter_gis_thickness(
+        gis_thickness_px=opened_gis_thickness_px,
+        window_size_m=window_size_m,
+        pixel_size_m=pixel_size_m,
+    )
+    lamella_width = (xlims[1] - xlims[0]) * pixel_size_m
     print(f"Lamella width is {lamella_width} m")
-    return gis_thickness_m, xlims
+
+    gis_thicknesses = {
+        "basic": gis_thickness_px * pixel_size_m,
+        "opened": opened_gis_thickness_px * pixel_size_m,
+        "filtered": filtered_gis_thickness_px * pixel_size_m,
+    }
+
+    return gis_thicknesses, xlims
 
 
 def draw_milling_patterns(
@@ -456,7 +481,7 @@ def milling_cycle_plot(
     clean_prediction: NDArray[typing.Any],
     fib_image: FibsemImage,
     settings: MicroscopeSettings,
-    gis_thickness_m: NDArray[typing.Any],
+    gis_thicknesses_m: dict[str, NDArray[typing.Any]],
     xlims: tuple[float, float],
     bitmap_array: NDArray[np.uint8],
     image_name: str = None,
@@ -544,8 +569,33 @@ def milling_cycle_plot(
 
     axs[1, 2].axvline(x=xlims[0], linestyle="--", label="Lamella boundaries")
     axs[1, 2].axvline(x=xlims[1], linestyle="--")
-    axs[1, 2].plot(gis_thickness_m * 1e6, ".-", zorder=2)
-    xmax = len(gis_thickness_m)
+
+    axs[1, 2].plot(
+        gis_thicknesses_m["basic"] * 1e6,
+        "-",
+        zorder=2,
+        label="GIS thickness",
+        alpha=0.33,
+        color="blue",
+    )
+    axs[1, 2].plot(
+        gis_thicknesses_m["opened"] * 1e6,
+        "-",
+        zorder=3,
+        label="Opened GIS thickness",
+        alpha=0.33,
+        color="red",
+    )
+    axs[1, 2].plot(
+        gis_thicknesses_m["filtered"] * 1e6,
+        "-",
+        zorder=4,
+        label="Averaged opened GIS thickness",
+        alpha=0.33,
+        color="green",
+    )
+
+    xmax = len(gis_thicknesses_m["basic"])
 
     axs[1, 2].set_xlabel("Distance along x (px)")
     axs[1, 2].set_ylabel("GIS thickness ($\mu$m)")
@@ -643,14 +693,14 @@ def create_next_plots(
 ) -> None:
     prediction, clean_prediction = make_predictions(electron_beam_image)
 
-    gis_thickness_m, xlims = measure_gis(
+    gis_thicknesses_m, xlims = measure_gis(
         electron_beam_image=electron_beam_image,
         clean_prediction=clean_prediction,
         window_size_m=window_size_m,
     )
 
     bitmap_array = create_bitmap_array(
-        gis_thickness_m=gis_thickness_m,
+        gis_thickness_m=gis_thicknesses_m["filtered"],
         xlims=xlims,
         window_size_m=window_size_m,
         pixel_size_m=ion_beam_image.metadata.pixel_size.x,
@@ -664,7 +714,7 @@ def create_next_plots(
         prediction,
         clean_prediction,
         ion_beam_image,
-        gis_thickness_m=gis_thickness_m,
+        gis_thicknesses_m=gis_thicknesses_m,
         settings=settings,
         xlims=xlims,
         bitmap_array=bitmap_array,
