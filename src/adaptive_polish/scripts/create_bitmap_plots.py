@@ -5,13 +5,13 @@ import logging
 from contextlib import contextmanager
 from copy import deepcopy
 import tempfile
-from collections.abc import Generator
+from collections.abc import Generator, Iterable
 import typing
 
 # for display
 import PIL
 from scipy.signal import find_peaks
-from skimage import filters, morphology
+from skimage import filters, morphology, measure, transform, feature, exposure, util
 from scipy import ndimage as ndi
 import matplotlib.pyplot as plt
 import tifffile as tff
@@ -437,42 +437,308 @@ def plot_bitmap_trench_pattern(
         logging.error("Plotting bitmap pattern raised an exception", exc_info=True)
 
 
+def calculate_coordinates_at_x_from_Hough_peaks(
+    peaks: tuple[NDArray[np.uint64], NDArray[np.float64], NDArray[np.float64]],
+    *xs: float,
+) -> NDArray[np.float64]:
+    xy_points = np.full((len(peaks[0]), len(xs), 2), np.nan, dtype=np.float64)
+    for i, _, angle, dist in enumerate(zip(*peaks)):
+        xy_points[i, :, 0] = xs
+        sin_angle = np.sin(angle)
+        if sin_angle == 0:
+            continue
+        y0 = dist / sin_angle  # x = 0
+        for j, x in enumerate(xs):
+            if x == 0:
+                xy_points[i, j, 1] = y0
+            else:
+                xy_points[i, j, 1] = y0 - x / np.tan(angle)
+    return xy_points
+
+
+def calculate_coordinates_at_y_from_Hough_peaks(
+    peaks: tuple[NDArray[np.uint64], NDArray[np.float64], NDArray[np.float64]],
+    *ys: float,
+) -> NDArray[np.float64]:
+    xy_points = np.full((len(peaks[0]), len(ys), 2), np.nan, dtype=np.float64)
+    for i, _, angle, dist in enumerate(zip(*peaks)):
+        xy_points[i, :, 1] = ys
+        cos_angle = np.cos(angle)
+        if cos_angle == 0:
+            continue
+        x0 = dist / cos_angle  # x = 0
+        for j, y in enumerate(ys):
+            if y == 0:
+                xy_points[i, j, 0] = x0
+            else:
+                xy_points[i, j, 0] = x0 - y * np.tan(angle)
+    return xy_points
+
+
 def find_centre(
-    image: FibsemImage, plot_path: str | PathLike[str] | None = None
+    image: FibsemImage,
+    lamella_width_m: float = 1.2e-5,
+    lamella_lines: int = 2,
+    plot_path: str | PathLike[str] | None = None,
 ) -> tuple[float, float]:
     """Finds the centre of the lamella based on the positions of the stress relief cuts. Definitely room for improvement."""
-    # TODO: link sigma and peaks widths to physical scale via pixel size
-    # TODO: handle waffle cuts etc by using the edges of the central void?
-    data = image.data.astype(np.float64)
-    gaussian1 = ndi.gaussian_filter(data, (50, 4), axes=(0, 1))
-    gaussian2 = ndi.gaussian_filter(data, (5, 50), axes=(0, 1))
-    dog = gaussian1 - gaussian2
-    median_flattened2 = np.median(dog, axis=0).flatten()  # get median across y-axis
-    thresholed_value = filters.threshold_li(median_flattened2)
-    thresholded_1d = median_flattened2 < thresholed_value
-    peaks, peak_properties = find_peaks(thresholded_1d, width=(20, 100))
-    lamella_centre_px = peaks[-1] - (peaks[-1] - peaks[0]) / 2
-    assert len(peaks) >= 2, "Too few peaks found"
+    pixel_size = image.metadata.pixel_size.x
+    lamella_width_px = lamella_width_m / pixel_size
+
+    # TODO: add "lamella_angle" and "lamalla_depth" arguments and do some trig to figure out the min distance for the lamella (or if only 1 line should be found)
+
+    data = exposure.equalize_adapthist(image.data)
+    # gauss_1 = (30, 12)
+    # gauss_2 = (80, 80)
+
+    padding = int(lamella_width_px * 0.1)
+    x_padding = int(3 * padding)
+
+    dog_values = (int(lamella_width_px / 40), int(lamella_width_px / 30))
+
+    dog = filters.difference_of_gaussians(
+        image.data,
+        dog_values[0],
+        dog_values[1],
+        mode="nearest",
+    )
+
+    thresholded_dog = dog < filters.threshold_triangle(dog)
+
+    canny_thresholded_dog = feature.canny(thresholded_dog, sigma=0)
+
+    # Canny Hough
+    lamella_angles = np.linspace(
+        17 * np.pi / 36, 19 * np.pi / 36, 5, endpoint=True, dtype=np.float64
+    )
+    h, theta, d = transform.hough_line(
+        canny_thresholded_dog,
+        theta=np.asarray((0.0,), dtype=np.float64),
+    )
+    zero_deg_peaks = transform.hough_line_peaks(
+        h,
+        theta,
+        d,
+        min_distance=int(lamella_width_px * 0.75),
+        num_peaks=2,
+    )
+    distances_x = zero_deg_peaks[2].astype(int)
+    indexes_1 = [
+        (0, canny_thresholded_dog.shape[0]),
+        (
+            # Widen the padding for this as we are looking for X
+            max(distances_x[0] - x_padding, 0),
+            min(distances_x[1] + x_padding, canny_thresholded_dog.shape[1]),
+        ),
+    ]
+
+    h, theta, d = transform.hough_line(
+        canny_thresholded_dog[
+            indexes_1[0][0] : indexes_1[0][1], indexes_1[1][0] : indexes_1[1][1]
+        ],
+        theta=lamella_angles,
+    )
+
+    lamella_peaks = transform.hough_line_peaks(
+        h, theta, d, min_distance=dog_values[0], num_peaks=lamella_lines
+    )
+
+    # Calculate the negative to account for potential bounding box cropping due to image size
+    x_min = -(distances_x[0] + x_padding) if indexes_1[1][0] == 0 else 0
+    # Calculate the x_max, ignoring the maximum image size
+    x_max = distances_x[1] - distances_x[0] + x_padding + x_min
+
+    lamella_box_edge_coordinates = calculate_coordinates_at_y_from_Hough_peaks(
+        lamella_peaks, x_min, x_max
+    )
+
+    distances_y = (
+        int(np.floor(lamella_box_edge_coordinates[:, :, 1].min())),
+        int(np.ceil(lamella_box_edge_coordinates[:, :, 1].max())),
+    )
+
+    indexes_2 = [
+        (
+            # Crop by padding to focus on the sides of the lamella only
+            max(distances_y[0] - padding, 0),
+            min(distances_y[1] + padding, canny_thresholded_dog.shape[0]),
+        ),
+        (
+            # Widen the padding for this as we are looking for X
+            max(distances_x[0] - x_padding, 0),
+            min(distances_x[1] + x_padding, canny_thresholded_dog.shape[1]),
+        ),
+    ]
+
+    h, theta, d = transform.hough_line(
+        canny_thresholded_dog[
+            indexes_2[0][0] : indexes_2[0][1], indexes_2[1][0] : indexes_2[1][1]
+        ],
+        theta=np.asarray((0.0,), dtype=np.float64),
+    )
+
+    second_zero_deg_peaks = transform.hough_line_peaks(
+        h,
+        theta,
+        d,
+        min_distance=int(lamella_width_px * 0.75),
+        num_peaks=2,
+    )
+    # if len(second_zero_deg_peaks[0]) < 2:
+    #     logging.warning("Failed to refine lamella edges")
+    #     indexes_3 = [
+    #         [0, canny_thresholded_dog.shape[0]],
+    #         [0, canny_thresholded_dog.shape[1]],
+    #     ]
+    # else:
+    distances_x2 = second_zero_deg_peaks[2].astype(int)
+    indexes_3 = [
+        [indexes_2[0][0] - padding, indexes_2[0][1] + padding],
+        (
+            max(indexes_2[1][0] + distances_x2.min() - padding, 0),
+            min(
+                indexes_2[1][0] + distances_x2.max() + padding,
+                canny_thresholded_dog.shape[1],
+            ),
+        ),
+    ]
 
     if plot_path is not None:
-        fig, ax = plt.subplots(1, 1)
-        plt.imshow(image.data, cmap="Greys_r")
-        ax.axvline(x=peaks[0])
-        ax.axvline(x=peaks[-1])
-        if len(peaks) > 2:
-            for peak in peaks[1:-1]:
-                ax.axvline(x=peak, ls="--")
-        ax.axvline(x=lamella_centre_px, color="C2")
-        ax.hlines(
-            y=[image.data.shape[0] / 2] * len(peaks),
-            xmin=peak_properties["left_ips"],
-            xmax=peak_properties["right_ips"],
+        fig, axs = plt.subplots(
+            2, 2, figsize=(12, 12), dpi=300, tight_layout=True, sharex=True, sharey=True
+        )
+        axs = axs.ravel()
+
+        axs[0].imshow(canny_thresholded_dog, cmap="Greys")
+        # axs[0].set_axis_off()
+
+        axs[1].imshow(data, cmap="Greys")
+        # axs[1].set_axis_off()
+
+        for _, angle, dist in zip(*zero_deg_peaks):
+            (x0, y0) = dist * np.array([np.cos(angle), np.sin(angle)])
+            axs[1].axline(
+                (x0, y0),
+                slope=np.tan(angle + np.pi / 2),
+                alpha=0.5,
+                # linewidth=1,
+                color="C1",
+            )
+
+        for _, angle, dist in zip(*lamella_peaks):
+            (x0, y0) = dist * np.array([np.cos(angle), np.sin(angle)])
+            axs[1].axline(
+                (x0 + indexes_1[1][0], y0),
+                slope=np.tan(angle + np.pi / 2),
+                alpha=0.5,
+                # linewidth=1,
+                color="C2",
+            )
+        axs[1].plot(
+            (indexes_2[1][0], indexes_2[1][1]),
+            (indexes_2[0][0], indexes_2[0][0]),
+            # linewidth=2,
+            linestyle=":",
             color="C3",
         )
+        axs[1].plot(
+            (indexes_2[1][0], indexes_2[1][1]),
+            (indexes_2[0][1], indexes_2[0][1]),
+            # linewidth=2,
+            linestyle=":",
+            color="C3",
+        )
+        axs[1].plot(
+            (indexes_2[1][0], indexes_2[1][0]),
+            (indexes_2[0][0], indexes_2[0][1]),
+            # linewidth=2,
+            linestyle=":",
+            color="C3",
+        )
+        axs[1].plot(
+            (indexes_2[1][1], indexes_2[1][1]),
+            (indexes_2[0][0], indexes_2[0][1]),
+            # linewidth=2,
+            linestyle=":",
+            color="C3",
+        )
+
+        axs[2].imshow(data, cmap="Greys")
+        # axs[2].set_axis_off()
+
+        for _, angle, dist in zip(*second_zero_deg_peaks):
+            (x0, y0) = dist * np.array([np.cos(angle), np.sin(angle)])
+            axs[2].axline(
+                (x0 + indexes_2[1][0], y0 + indexes_2[0][0]),
+                slope=np.tan(angle + np.pi / 2),
+                alpha=0.5,
+                # linewidth=1,
+                color="C4",
+            )
+
+        (x0, y0) = dist * np.array([np.cos(angle), np.sin(angle)])
+        axs[2].plot(
+            (indexes_3[1][0], indexes_3[1][1]),
+            (indexes_3[0][0], indexes_3[0][0]),
+            linewidth=2,
+            linestyle=":",
+            color="C3",
+        )
+        axs[2].plot(
+            (indexes_3[1][0], indexes_3[1][1]),
+            (indexes_3[0][1], indexes_3[0][1]),
+            # linewidth=2,
+            linestyle=":",
+            color="C3",
+        )
+        axs[2].plot(
+            (indexes_3[1][0], indexes_3[1][0]),
+            (indexes_3[0][0], indexes_3[0][1]),
+            # linewidth=2,
+            linestyle=":",
+            color="C3",
+        )
+        axs[2].plot(
+            (indexes_3[1][1], indexes_3[1][1]),
+            (indexes_3[0][0], indexes_3[0][1]),
+            # linewidth=2,
+            linestyle=":",
+            color="C3",
+        )
+
+        axs[3]._shared_axes["x"].remove(axs[1])
+
+        axs[3].imshow(
+            data,
+            cmap="Greys",
+        )
+        # axs[3].set_axis_off()
+        for _, angle, dist in zip(*second_zero_deg_peaks):
+            (x0, y0) = dist * np.array([np.cos(angle), np.sin(angle)])
+            axs[3].axline(
+                (
+                    x0 + indexes_2[1][0] - indexes_3[1][0],
+                    y0 + indexes_2[0][0] - indexes_3[0][0],
+                ),
+                slope=np.tan(angle + np.pi / 2),
+                alpha=0.5,
+                # linewidth=1,
+                color="C4",
+            )
+        for _, angle, dist in zip(*lamella_peaks):
+            (x0, y0) = dist * np.array([np.cos(angle), np.sin(angle)])
+            axs[3].axline(
+                (x0 + indexes_1[1][0], y0),
+                slope=np.tan(angle + np.pi / 2),
+                alpha=0.5,
+                # linewidth=1,
+                color="C2",
+            )
+
         fig.savefig(plot_path)
         plt.close()
 
-    return lamella_centre_px * image.metadata.pixel_size.x
+    return np.mean(second_zero_deg_peaks[2]) * pixel_size
 
 
 def milling_cycle_plot(
@@ -745,7 +1011,7 @@ if __name__ == "__main__":
         / "config"
         / "microscope-configuration-demo2.yaml"
     )
-    plot_centres = False
+    plot_centres = True
 
     protocol_path = Path(__file__).parent / "spoof_microscope_protocol.yaml"
 
@@ -787,10 +1053,12 @@ if __name__ == "__main__":
                     ion_centre_plot_path = None
                 electron_centre = find_centre(
                     electron_beam_image,
+                    lamella_lines=2,
                     plot_path=elecron_centre_plot_path,
                 )
                 ion_centre = find_centre(
                     ion_beam_image,
+                    lamella_lines=1,
                     plot_path=ion_centre_plot_path,
                 )
                 if plot_centres:
@@ -803,16 +1071,16 @@ if __name__ == "__main__":
             except AssertionError:
                 print("Failed to get centres")
 
-            print(f"Starting plot {i}")
-            create_next_plots(
-                electron_beam_image=electron_beam_image,
-                ion_beam_image=ion_beam_image,
-                settings=settings,
-                save_directory=plots_path,
-                window_size_m=window_size_m,
-            )
-            print(f"Completed plot {i}")
-            i += 1
+        #     print(f"Starting plot {i}")
+        #     create_next_plots(
+        #         electron_beam_image=electron_beam_image,
+        #         ion_beam_image=ion_beam_image,
+        #         settings=settings,
+        #         save_directory=plots_path,
+        #         window_size_m=window_size_m,
+        #     )
+        #     print(f"Completed plot {i}")
+        #     i += 1
         except Exception:
             logging.error("Exception occurred", exc_info=True)
             break
