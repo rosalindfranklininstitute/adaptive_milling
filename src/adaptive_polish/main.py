@@ -16,8 +16,15 @@ import logging
 from importlib.metadata import version
 from pathlib import Path
 import pandas as pd
+import matplotlib.pyplot as plt
+import tifffile
 
 # fibsem
+from fibsem import (
+    acquire,
+    constants,
+    conversions,
+)
 from fibsem.microscope import FibsemMicroscope
 from fibsem.milling import (
     draw_pattern,
@@ -26,20 +33,33 @@ from fibsem.milling import (
 )
 from fibsem.milling.patterning.patterns2 import (
     TrenchPattern,
-    TrenchBitmapPattern,
+    # TrenchBitmapPattern,
 )
 from fibsem.milling.base import FibsemMillingStage
+from fibsem.structures import (
+    ImageSettings,
+    BeamType,
+)
+from fibsem.detection.detection import AdaptiveLamellaCentre
 
-import gis_measurement as gm
+import adaptive_polish.gis_measurement as gm
 
 class AdaptivePolish():
-    def __init__(self, config: dict = None):
+    def __init__(
+            self,
+            config: dict,
+            microscope: FibsemMicroscope
+        ):
         logging.info(f"Using adaptive_polish version {version('adaptive_polish')}")
         self.config = config
         logging.info("Config parameters: %s\n", self.config)
+        self.microscope = microscope
 
         # load model
-        #TODO load DL model
+        gm.init_model_with_path(self.config["model_path"])
+
+        # Set ImageSettings
+        self._set_imagesettings()
 
     def adaptive_polish_run(
         self,
@@ -59,14 +79,11 @@ class AdaptivePolish():
         total_time = 0
 
         while milling_cycle <= self.config["max_milling_cycles"]:
-            ap_basename = f"{self.lamella_folder.stem}_AP_img_{milling_cycle:03}"
-            # TODO:Acquire SEM image
-            # Create a temporary SEM_settings ImageSettings from self.config and
-            # apply the filename based on ap_basename
-
-            # TODO:Acquire FIB image
-            # as above
-            # Can we use acquire.take_reference_images??
+            # Acquire images
+            self.SEM_ImageSettings.filename = f"SEM_{milling_cycle:03}.tif"
+            self.FIB_ImageSettings.filename = f"FIB_{milling_cycle:03}.tif"
+            SEM_img = acquire.new_image(self.microscope, self.SEM_ImageSettings)
+            FIB_img = acquire.new_image(self.microscope, self.FIB_ImageSettings)
 
             # TODO: Prediction
             SEM_img = self.segment_SEM()
@@ -74,6 +91,10 @@ class AdaptivePolish():
             cleaned_prediction = gm.clean_prediction(
                 prediction=prediction,
                 pixel_size_m=SEM_img.metadata.pixel_size.x
+            )
+            tifffile.imwrite(
+                file=f"{self.lamella_folder}/test_pred.tif",
+                data=cleaned_prediction,
             )
 
             # TODO: GIS measurement
@@ -148,39 +169,57 @@ class AdaptivePolish():
             }
         )
 
+    def _set_imagesettings(self) -> None:
+        """Sets ImageSettings based on config"""
+        # SEM alignment
+        self.SEM_align_ImageSettings = self.microscope.get_imaging_settings(beam_type=BeamType.ELECTRON)
+        self.SEM_align_ImageSettings.save = True
+        self.SEM_align_ImageSettings.path = Path(f"{self.lamella_folder.stem}/centering")
+        self.SEM_align_ImageSettings.filename = "SEM_img.tif"
+
+
+        self.SEM_ImageSettings = self.microscope.get_imaging_settings(beam_type=BeamType.ELECTRON)
+        self.SEM_ImageSettings.save = True
+        self.SEM_ImageSettings.path = Path(f"{self.lamella_folder.stem}/sem")
+
+        self.FIB_ImageSettings = self.microscope.get_imaging_settings(beam_type=BeamType.ION)
+        self.FIB_ImageSettings.save = True
+        self.FIB_ImageSettings.path = Path(f"{self.lamella_folder.stem}/fib")
+
     def SEM_alignment(self):
-        pass
+        logging.info("Aligning SEM images")
+
         # Take reference images
-        # SEM_img, FIB_img = acquire.take_reference_images(
-        #     microscope=microscope_in,
-        #     image_settings=imaging_settings,
-        # )
+        SEM_img_align = acquire.new_image(
+            microscope=self.microscope,
+            settings=self.SEM_align_ImageSettings,
+        )
 
-        # # Find center
-        # logging.info("Starting segmentation")
-        # prediction = gm.segment(SEM_img.data)
-        # logging.info("Segmentation complete")
-        # feature = AdaptiveLamellaCentre()
-        # centre_px = feature.detect(SEM_img.data, prediction, None)
+        # Find center
+        logging.info("Starting segmentation")
+        prediction = gm.segment(SEM_img_align.data)
+        logging.info("Segmentation complete")
+        feature = AdaptiveLamellaCentre()
+        centre_px = feature.detect(SEM_img_align.data, prediction, None)
 
-        # # Convert to microscope image coordinates (0, 0 at centre of image)
-        # centre_m = conversions.image_to_microscope_image_coordinates(
-        #     centre_px, SEM_img.data, SEM_img.metadata.pixel_size.x
-        # )
+        # Convert to microscope image coordinates (0, 0 at centre of image)
+        centre_m = conversions.image_to_microscope_image_coordinates(
+            centre_px, SEM_img_align.data, SEM_img_align.metadata.pixel_size.x
+        )
 
-        # # shift beam
-        # dx, dy = centre_m.x, centre_m.y
-        # microscope.beam_shift(dx, dy, BeamType.ELECTRON)
-        # logging.info(f"Beamshift {BeamType.ELECTRON} by dx={dx}, dy={dy}")
+        # shift beam
+        dx, dy = centre_m.x, centre_m.y
+        self.microscope.beam_shift(dx, dy, BeamType.ELECTRON)
+        logging.info(f"Beamshift SEM by dx={dx}, dy={dy}")
 
-        # # Plot centering stuff
-        # plt.figure()
-        # plt.imshow(prediction, cmap="gray")
-        # plt.scatter(centre_px.x, centre_px.y, c="r", marker="+", label="lamella_centre")
-        # plt.scatter(SEM_img.data.shape[1]//2, SEM_img.data.shape[0]//2, c="g", marker="+", label="image_centre")
-        # plt.legend()
-        # plt.savefig(f"{lamella_ap_folder}/centering.png")
-        # plt.close()
+        # Plot centering stuff
+        plt.figure()
+        plt.imshow(prediction, cmap="gray")
+        plt.scatter(centre_px.x, centre_px.y, c="r", marker="+", label="lamella_centre")
+        plt.scatter(SEM_img_align.data.shape[1]//2, SEM_img_align.data.shape[0]//2, c="g", marker="+", label="image_centre")
+        plt.legend()
+        plt.savefig(f"{self.lamella_folder}/centering/centering.png")
+        plt.close()
 
     def segment_SEM(self):
         pass
