@@ -4,7 +4,7 @@ options:
   checkpoint: autolamella-mega-20240107.pt
   alignment_attempts: 3.0
   alignment_at_milling_current: false
-  take_final_reference_images: true 
+  take_final_reference_images: true
   high_quality_image:
     enabled: false
     dwell_time: 2.0e-6
@@ -15,7 +15,7 @@ options:
   lamella_tilt_angle: 18.0
   use_fiducial: true
   use_microexpansion: true
-  use_notch: false 
+  use_notch: false
   supervise:
     trench: false
     undercut: false
@@ -26,79 +26,28 @@ options:
     mill_regular: false
     mill_polishing: false
 milling:
-  fiducial:
-    enabled: true
-    height: 10.e-6
-    width: 1.e-6
-    depth: 1.0e-6
-    rotation: 45
-    milling_current: 2.0e-9
-    preset: "30 keV; 20 nA" # TESCAN only
-    application_file: Si
-    passes: null
-    hfw: 80.e-6
-    type: Fiducial
-  lamella:
-    stages:
-      -   name: Adaptive polishing
-          application_file: Si-ccs
-          cross_section: CleaningCrossSection
-          depth: 4.0e-07
-          dwell_time: 1.0e-06
-          hfw: 7.999999999999999e-05
-          lamella_height: 6.0e-07
-          lamella_width: 6.0e-06
-          milling_current: 6.0e-11
-          offset: 0.0
-          patterning_mode: Parallel
-          preset: ''
-          rate: 0.0001
-          size_ratio: 1.0
-          spot_size: 5.0e-08
-          trench_height: 5.0e-07
-  microexpansion:
-    width: 0.5e-6
-    height: 18.e-6
-    depth: 1.0e-6
-    distance: 10.e-6  # distance between micoexpansion and lamella centre
-    milling_current: 2.e-9
-    preset: "30 keV; 2.5 nA" # TESCAN only
-    hfw: 200e-6
-    application_file: Si
-    type: MicroExpansion
-  notch:
-    application_file: Si
-    depth: 2.5e-06
-    distance: 2.0e-06
-    enabled: true
-    flip: 0
-    hfw: 80e-6
-    hheight: 2.0e-07
-    hwidth: 4.0e-06
-    milling_current: 2.0e-09
-    preset: 30 keV; 2.5 nA
-    vheight: 2.0e-06
-    vwidth: 2.0e-07
-    type: WaffleNotch
-adaptive_polish:
-    do_plots: true
-    fallback_pixel_size_m: 1.8e-8
-    # Milling cycle control
-    milling_interval_s: 30
-    gis_stop_m: 2e-7
-    max_milling_cycles: 30
-    window_size_m: 1e-7
-    max_crack_area_m2: 2e-12
-    #model_path:  # comment for default
-    imaging_settings:
-      electron:
-        resolution:         [3072,2048]
-        hfw:                40.0e-6 
-        dwell_time:         200.0e-9
-        frame_integration:  8
-      ion:
-        resolution:         [3072,2048]
-        hfw:                40.0e-6 
-        dwell_time:         200.0e-9
-        frame_integration:  8
-    use_sem_beam_shift_alignment_adaptive_polish: true
+  mill_polishing:
+      -   milling:
+              application_file: Si-ccs
+              hfw: 8.0e-05
+              milling_current: 6.0e-11
+              patterning_mode: Serial
+          name: Polishing Mill 01
+          pattern:
+              cross_section: CleaningCrossSection
+              depth: 4.0e-07
+              lower_trench_height: 5.0e-07
+              name: Trench
+              spacing: 6.0e-07
+              upper_trench_height: 5.0e-07
+              width: 6.0e-06
+          strategy: {"name": AdaptivePolishing,
+            config: {
+              align_sem: True,
+              milling_interval_s: 10,
+              gis_stop_um: 0.2,
+              max_milling_cycles: 30,
+              window_size_px: 10,
+              max_crack_area_um2: 2,
+              model_path: C:\Users\dmv31621\OneDrive - The Rosalind Franklin Institute\2025\00_Adaptive-milling\models\2024-02-24_0013_gis_lamela_crack_pytorch_AUnet.ptchkp
+            }}
