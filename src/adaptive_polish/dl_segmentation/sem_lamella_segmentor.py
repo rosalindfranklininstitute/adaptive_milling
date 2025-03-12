@@ -64,7 +64,7 @@ def get_prepreds_tfms(img_size):
             alb.Lambda(
                 name="normalize_by_mean_std_with_clip",
                 image=normalize_by_mean_std_with_clip,
-                always_apply=True,
+                # always_apply=True,
             ),
             # alb.CenterCrop(sqsize, sqsize,always_apply=True),
             alb.Resize(*new_size),
@@ -116,11 +116,11 @@ def load_model(model_path):
 
     model_st_dict = None
     if "ptstdict" in m:
-        model_st_dict=torch.load(model_fn, map_location=_device) 
+        model_st_dict=torch.load(model_fn, map_location=_device)
     elif "ptchkp" in m:
         model_st_dict= torch.load(model_fn, map_location=_device)["model_state_dict"]
-    
-    
+
+
     #Decide what smp model to load to use
     model_arch=None
     model_enc=None
