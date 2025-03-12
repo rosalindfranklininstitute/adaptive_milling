@@ -203,13 +203,19 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             logging.info(f"Minimum GIS thickness for milling cycle {milling_cycle} = {min_GIS_m}")
 
             # Crack TODO
+            crack_area_m2 = gm.get_crack_area_m2(prediction, SEM_img.metadata.pixel_size.x)
+
+            logging.info(
+                f"Area of cracks found in milling cycle {milling_cycle} = "
+                f"{crack_area_m2 * constants.METRE_TO_MICRON * constants.METRE_TO_MICRON} um2"
+            )
 
             # Save results
             results.loc[milling_cycle] = {
                 "image": f"adapt_mill_img_{milling_cycle:03}",
                 "milling_time_s": total_time,
                 "min_GIS_m": min_GIS_m,
-                # "crack_area_m2": crack_area_m2,
+                "crack_area_m2": crack_area_m2,
             }
             results.to_csv(f"{lamella_folder}/adaptive_polish/GIS_thickness.csv")
 
@@ -230,15 +236,40 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             )
 
             # plots
+            gm.milling_cycle_plot(
+                sem_image=SEM_img.data,
+                first_prediction=prediction,
+                clean_prediction=mask_gis_clean,
+                fib_image=FIB_img.data,
+                gis_thickness_m=GIS_m,
+                gis_stop_m=self.config.gis_stop_um * constants.MICRO_TO_SI,
+                crack_area_m2=crack_area_m2,
+                img_name=f_basename,
+                fib_screenshot=None,
+                save_path=f"{lamella_folder}/adaptive_polish/plots/{f_basename}_plot.png",
+            )
 
             # should we continue?
+            if min_GIS_m < float(self.config.gis_stop_um * constants.MICRO_TO_SI):
+                logging.info(
+                    f"Stopping as minimum GIS (m) {min_GIS_m} < threshold "
+                    f"{self.config.gis_stop_um * constants.MICRO_TO_SI}"
+                )
+                break
+
+            if crack_area_m2 > float(self.config.max_crack_area_um2 * constants.MICRO_TO_SI * constants.MICRO_TO_SI):
+                logging.info(
+                    f"Stopping as crack area (m2) {crack_area_m2} > threshold "
+                    f"{self.config.max_crack_area_um2 * constants.MICRO_TO_SI * constants.MICRO_TO_SI}"
+                )
+                break
 
             # get pattern - this is where bitmap will come in later
             pattern = stage.pattern.define()
 
             # adjust milling interval TODO
             next_milling_interval = self.config.milling_interval_s
-            pattern.time = next_milling_interval
+            pattern[0].time = next_milling_interval
 
             # mill
             draw_patterns(
@@ -247,8 +278,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             )
             try:
                 run_milling(
-                    stage.milling.milling_current,
-                    stage.milling.milling_voltage,
+                    microscope=microscope,
+                    milling_current=stage.milling.milling_current,
+                    milling_voltage=stage.milling.milling_voltage,
                     asynch=False
                 )
                 logging.info("Completed milling.")
@@ -258,8 +290,10 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 microscope.stop_milling() # dont use milling.finish_milling as it would clear patterns
 
             # Increment counters
-            scan_count += 1
+            milling_cycle += 1
             total_time += next_milling_interval
+
+        gm.summary_gis_plot(results=results, lamella_folder=lamella_folder)
 
         # finish milling (clear patterns, restore imaging current)
         finish_milling(

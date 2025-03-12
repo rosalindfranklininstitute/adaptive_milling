@@ -46,7 +46,7 @@ milling:
               align_sem: True,
               milling_interval_s: 10,
               gis_stop_um: 0.2,
-              max_milling_cycles: 30,
+              max_milling_cycles: 5,
               window_size_px: 10,
               max_crack_area_um2: 2,
               model_path: C:\Users\dmv31621\OneDrive - The Rosalind Franklin Institute\2025\00_Adaptive-milling\models\2024-02-24_0013_gis_lamela_crack_pytorch_AUnet.ptchkp

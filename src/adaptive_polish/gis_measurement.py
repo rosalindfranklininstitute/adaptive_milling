@@ -19,6 +19,7 @@ import numpy as np
 from pathlib import Path
 import matplotlib.pyplot as plt
 import logging
+import pandas as pd
 import skimage
 
 def get_pixel_width(img):
@@ -279,3 +280,15 @@ def milling_cycle_plot(
     fig.savefig(save_path)
 
     plt.close(fig)
+
+
+def summary_gis_plot(results: pd.DataFrame, lamella_folder: Path):
+    plt.figure()
+    plt.plot(
+        results.milling_time_s, results.min_GIS_m, label="Minimum GIS thickness (m)"
+    )
+    plt.xlabel("Milling Time (s)")
+    plt.ylabel("GIS Thickness (m)")
+    plt.title(lamella_folder.stem)
+    plt.savefig(f"{str(lamella_folder)}/adaptive_polish/{lamella_folder.stem}_GIS_thickness.png")
+    plt.close()
