@@ -50,7 +50,7 @@ def init_model_with_path(model_path):
 def segment(img: np.array) -> np.array:
     """
     Segments img using _segmentor instance of cSEMLamellaSegmentor
-    
+
     Returns: annotated image, array of ints with the same shape as img. Returns None if _segmentor is None
     """
 
@@ -103,7 +103,7 @@ def clean_prediction(
     if gis_area_px == 0:
         logging.info("No GIS layer detected. Returning NaN")
         return None
-    
+
     # Only keep the largest object in the GIS segmentation
     mask_gis_largest_only = keep_only_largest_object(mask_gis)
 
@@ -111,11 +111,8 @@ def clean_prediction(
 
 
 def measure_GIS(
-    mask_gis_clean: np.array, window_size_m: int, pixel_size_m: float
+    mask_gis_clean: np.array, window_size_px: int, pixel_size_m: float
 ) -> np.array:
-    # Get window size in px
-    window_size_px = int(window_size_m / pixel_size_m)
-    logging.info(f"window_size_px: {window_size_px}")
 
     # Calculate average GIS thickness in windows
 
@@ -138,7 +135,7 @@ def measure_GIS(
     lamella_width_px = xlim_max - xlim_min
     lamella_width_to_cut = int(0.05 * lamella_width_px)  # cut 5% from each end
     xlim_min = lamella_width_to_cut + xlim_min
-    xlim_max = xlim_max - lamella_width_to_cut    
+    xlim_max = xlim_max - lamella_width_to_cut
 
     GIS_pxbypx_NaNed = np.copy(GIS_pxbypx_pad).astype(np.float32)
     GIS_pxbypx_NaNed[:xlim_min]=np.nan
@@ -163,7 +160,7 @@ def get_crack_area_m2(prediction: np.array, pixel_size_m: float) -> float:
     GIS+crack object in the prediction.
 
     Args:
-        prediction (np.array): Segmentation mask 
+        prediction (np.array): Segmentation mask
         pixel_size_m (float): Pixel size in m
 
     Returns:
@@ -176,7 +173,7 @@ def get_crack_area_m2(prediction: np.array, pixel_size_m: float) -> float:
 
     # Since crack pixel value is 1 and anything outside largest object is 0
     mask_crack_inside_largest_object = np.multiply(
-        mask_crack, 
+        mask_crack,
         mask_anything_largest_only
     )
     crack_area_px2 = np.sum(mask_crack_inside_largest_object)
@@ -210,11 +207,11 @@ def milling_cycle_plot(
     # SEM + 1st pass prediction
     axs[0, 1].imshow(sem_image, cmap="Greys_r")
     axs[0, 1].imshow(
-        first_prediction, 
-        alpha=0.4, 
-        cmap="tab10", 
-        vmin=0, 
-        vmax=10, 
+        first_prediction,
+        alpha=0.4,
+        cmap="tab10",
+        vmin=0,
+        vmax=10,
         interpolation="nearest"
     )
     axs[0, 1].axis("off")
@@ -223,11 +220,11 @@ def milling_cycle_plot(
     # SEM + clean prediction
     axs[0, 2].imshow(sem_image, cmap="Greys_r")
     axs[0, 2].imshow(
-        clean_prediction, 
-        alpha=0.4, 
-        cmap="tab10", 
-        vmin=0, 
-        vmax=10, 
+        clean_prediction,
+        alpha=0.4,
+        cmap="tab10",
+        vmin=0,
+        vmax=10,
         interpolation="nearest"
     )
     if xlims is not None:
