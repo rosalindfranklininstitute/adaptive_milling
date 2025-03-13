@@ -1,14 +1,23 @@
 import unittest
+from pathlib import Path
+
+import fibsem.utils
+
+from autolamella.autolamella.structures import Experiment
 
 class AdaptivePolishTest(unittest.TestCase):
 
     def _setup_microscope(self):
         """Sets up a demo microscope"""
-        pass
+        self.microscope, self.settings = fibsem.utils.setup_session(
+            protocol_path=f"{Path(__file__).parent}/data/protocol.yaml"
+        )
 
     def _setup_experiment(self):
         """Sets up a demo autolamella experiment"""
-        pass
+        self.exp = Experiment.load(
+            f"{Path(__file__).parent.parent.parent}/tmp/AutoLamella-2025-03-10-22-34/experiment.yaml"
+            )
 
     def test_default_config(self):
         """Tests that default config works with no errors"""
@@ -17,9 +26,9 @@ class AdaptivePolishTest(unittest.TestCase):
 
     def test_ap_folders_created(self):
         """Tests that the lamella folders are created in the correct place"""
-        self._setup_microscope()
+        # self._setup_microscope()
         self._setup_experiment()
-        pass
+        print(self.exp)
 
     def test_imaging_settings_applied(self):
         """Test that the config imaging settings are applied rather than
@@ -30,6 +39,10 @@ class AdaptivePolishTest(unittest.TestCase):
         """Test that reference images are saved in the correct filenaming
         convention
         """
+        pass
+
+    def test_segmentation_model(self):
+        """Test that the segmentation model produces a prediction"""
         pass
 
     def test_milling_stops_when_stop_criterion_reached(self):

@@ -18,8 +18,8 @@ def setup_results_df():
         {
             "image": [],
             "milling_time_s": [],
-            "min_GIS_m": [],
-            "crack_area_m2": [],
+            "min_GIS_um": [],
+            "crack_area_um2": [],
         }
     )
 
@@ -28,7 +28,7 @@ def setup_results_df():
             "image": [],
             "milling_time_s": [],
             "window": [],
-            "gis_windowed_m": [],
+            "gis_windowed_um": [],
         }
     )
     return results, gis_results_detailed

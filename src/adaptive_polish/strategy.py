@@ -7,7 +7,6 @@ import numpy as np
 
 # fibsem
 from fibsem import (
-    constants,
     acquire,
     conversions,
 )
@@ -56,12 +55,12 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
 
     def to_dict(self):
         return {
-            "milling_interval_s": self.milling_interval_s,
-            "gis_stop_m": self.gis_stop_um * constants.MICRO_TO_SI,
-            "max_crack_area_m2": self.max_crack_area_um2 * constants.MICRO_TO_SI * constants.MICRO_TO_SI,
-            "max_milling_cycles": self.max_milling_cycles,
             "align_sem": self.align_sem,
+            "milling_interval_s": self.milling_interval_s,
+            "gis_stop_um": self.gis_stop_um,
+            "max_milling_cycles": self.max_milling_cycles,
             "window_size_px": self.window_size_px,
+            "max_crack_area_um2": self.max_crack_area_um2,
             "model_path": self.model_path,
         }
 
@@ -107,8 +106,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         )
         fib_imaging_settings = microscope.get_imaging_settings(BeamType.ION)
         sem_imaging_settings = microscope.get_imaging_settings(BeamType.ELECTRON)
-        lamella_folder = Path(fib_imaging_settings.path)
-        if Path(f"{lamella_folder}/adaptive_polish").is_dir is True:
+        lamella_folder = Path(fib_imaging_settings.path)  # more robust way of setting lamella folder?
+        if Path(f"{lamella_folder}/adaptive_polish").is_dir() is True:
             logging.info(f"Lamella folder {lamella_folder}/adaptive_polish already exists, some data may be overwritten.")
         ap_utils.setup_lamella_ap_folders(
             lamella_folder=lamella_folder
@@ -193,40 +192,43 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 break
 
             # Measure GIS
-            GIS_m, xlims = gm.measure_GIS(
+            GIS_um, xlims = gm.measure_GIS(
                 mask_gis_clean=mask_gis_clean,
                 window_size_px=self.config.window_size_px,
                 pixel_size_m=SEM_img.metadata.pixel_size.x
             )
-            min_GIS_m = np.nanmin(GIS_m)
-            logging.info(f"Took {len(GIS_m)} GIS measurements along x")
-            logging.info(f"Minimum GIS thickness for milling cycle {milling_cycle} = {min_GIS_m}")
+            min_GIS_um = np.nanmin(GIS_um)
+            logging.info(f"Took {len(GIS_um)} GIS measurements along x")
+            logging.info(f"Minimum GIS thickness for milling cycle {milling_cycle} = {min_GIS_um}")
 
             # Crack TODO
-            crack_area_m2 = gm.get_crack_area_m2(prediction, SEM_img.metadata.pixel_size.x)
+            crack_area_um2 = gm.get_crack_area_um2(
+                prediction=prediction,
+                pixel_size_m=SEM_img.metadata.pixel_size.x
+            )
 
             logging.info(
                 f"Area of cracks found in milling cycle {milling_cycle} = "
-                f"{crack_area_m2 * constants.METRE_TO_MICRON * constants.METRE_TO_MICRON} um2"
+                f"{crack_area_um2} um2"
             )
 
             # Save results
             results.loc[milling_cycle] = {
                 "image": f"adapt_mill_img_{milling_cycle:03}",
                 "milling_time_s": total_time,
-                "min_GIS_m": min_GIS_m,
-                "crack_area_m2": crack_area_m2,
+                "min_GIS_um": min_GIS_um,
+                "crack_area_um2": crack_area_um2,
             }
             results.to_csv(f"{lamella_folder}/adaptive_polish/GIS_thickness.csv")
 
             # Save GIS thickness for each window
-            for window, gis_thickness in enumerate(GIS_m):
+            for window, gis_thickness in enumerate(GIS_um):
                 if gis_thickness > 0:
                     gis_results_detailed.loc[len(gis_results_detailed)] = {
                         "image": f_basename,
                         "milling_time_s": total_time,
                         "window": window,
-                        "gis_windowed_m": gis_thickness,
+                        "gis_windowed_um": gis_thickness,
                     }
                 else:
                     pass
@@ -241,26 +243,26 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 first_prediction=prediction,
                 clean_prediction=mask_gis_clean,
                 fib_image=FIB_img.data,
-                gis_thickness_m=GIS_m,
-                gis_stop_m=self.config.gis_stop_um * constants.MICRO_TO_SI,
-                crack_area_m2=crack_area_m2,
+                gis_thickness_um=GIS_um,
+                gis_stop_um=self.config.gis_stop_um,
+                crack_area_um2=crack_area_um2,
                 img_name=f_basename,
                 fib_screenshot=None,
                 save_path=f"{lamella_folder}/adaptive_polish/plots/{f_basename}_plot.png",
             )
 
             # should we continue?
-            if min_GIS_m < float(self.config.gis_stop_um * constants.MICRO_TO_SI):
+            if min_GIS_um < float(self.config.gis_stop_um):
                 logging.info(
-                    f"Stopping as minimum GIS (m) {min_GIS_m} < threshold "
-                    f"{self.config.gis_stop_um * constants.MICRO_TO_SI}"
+                    f"Stopping as minimum GIS (um) {min_GIS_um} < threshold "
+                    f"{self.config.gis_stop_um} um"
                 )
                 break
 
-            if crack_area_m2 > float(self.config.max_crack_area_um2 * constants.MICRO_TO_SI * constants.MICRO_TO_SI):
+            if crack_area_um2 > float(self.config.max_crack_area_um2):
                 logging.info(
-                    f"Stopping as crack area (m2) {crack_area_m2} > threshold "
-                    f"{self.config.max_crack_area_um2 * constants.MICRO_TO_SI * constants.MICRO_TO_SI}"
+                    f"Stopping as crack area (um2) {crack_area_um2} > threshold "
+                    f"{self.config.max_crack_area_um2} um2"
                 )
                 break
 

@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 import logging
 import pandas as pd
 import skimage
+from fibsem import constants
 
 def get_pixel_width(img):
     """Gets the pixel width of an AdornedImage, or if not possible, returns None
@@ -146,16 +147,16 @@ def measure_GIS(
     GIS_windowed = np.nanmedian(GIS_pxbypx_NaNed.reshape(-1, window_size_px), axis=1)
 
     # Convert to m
-    GIS_m = GIS_windowed * pixel_size_m
+    GIS_um = GIS_windowed * pixel_size_m * constants.SI_TO_MICRO
 
     # Make any value with 0's, i.e. no GIS measured, NaNs
-    GIS_m[np.where(GIS_m == 0)] = np.nan
+    GIS_um[np.where(GIS_um == 0)] = np.nan
 
-    return GIS_m, (xlim_min, xlim_max)
+    return GIS_um, (xlim_min, xlim_max)
 
 
-def get_crack_area_m2(prediction: np.array, pixel_size_m: float) -> float:
-    """Measure the area in the prediction for cracks in m2.
+def get_crack_area_um2(prediction: np.array, pixel_size_m: float) -> float:
+    """Measure the area in the prediction for cracks in um2.
 
     Cracks are only considered if they are within the largest combined lamella+
     GIS+crack object in the prediction.
@@ -165,7 +166,7 @@ def get_crack_area_m2(prediction: np.array, pixel_size_m: float) -> float:
         pixel_size_m (float): Pixel size in m
 
     Returns:
-        float: Crack area in m2
+        float: Crack area in um2
     """
     # Restrict crack search area to the largest object which is not background
     mask_anything = prediction > 0
@@ -178,9 +179,9 @@ def get_crack_area_m2(prediction: np.array, pixel_size_m: float) -> float:
         mask_anything_largest_only
     )
     crack_area_px2 = np.sum(mask_crack_inside_largest_object)
-    crack_area_m2 = crack_area_px2 *pixel_size_m*pixel_size_m
+    crack_area_um2 = crack_area_px2 * (pixel_size_m ** 2) * (constants.SI_TO_MICRO ** 2)
 
-    return crack_area_m2
+    return crack_area_um2
 
 
 def milling_cycle_plot(
@@ -188,9 +189,9 @@ def milling_cycle_plot(
     first_prediction: np.array,
     clean_prediction: np.array,
     fib_image: np.array,
-    gis_thickness_m: np.array,
-    gis_stop_m: float,
-    crack_area_m2: float,
+    gis_thickness_um: np.array,
+    gis_stop_um: float,
+    crack_area_um2: float,
     xlims = None,
     fib_screenshot: np.array = None,
     img_name: str = None,
@@ -232,7 +233,7 @@ def milling_cycle_plot(
         axs[0, 2].axvline(x=xlims[0])
         axs[0, 2].axvline(x=xlims[1])
     axs[0, 2].axis("off")
-    axs[0, 2].set_title(f"SEM, clean, crack area $\mu$m2 = {crack_area_m2*1e12:.2f}")
+    axs[0, 2].set_title(f"SEM, clean, crack area $\mu$m2 = {crack_area_um2:.2f}")
 
     # FIB image
     axs[1, 0].imshow(fib_image, cmap="Greys_r")
@@ -257,23 +258,21 @@ def milling_cycle_plot(
     axs[1, 1].axis("off")
 
     # GIS thickness
-    axs[1, 2].plot(gis_thickness_m * 1e6, ".-")
+    axs[1, 2].plot(gis_thickness_um, ".-")
     axs[1, 2].set_xlabel("Distance along x (px)")
     axs[1, 2].set_ylabel("GIS thickness ($\mu$m)")
-    axs[1, 2].set_xlim(0, len(gis_thickness_m))
-    axs[1, 2].set_ylim(
-        0,
-    )
+    axs[1, 2].set_xlim(0, len(gis_thickness_um))
+    axs[1, 2].set_ylim(0,)
     axs[1, 2].hlines(
-        y=gis_stop_m * 1e6,
+        y=gis_stop_um,
         xmin=0,
-        xmax=len(gis_thickness_m),
+        xmax=len(gis_thickness_um),
         label="Target GIS",
         linestyles="dashed",
         colors="C1",
     )
     axs[1, 2].set_title(
-        f"GIS thickness, min={np.nanmin(gis_thickness_m)*1e6:.2f} $\mu$m"
+        f"GIS thickness, min={np.nanmin(gis_thickness_um):.2f} $\mu$m"
     )
     axs[1, 2].legend()
 
@@ -285,10 +284,10 @@ def milling_cycle_plot(
 def summary_gis_plot(results: pd.DataFrame, lamella_folder: Path):
     plt.figure()
     plt.plot(
-        results.milling_time_s, results.min_GIS_m, label="Minimum GIS thickness (m)"
+        results.milling_time_s, results.min_GIS_um, label="Minimum GIS thickness (um)"
     )
     plt.xlabel("Milling Time (s)")
-    plt.ylabel("GIS Thickness (m)")
+    plt.ylabel("GIS Thickness (um)")
     plt.title(lamella_folder.stem)
     plt.savefig(f"{str(lamella_folder)}/adaptive_polish/{lamella_folder.stem}_GIS_thickness.png")
     plt.close()
