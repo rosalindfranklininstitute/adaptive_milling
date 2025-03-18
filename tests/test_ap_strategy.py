@@ -1,23 +1,61 @@
 import unittest
 from pathlib import Path
+from jinja2 import Environment, FileSystemLoader
+import tempfile
+from datetime import datetime
 
 import fibsem.utils
 
-from autolamella.autolamella.structures import Experiment
+from autolamella.structures import Experiment
+
+from adaptive_polish.strategy import AdaptivePolishMillingConfig, AdaptivePolishMillingStrategy
 
 class AdaptivePolishTest(unittest.TestCase):
 
-    def _setup_microscope(self):
+    def _setup_microscope(
+            self,
+            ap_config: AdaptivePolishMillingConfig,
+            tmp_dir: Path = None,
+        ):
         """Sets up a demo microscope"""
+
+        # set up protocol.yaml
+        if tmp_dir is None:
+            tmp = tempfile.TemporaryDirectory()
+            tmp_dir = tmp.name
+        self.tmp_dir = tmp_dir
+        environment = Environment(loader=FileSystemLoader("data/"))
+        template = environment.get_template("protocol.yaml")
+        protocol = template.render(ap_config.to_dict())
+        with open(f"{tmp_dir}/protocol.yaml", "w") as p:
+            p.write(protocol)
         self.microscope, self.settings = fibsem.utils.setup_session(
-            protocol_path=f"{Path(__file__).parent}/data/protocol.yaml"
+            protocol_path=f"{self.tmp_dir}/protocol.yaml"
         )
 
-    def _setup_experiment(self):
+    def _setup_experiment(
+            self,
+            tmp_dir: Path = None,
+            model_path: Path = None,
+        ):
         """Sets up a demo autolamella experiment"""
-        self.exp = Experiment.load(
-            f"{Path(__file__).parent.parent.parent}/tmp/AutoLamella-2025-03-10-22-34/experiment.yaml"
-            )
+        now = datetime.now().strftime("%Y-%m-%d-%H-%M")
+        # set up experiment.yaml
+        if tmp_dir is None:
+            tmp = tempfile.TemporaryDirectory()
+            tmp_dir = tmp.name
+        self.tmp_dir = tmp_dir
+        environment = Environment(loader=FileSystemLoader("data/"))
+        template = environment.get_template("experiment.yaml")
+        experiment = template.render({
+            "now": now,
+            "cwd": str(Path.cwd()),
+            "model_path": model_path,
+        })
+        with open(f"{tmp_dir}/experiment.yaml", "w") as p:
+            p.write(experiment)
+
+        self.exp = Experiment.load(f"{tmp_dir}/experiment.yaml")
 
     def test_default_config(self):
         """Tests that default config works with no errors"""
