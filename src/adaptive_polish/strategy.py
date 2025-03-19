@@ -1,9 +1,10 @@
+from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Tuple
 import matplotlib.pyplot as plt
 import numpy as np
+import typing
 
 # fibsem
 from fibsem import (
@@ -36,16 +37,20 @@ from fibsem.detection.detection import AdaptiveLamellaCentre
 import adaptive_polish.gis_measurement as gm
 import adaptive_polish.utils as ap_utils
 
+if typing.TYPE_CHECKING:
+    from os import PathLike
+
 
 @dataclass
 class AdaptivePolishMillingConfig(MillingStrategyConfig):
+    model_path: str | PathLike[str]
     align_sem: bool = True
     milling_interval_s: int = 10
     gis_stop_um: float = 0.2
     max_crack_area_um2: float = 2
     max_milling_cycles: int = 30
     window_size_px: int = 10
-    model_path: str = "abc"  #TODO add support in FibsemMillingWidget.set_milling_strategy_ui for path inputs
+    model_generation: str | None = None
 
     _advanced_attributes = []
 
@@ -55,13 +60,14 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
 
     def to_dict(self):
         return {
+            "model_path": self.model_path,
             "align_sem": self.align_sem,
             "milling_interval_s": self.milling_interval_s,
             "gis_stop_um": self.gis_stop_um,
             "max_milling_cycles": self.max_milling_cycles,
             "window_size_px": self.window_size_px,
             "max_crack_area_um2": self.max_crack_area_um2,
-            "model_path": self.model_path,
+            "model_generation": self.model_generation,
         }
 
 
@@ -72,6 +78,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
     def __init__(self, config: AdaptivePolishMillingConfig = None):
         self.config = config or AdaptivePolishMillingConfig()
+        self.model = None
 
     def to_dict(self):
         return {"name": self.name, "config": self.config.to_dict()}
@@ -117,7 +124,13 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         results, gis_results_detailed = ap_utils.setup_results_df()
 
         # load model
-        gm.init_model_with_path(model_path=self.config.model_path)
+        if self.model is None:
+            if not self.config.model_path.is_file():
+                raise FileNotFoundError(f"Failed to find '{self.config.model_path}'")
+            self.model = gm.load_sem_model(
+                model_path=self.config.model_path,
+                generation=self.config.model_generation,
+            )
 
         # align SEM
         if self.config.align_sem is True:
@@ -128,7 +141,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
             # Find center
             logging.info("Starting segmentation")
-            prediction = gm.segment(SEM_img.data)
+            prediction = self.model.predict(SEM_img.data)
             logging.info("Segmentation complete")
             feature = AdaptiveLamellaCentre()
             centre_px = feature.detect(SEM_img.data, prediction, None)

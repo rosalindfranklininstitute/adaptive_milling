@@ -11,17 +11,22 @@
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-
-
-import xml.etree.ElementTree as ET  # to handle metadata as xml
-from adaptive_polish.dl_segmentation import sem_lamella_segmentor as sgm
-import numpy as np
-from pathlib import Path
-import matplotlib.pyplot as plt
 import logging
-import pandas as pd
+import xml.etree.ElementTree as ET  # to handle metadata as xml
+from pathlib import Path
+
 import skimage
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
 from fibsem import constants
+
+from adaptive_polish.dl_segmentation import sem_lamella_segmentor as sgm
+
+
+load_sem_model = sgm.load_model
+
 
 def get_pixel_width(img):
     """Gets the pixel width of an AdornedImage, or if not possible, returns None
@@ -35,32 +40,9 @@ def get_pixel_width(img):
         pixel_size_x = xml_parse.find("BinaryResult/PixelSize/X")
         pixel_width_m = float(pixel_size_x.text)
         return pixel_width_m
-    except:
+    except Exception:
         # if there is no metadata with 'PixelWidth' defaults to the value above
         return None
-
-_segmentor=None
-def init_model_with_path(model_path):
-    #Need to call this before doing segmentation
-    global _segmentor
-    # segmentor = sgm.cSEMLamellaSegmentor(
-    #     model_path=f"{Path(__file__).parent}/dl_segmentation/2024-02-24_0013_gis_lamela_crack_pytorch_AUnet.ptchkp"
-    # )
-    if model_path:
-        _segmentor = sgm.cSEMLamellaSegmentor(model_path=model_path)
-
-def segment(img: np.array) -> np.array:
-    """
-    Segments img using _segmentor instance of cSEMLamellaSegmentor
-
-    Returns: annotated image, array of ints with the same shape as img. Returns None if _segmentor is None
-    """
-
-    global _segmentor
-    prediction=None
-    if _segmentor:
-        prediction = _segmentor.get_prediction(img)
-    return prediction
 
 
 def keep_only_largest_object(mask: np.array, fill_value: int = 1) -> np.array:
@@ -80,17 +62,19 @@ def keep_only_largest_object(mask: np.array, fill_value: int = 1) -> np.array:
     areas = [i.area for i in instance_properties]
     largest_area = max(areas)
     mask_largest_only = skimage.morphology.remove_small_objects(
-        instances,
-        min_size = 0.99 * largest_area
+        instances, min_size=0.99 * largest_area
     )
     mask_largest_only[mask_largest_only > 0] = fill_value
     return mask_largest_only
 
 
 def clean_prediction(
-    prediction: np.array, pixel_size_m: float,
+    prediction: np.array,
+    pixel_size_m: float,
 ) -> np.array:
-    logging.info(f"clean_prediction with prediction.shape:{prediction.shape}, pixel_size_m:{pixel_size_m}")
+    logging.info(
+        f"clean_prediction with prediction.shape:{prediction.shape}, pixel_size_m:{pixel_size_m}"
+    )
     # Generate bool masks for GIS and lamella
     mask_gis = prediction == 1
     mask_lamella = prediction == 2
@@ -115,10 +99,9 @@ def clean_prediction(
 def measure_GIS(
     mask_gis_clean: np.array, window_size_px: int, pixel_size_m: float
 ) -> np.array:
-
     # Calculate average GIS thickness in windows
 
-    #Sum to get thickness along x in pixels
+    # Sum to get thickness along x in pixels
     GIS_pxbypx = np.sum(mask_gis_clean, axis=0).astype(np.float32)
 
     # Pad with zeros to fulfil window size criteria
@@ -128,7 +111,7 @@ def measure_GIS(
         constant_values=np.nan,
     )
 
-    #Get left and right limits from where the mean should be calculated from
+    # Get left and right limits from where the mean should be calculated from
     GIS_pxbypx_where_above_zero = np.where(GIS_pxbypx_pad > 0)
     xlim_min = GIS_pxbypx_where_above_zero[0][0]  # first occurrence along x
     xlim_max = GIS_pxbypx_where_above_zero[0][-1]  # last occurrence along x
@@ -140,8 +123,8 @@ def measure_GIS(
     xlim_max = xlim_max - lamella_width_to_cut
 
     GIS_pxbypx_NaNed = np.copy(GIS_pxbypx_pad).astype(np.float32)
-    GIS_pxbypx_NaNed[:xlim_min]=np.nan
-    GIS_pxbypx_NaNed[xlim_max:]=np.nan
+    GIS_pxbypx_NaNed[:xlim_min] = np.nan
+    GIS_pxbypx_NaNed[xlim_max:] = np.nan
 
     # This mean will discard nan areas
     GIS_windowed = np.nanmedian(GIS_pxbypx_NaNed.reshape(-1, window_size_px), axis=1)
@@ -175,11 +158,10 @@ def get_crack_area_um2(prediction: np.array, pixel_size_m: float) -> float:
 
     # Since crack pixel value is 1 and anything outside largest object is 0
     mask_crack_inside_largest_object = np.multiply(
-        mask_crack,
-        mask_anything_largest_only
+        mask_crack, mask_anything_largest_only
     )
     crack_area_px2 = np.sum(mask_crack_inside_largest_object)
-    crack_area_um2 = crack_area_px2 * (pixel_size_m ** 2) * (constants.SI_TO_MICRO ** 2)
+    crack_area_um2 = crack_area_px2 * (pixel_size_m**2) * (constants.SI_TO_MICRO**2)
 
     return crack_area_um2
 
@@ -192,7 +174,7 @@ def milling_cycle_plot(
     gis_thickness_um: np.array,
     gis_stop_um: float,
     crack_area_um2: float,
-    xlims = None,
+    xlims=None,
     fib_screenshot: np.array = None,
     img_name: str = None,
     save_path: Path = None,
@@ -214,7 +196,7 @@ def milling_cycle_plot(
         cmap="tab10",
         vmin=0,
         vmax=10,
-        interpolation="nearest"
+        interpolation="nearest",
     )
     axs[0, 1].axis("off")
     axs[0, 1].set_title("SEM, 1st prediction")
@@ -227,7 +209,7 @@ def milling_cycle_plot(
         cmap="tab10",
         vmin=0,
         vmax=10,
-        interpolation="nearest"
+        interpolation="nearest",
     )
     if xlims is not None:
         axs[0, 2].axvline(x=xlims[0])
@@ -254,7 +236,7 @@ def milling_cycle_plot(
         # screenshot = pattern_viewer.screenshot()
         # axs[1, 1].imshow(screenshot)
         # pattern_viewer.close()
-        axs[1, 1].imshow(fib_screenshot[:, int(fib_screenshot.shape[1]/2):, :])
+        axs[1, 1].imshow(fib_screenshot[:, int(fib_screenshot.shape[1] / 2) :, :])
     axs[1, 1].axis("off")
 
     # GIS thickness
@@ -262,7 +244,9 @@ def milling_cycle_plot(
     axs[1, 2].set_xlabel("Distance along x (px)")
     axs[1, 2].set_ylabel("GIS thickness ($\mu$m)")
     axs[1, 2].set_xlim(0, len(gis_thickness_um))
-    axs[1, 2].set_ylim(0,)
+    axs[1, 2].set_ylim(
+        0,
+    )
     axs[1, 2].hlines(
         y=gis_stop_um,
         xmin=0,
@@ -271,9 +255,7 @@ def milling_cycle_plot(
         linestyles="dashed",
         colors="C1",
     )
-    axs[1, 2].set_title(
-        f"GIS thickness, min={np.nanmin(gis_thickness_um):.2f} $\mu$m"
-    )
+    axs[1, 2].set_title(f"GIS thickness, min={np.nanmin(gis_thickness_um):.2f} $\mu$m")
     axs[1, 2].legend()
 
     fig.savefig(save_path)
@@ -289,5 +271,7 @@ def summary_gis_plot(results: pd.DataFrame, lamella_folder: Path):
     plt.xlabel("Milling Time (s)")
     plt.ylabel("GIS Thickness (um)")
     plt.title(lamella_folder.stem)
-    plt.savefig(f"{str(lamella_folder)}/adaptive_polish/{lamella_folder.stem}_GIS_thickness.png")
+    plt.savefig(
+        f"{str(lamella_folder)}/adaptive_polish/{lamella_folder.stem}_GIS_thickness.png"
+    )
     plt.close()

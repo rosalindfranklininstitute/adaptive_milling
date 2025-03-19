@@ -57,7 +57,7 @@ class AdaptiveMilling():
             f"{Path(__file__).parent}/dl_segmentation/2024-02-24_0013_gis_lamela_crack_pytorch_AUnet.ptchkp"
         )
         logging.info(f"Initialising DL model, path:{self.model_path}")
-        gm.init_model_with_path(self.model_path)
+        self.model = gm.load_sem_model(self.model_path)
 
     @staticmethod
     def get_default_config_dict():
@@ -163,7 +163,7 @@ class AdaptiveMilling():
 
             # Find center
             logging.info("Starting segmentation")
-            prediction = gm.segment(SEM_img.data)
+            prediction = self.model.predict(SEM_img.data)
             logging.info("Segmentation complete")
             feature = AdaptiveLamellaCentre()
             centre_px = feature.detect(SEM_img.data, prediction, None)
