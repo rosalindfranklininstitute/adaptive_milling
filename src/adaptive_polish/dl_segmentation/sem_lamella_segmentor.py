@@ -6,6 +6,7 @@ Segmentation of lamella, GIS layer and cracks from SEM images
 
 from __future__ import annotations
 
+import enum
 import logging
 import typing
 from pathlib import Path
@@ -26,6 +27,13 @@ if typing.TYPE_CHECKING:
 _logger = logging.getLogger(__name__)
 
 ### Utility functions ###
+
+class SegmentationLabels(enum.IntEnum):
+    BACKGROUND = 0
+    GIS = 1
+    LAMELLA = 2
+    CRACK = 3
+    VACUUM = 4
 
 
 def open_image(path: str | PathLike[str]):

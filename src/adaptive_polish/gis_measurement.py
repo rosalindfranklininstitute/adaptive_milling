@@ -76,8 +76,8 @@ def clean_prediction(
         f"clean_prediction with prediction.shape:{prediction.shape}, pixel_size_m:{pixel_size_m}"
     )
     # Generate bool masks for GIS and lamella
-    mask_gis = prediction == 1
-    mask_lamella = prediction == 2
+    mask_gis = prediction == sgm.SegmentationLabels.GIS
+    mask_lamella = prediction == sgm.SegmentationLabels.LAMELLA
 
     lamella_area_px = np.sum(mask_lamella)
     gis_area_px = np.sum(mask_gis)
