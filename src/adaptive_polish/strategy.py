@@ -14,7 +14,7 @@ from fibsem import (
 from fibsem.milling.base import (
     MillingStrategy,
     MillingStrategyConfig,
-    FibsemMillingStage
+    FibsemMillingStage,
 )
 from fibsem.milling import (
     setup_milling,
@@ -93,7 +93,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         microscope: FibsemMicroscope,
         stage: FibsemMillingStage,
         asynch: bool = False,  # what does this do
-        parent_ui = None,  # what does this do
+        parent_ui=None,  # what does this do
     ) -> None:
         """Run adaptive polishing
         #TODO: improve docs
@@ -107,18 +107,17 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         logging.info(f"Running {self.fullname} for {stage.name}")
 
         # setup milling
-        setup_milling(
-            microscope=microscope,
-            milling_stage=stage
-        )
+        setup_milling(microscope=microscope, milling_stage=stage)
         fib_imaging_settings = microscope.get_imaging_settings(BeamType.ION)
         sem_imaging_settings = microscope.get_imaging_settings(BeamType.ELECTRON)
-        lamella_folder = Path(fib_imaging_settings.path)  # more robust way of setting lamella folder?
+        lamella_folder = Path(
+            fib_imaging_settings.path
+        )  # more robust way of setting lamella folder?
         if Path(f"{lamella_folder}/adaptive_polish").is_dir() is True:
-            logging.info(f"Lamella folder {lamella_folder}/adaptive_polish already exists, some data may be overwritten.")
-        ap_utils.setup_lamella_ap_folders(
-            lamella_folder=lamella_folder
-        )
+            logging.info(
+                f"Lamella folder {lamella_folder}/adaptive_polish already exists, some data may be overwritten."
+            )
+        ap_utils.setup_lamella_ap_folders(lamella_folder=lamella_folder)
 
         # setup results
         results, gis_results_detailed = ap_utils.setup_results_df()
@@ -159,8 +158,16 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             # Plot centering stuff
             plt.figure()
             plt.imshow(prediction, cmap="gray")
-            plt.scatter(centre_px.x, centre_px.y, c="r", marker="+", label="lamella_centre")
-            plt.scatter(SEM_img.data.shape[1]//2, SEM_img.data.shape[0]//2, c="g", marker="+", label="image_centre")
+            plt.scatter(
+                centre_px.x, centre_px.y, c="r", marker="+", label="lamella_centre"
+            )
+            plt.scatter(
+                SEM_img.data.shape[1] // 2,
+                SEM_img.data.shape[0] // 2,
+                c="g",
+                marker="+",
+                label="image_centre",
+            )
             plt.legend()
             plt.savefig(f"{lamella_folder}/adaptive_polish/centering.png")
             plt.close()
@@ -208,16 +215,17 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             GIS_um, xlims = gm.measure_GIS(
                 mask_gis_clean=mask_gis_clean,
                 window_size_px=self.config.window_size_px,
-                pixel_size_m=SEM_img.metadata.pixel_size.x
+                pixel_size_m=SEM_img.metadata.pixel_size.x,
             )
             min_GIS_um = np.nanmin(GIS_um)
             logging.info(f"Took {len(GIS_um)} GIS measurements along x")
-            logging.info(f"Minimum GIS thickness for milling cycle {milling_cycle} = {min_GIS_um}")
+            logging.info(
+                f"Minimum GIS thickness for milling cycle {milling_cycle} = {min_GIS_um}"
+            )
 
             # Crack TODO
             crack_area_um2 = gm.get_crack_area_um2(
-                prediction=prediction,
-                pixel_size_m=SEM_img.metadata.pixel_size.x
+                prediction=prediction, pixel_size_m=SEM_img.metadata.pixel_size.x
             )
 
             logging.info(
@@ -287,22 +295,19 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             pattern[0].time = next_milling_interval
 
             # mill
-            draw_patterns(
-                microscope=microscope,
-                patterns=pattern
-            )
+            draw_patterns(microscope=microscope, patterns=pattern)
             try:
                 run_milling(
                     microscope=microscope,
                     milling_current=stage.milling.milling_current,
                     milling_voltage=stage.milling.milling_voltage,
-                    asynch=False
+                    asynch=False,
                 )
                 logging.info("Completed milling.")
             except Exception as e:
                 logging.error(f"The following error occurred doing milling. {str(e)}")
             finally:
-                microscope.stop_milling() # dont use milling.finish_milling as it would clear patterns
+                microscope.stop_milling()  # dont use milling.finish_milling as it would clear patterns
 
             # Increment counters
             milling_cycle += 1
