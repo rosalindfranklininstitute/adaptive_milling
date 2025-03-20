@@ -1,17 +1,19 @@
 from pathlib import Path
 import pandas as pd
 
-def setup_lamella_ap_folders(lamella_folder: Path):
+def ensure_subdirectories(directory: Path, *subdirectory_names: str) -> list[Path]:
     """Sets up the folders for adaptive polish in the lamella folder (path)
 
     Args:
         lamella_folder (Path): Path to the lamella folder
     """
-    ap_folder = f"{lamella_folder}/adaptive_polish"
-    Path(ap_folder).mkdir(exist_ok=True)
-    Path(f"{ap_folder}/plots").mkdir(exist_ok=True)
-    Path(f"{ap_folder}/sem").mkdir(exist_ok=True)
-    Path(f"{ap_folder}/fib").mkdir(exist_ok=True)
+
+    directories = [directory / _ for _ in subdirectory_names]
+
+    for directory in directories:
+        # Ensure folders exist
+        directory.mkdir(exist_ok=True)
+    return directories
 
 def setup_results_df():
     results = pd.DataFrame(

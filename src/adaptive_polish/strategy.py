@@ -14,7 +14,6 @@ from fibsem import (
 from fibsem.milling.base import (
     MillingStrategy,
     MillingStrategyConfig,
-    FibsemMillingStage,
 )
 from fibsem.milling import (
     setup_milling,
@@ -22,15 +21,11 @@ from fibsem.milling import (
     run_milling,
     finish_milling,
 )
-from fibsem.microscope import FibsemMicroscope
 from fibsem.milling.patterning.patterns2 import (
     TrenchPattern,
     TrenchBitmapPattern,
 )
-from fibsem.structures import (
-    BeamType,
-    ImageSettings,
-)
+from fibsem.structures import BeamType
 from fibsem.detection.detection import AdaptiveLamellaCentre
 
 # Adaptive polish
@@ -39,6 +34,9 @@ import adaptive_polish.utils as ap_utils
 
 if typing.TYPE_CHECKING:
     from os import PathLike
+    from fibsem.milling.base import FibsemMillingStage
+    from fibsem.microscope import FibsemMicroscope
+    from fibsem.structures import ImageSettings
 
 
 @dataclass
@@ -110,17 +108,19 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         setup_milling(microscope=microscope, milling_stage=stage)
         fib_imaging_settings = microscope.get_imaging_settings(BeamType.ION)
         sem_imaging_settings = microscope.get_imaging_settings(BeamType.ELECTRON)
-        lamella_folder = Path(
-            fib_imaging_settings.path
-        )  # more robust way of setting lamella folder?
-        if Path(f"{lamella_folder}/adaptive_polish").is_dir() is True:
+        lamella_folder = Path(fib_imaging_settings.path)
+        lamella_ap_folder = lamella_folder / "adaptive_polish"
+        if lamella_ap_folder.is_dir() is True:
             logging.info(
-                f"Lamella folder {lamella_folder}/adaptive_polish already exists, some data may be overwritten."
+                "Lamella folder %s already exists, some data may be overwritten.",
+                lamella_ap_folder,
             )
-        ap_utils.setup_lamella_ap_folders(lamella_folder=lamella_folder)
+        else:
+            lamella_ap_folder.mkdir()
 
-        # setup results
-        results, gis_results_detailed = ap_utils.setup_results_df()
+        lamella_ap_plots_folder, lamella_ap_sem_folder, lamella_ap_fib_folder = (
+            ap_utils.ensure_subdirectories(lamella_ap_folder, "plots", "sem", "fib")
+        )
 
         # load model
         if self.model is None:
@@ -133,50 +133,40 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
         # align SEM
         if self.config.align_sem is True:
-            logging.info("Using sem beam shift alignment for adaptive polishing")
-
-            # Take reference images
-            SEM_img = acquire.new_image(microscope, sem_imaging_settings)
-
-            # Find center
-            logging.info("Starting segmentation")
-            prediction = self.model.predict(SEM_img.data)
-            logging.info("Segmentation complete")
-            feature = AdaptiveLamellaCentre()
-            centre_px = feature.detect(SEM_img.data, prediction, None)
-
-            # Convert to microscope image coordinates (0, 0 at centre of image)
-            centre_m = conversions.image_to_microscope_image_coordinates(
-                centre_px, SEM_img.data, SEM_img.metadata.pixel_size.x
+            self._align_beam(
+                microscope=microscope,
+                sem_imaging_settings=sem_imaging_settings,
+                plot_path=lamella_ap_folder / "centering.png",
             )
-
-            # shift beam
-            dx, dy = centre_m.x, centre_m.y
-            microscope.beam_shift(dx, dy, BeamType.ELECTRON)
-            logging.info(f"Beamshift {BeamType.ELECTRON} by dx={dx}, dy={dy}")
-
-            # Plot centering stuff
-            plt.figure()
-            plt.imshow(prediction, cmap="gray")
-            plt.scatter(
-                centre_px.x, centre_px.y, c="r", marker="+", label="lamella_centre"
-            )
-            plt.scatter(
-                SEM_img.data.shape[1] // 2,
-                SEM_img.data.shape[0] // 2,
-                c="g",
-                marker="+",
-                label="image_centre",
-            )
-            plt.legend()
-            plt.savefig(f"{lamella_folder}/adaptive_polish/centering.png")
-            plt.close()
 
         # Set lamella folders for saving images
         fib_imaging_settings.save = True
         sem_imaging_settings.save = True
-        fib_imaging_settings.path = Path(f"{lamella_folder}/adaptive_polish/fib")
-        sem_imaging_settings.path = Path(f"{lamella_folder}/adaptive_polish/sem")
+        fib_imaging_settings.path = lamella_ap_fib_folder
+        sem_imaging_settings.path = lamella_ap_sem_folder
+
+        self._mill(
+            microscope=microscope,
+            fib_imaging_settings=fib_imaging_settings,
+            sem_imaging_settings=sem_imaging_settings,
+            stage=stage,
+            lamella_folder=lamella_folder,
+            lamella_ap_folder=lamella_ap_folder,
+            lamella_ap_plots_folder=lamella_ap_plots_folder,
+        )
+
+    def _mill(
+        self,
+        microscope: FibsemMicroscope,
+        fib_imaging_settings: ImageSettings,
+        sem_imaging_settings: ImageSettings,
+        stage: FibsemMillingStage,
+        lamella_folder: Path,
+        lamella_ap_folder: Path,
+        lamella_ap_plots_folder: Path,
+    ) -> None:
+        # setup results
+        results, gis_results_detailed = ap_utils.setup_results_df()
 
         # Initialise counts
         milling_cycle = 0
@@ -240,7 +230,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 "min_GIS_um": min_GIS_um,
                 "crack_area_um2": crack_area_um2,
             }
-            results.to_csv(f"{lamella_folder}/adaptive_polish/GIS_thickness.csv")
+            results.to_csv(lamella_ap_folder / "GIS_thickness.csv")
 
             # Save GIS thickness for each window
             for window, gis_thickness in enumerate(GIS_um):
@@ -255,7 +245,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                     pass
 
             gis_results_detailed.to_csv(
-                f"{lamella_folder}/adaptive_polish/GIS_thickness_detailed.csv"
+                lamella_ap_folder / "GIS_thickness_detailed.csv"
             )
 
             # plots
@@ -269,7 +259,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 crack_area_um2=crack_area_um2,
                 img_name=f_basename,
                 fib_screenshot=None,
-                save_path=f"{lamella_folder}/adaptive_polish/plots/{f_basename}_plot.png",
+                save_path=lamella_ap_plots_folder / f"{f_basename}_plot.png",
             )
 
             # should we continue?
@@ -321,3 +311,46 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             imaging_current=microscope.system.ion.beam.beam_current,
             imaging_voltage=microscope.system.ion.beam.voltage,
         )
+
+    def _align_beam(
+        self,
+        microscope: FibsemMicroscope,
+        sem_imaging_settings: ImageSettings,
+        plot_path: Path,
+    ) -> None:
+        logging.info("Using sem beam shift alignment for adaptive polishing")
+
+        # Take reference images
+        SEM_img = acquire.new_image(microscope, sem_imaging_settings)
+
+        # Find center
+        logging.info("Starting segmentation")
+        prediction = self.model.predict(SEM_img.data)
+        logging.info("Segmentation complete")
+        feature = AdaptiveLamellaCentre()
+        centre_px = feature.detect(SEM_img.data, prediction, None)
+
+        # Convert to microscope image coordinates (0, 0 at centre of image)
+        centre_m = conversions.image_to_microscope_image_coordinates(
+            centre_px, SEM_img.data, SEM_img.metadata.pixel_size.x
+        )
+
+        # shift beam
+        dx, dy = centre_m.x, centre_m.y
+        microscope.beam_shift(dx, dy, BeamType.ELECTRON)
+        logging.info(f"Beamshift {BeamType.ELECTRON} by dx={dx}, dy={dy}")
+
+        # Plot centering stuff
+        plt.figure()
+        plt.imshow(prediction, cmap="gray")
+        plt.scatter(centre_px.x, centre_px.y, c="r", marker="+", label="lamella_centre")
+        plt.scatter(
+            SEM_img.data.shape[1] // 2,
+            SEM_img.data.shape[0] // 2,
+            c="g",
+            marker="+",
+            label="image_centre",
+        )
+        plt.legend()
+        plt.savefig(plot_path)
+        plt.close()
