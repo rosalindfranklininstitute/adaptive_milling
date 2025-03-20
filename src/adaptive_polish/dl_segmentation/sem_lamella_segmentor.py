@@ -89,8 +89,12 @@ def normalize_by_mean_std_with_clip(image, **kwargs):
 
 class AbstractAdaptivePolishingModel(ABC):
     def __init__(
-        self, model_path: str | PathLike[str], device: torch.DeviceLikeType
+        self,
+        model_path: str | PathLike[str],
+        device: torch.DeviceLikeType,
+        num_classes: int,
     ) -> None:
+        self.num_classes = num_classes
         self.model_path: Path = Path(model_path)
         self.device: torch.DeviceLikeType = torch.device(device)
         self.model: torch.nn.Module = self.load(model_path).to(self.device)
@@ -144,7 +148,7 @@ class Gen0Model(AbstractAdaptivePolishingModel):
         max_image_size: int = 512,
     ) -> None:
         self._image_size = max_image_size
-        super().__init__(model_path=model_path, device=device)
+        super().__init__(model_path=model_path, device=device, num_classes=4)
 
     def preprocess(self, image: NDArray[typing.Any]) -> torch.Tensor:
         assert len(image.shape) == 2
@@ -237,7 +241,7 @@ class Gen1Model(AbstractAdaptivePolishingModel):
         max_image_size: int = 1536,
     ) -> None:
         self._image_size = max_image_size
-        super().__init__(model_path=model_path, device=device)
+        super().__init__(model_path=model_path, device=device, num_classes=5)
 
     def preprocess(self, image: NDArray[typing.Any]) -> torch.Tensor:
         # Hopefully this is a more efficient implementation of Casper's preprocessing
