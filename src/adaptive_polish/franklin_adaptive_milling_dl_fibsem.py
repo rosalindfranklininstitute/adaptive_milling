@@ -144,12 +144,17 @@ class AdaptiveMilling:
 
         lamella_folder = Path(settings_in.image.path)
         lamella_ap_folder = Path(f"{lamella_folder}/adaptive_polish")
-        if lamella_ap_folder.exists() is False:
-            lamella_ap_folder.mkdir()
-            Path(f"{lamella_ap_folder}/plots").mkdir()
-            Path(f"{lamella_ap_folder}/sem").mkdir()
-            Path(f"{lamella_ap_folder}/fib").mkdir()
-            Path(f"{lamella_ap_folder}/centering").mkdir()
+        lamella_ap_plots_folder = lamella_ap_folder / "plots"
+        lamella_ap_sem_folder = lamella_ap_folder / "sem"
+        lamella_ap_fib_folder = lamella_ap_folder / "fib"
+        lamella_ap_centering_folder = lamella_ap_folder / "centering"
+
+        # Ensure folders exist
+        lamella_ap_folder.mkdir(exist_ok=True)
+        lamella_ap_plots_folder.mkdir(exist_ok=True)
+        lamella_ap_sem_folder.mkdir(exist_ok=True)
+        lamella_ap_fib_folder.mkdir(exist_ok=True)
+        lamella_ap_centering_folder.mkdir(exist_ok=True)
 
         # Running ---------------------------------------------------------------------
         # Align with beamshift
@@ -205,7 +210,7 @@ class AdaptiveMilling:
                 label="image_centre",
             )
             plt.legend()
-            plt.savefig(f"{lamella_ap_folder}/centering.png")
+            plt.savefig(lamella_ap_folder / "centering.png")
             plt.close()
 
         # Set imaging settings according to the adaptive_polish part of the protocol.yaml
@@ -217,8 +222,8 @@ class AdaptiveMilling:
             setattr(FIB_settings, key, value)
         SEM_settings.save = True
         FIB_settings.save = True
-        SEM_settings.path = Path(f"{lamella_ap_folder}/sem")
-        FIB_settings.path = Path(f"{lamella_ap_folder}/fib")
+        SEM_settings.path = lamella_ap_sem_folder
+        FIB_settings.path = lamella_ap_fib_folder
 
         # Initialise counts
         scan_count = 0
@@ -307,7 +312,7 @@ class AdaptiveMilling:
                 "min_GIS_m": min_GIS_m,
                 "crack_area_m2": crack_area_m2,
             }
-            results.to_csv(f"{lamella_ap_folder}/GIS_thickness.csv")
+            results.to_csv(lamella_ap_folder / "GIS_thickness.csv")
 
             # Save GIS thickness for each window
             for window, gis_thickness in enumerate(GIS_m):
@@ -322,7 +327,7 @@ class AdaptiveMilling:
                     pass
 
             gis_results_detailed.to_csv(
-                f"{lamella_ap_folder}/GIS_thickness_detailed.csv"
+                lamella_ap_folder / "GIS_thickness_detailed.csv"
             )
 
             # Generate plots
@@ -340,7 +345,7 @@ class AdaptiveMilling:
                 crack_area_m2=crack_area_m2,
                 img_name=f_basename,
                 fib_screenshot=fib_screenshot,
-                save_path=f"{lamella_ap_folder}/plots/{f_basename}_plot.png",
+                save_path=lamella_ap_plots_folder / f"{f_basename}_plot.png",
             )
 
             # Should we continue?
