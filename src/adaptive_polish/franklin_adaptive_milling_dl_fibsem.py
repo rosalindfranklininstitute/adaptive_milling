@@ -147,14 +147,12 @@ class AdaptiveMilling:
         lamella_ap_plots_folder = lamella_ap_folder / "plots"
         lamella_ap_sem_folder = lamella_ap_folder / "sem"
         lamella_ap_fib_folder = lamella_ap_folder / "fib"
-        lamella_ap_centering_folder = lamella_ap_folder / "centering"
 
         # Ensure folders exist
         lamella_ap_folder.mkdir(exist_ok=True)
         lamella_ap_plots_folder.mkdir(exist_ok=True)
         lamella_ap_sem_folder.mkdir(exist_ok=True)
         lamella_ap_fib_folder.mkdir(exist_ok=True)
-        lamella_ap_centering_folder.mkdir(exist_ok=True)
 
         # Running ---------------------------------------------------------------------
         # Align with beamshift
