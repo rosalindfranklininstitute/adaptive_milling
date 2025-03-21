@@ -10,6 +10,7 @@ import typing
 from fibsem import (
     acquire,
     conversions,
+    constants,
 )
 from fibsem.milling.base import (
     MillingStrategy,
@@ -190,33 +191,44 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             prediction = self.model.predict(SEM_img.data, fullsize=False)
             logging.info("Segmentation complete")
 
-            mask_gis_clean = gm.clean_prediction(
-                prediction,
-                pixel_size_m=SEM_img.metadata.pixel_size.x,
+            prediction_pixel_size_m = SEM_img.metadata.pixel_size.x * (
+                SEM_img.data.shape[1] / prediction.shape[1]
             )
 
-            # Is there any GIS?
-            if not np.any(mask_gis_clean):
-                # No GIS detected
-                logging.info("No GIS layer detected in mask_gis_clean. Stopping")
+            try:
+                mask_gis_clean, mask_lamella_clean, mask_crack_clean = (
+                    gm.clean_prediction(
+                        prediction,
+                        pixel_size_m=prediction_pixel_size_m,
+                        minimum_lamella_size_m2=30e-6,  # 30μm²
+                    )
+                )
+            except ValueError as e:
+                logging.warning("Failed to clean GIS prediction: %s", str(e))
                 break
 
             # Measure GIS
-            GIS_um, xlims = gm.measure_GIS(
-                mask_gis_clean=mask_gis_clean,
-                window_size_px=self.config.window_size_px,
-                pixel_size_m=SEM_img.metadata.pixel_size.x,
+            gis_thickness_um = (
+                gm.filter_gis_thickness(
+                    np.sum(
+                        gm.resize_image(mask_gis_clean, new_shape=SEM_img.data.shape),
+                        axis=0,
+                    ),
+                    window_size_m=self.config.window_size_m,
+                    pixel_size_m=SEM_img.metadata.pixel_size.x,
+                )
+                * constants.SI_TO_MICRO
             )
-            min_GIS_um = np.nanmin(GIS_um)
-            logging.info(f"Took {len(GIS_um)} GIS measurements along x")
+            min_gis_um = np.nanmin(gis_thickness_um)
+            logging.info(f"Took {len(gis_thickness_um)} GIS measurements along x")
             logging.info(
-                f"Minimum GIS thickness for milling cycle {milling_cycle} = {min_GIS_um}"
+                f"Minimum GIS thickness for milling cycle {milling_cycle} = {min_gis_um}"
             )
 
-            # Crack TODO
-            crack_area_um2 = gm.get_crack_area_um2(
-                prediction=prediction, pixel_size_m=SEM_img.metadata.pixel_size.x
-            )
+            if mask_crack_clean is None:
+                crack_area_um2 = 0
+            else:
+                crack_area_um2 = gm.get_mask_area_um2(mask_crack_clean)
 
             logging.info(
                 f"Area of cracks found in milling cycle {milling_cycle} = "
@@ -227,13 +239,13 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             results.loc[milling_cycle] = {
                 "image": f"adapt_mill_img_{milling_cycle:03}",
                 "milling_time_s": total_time,
-                "min_GIS_um": min_GIS_um,
+                "min_GIS_um": min_gis_um,
                 "crack_area_um2": crack_area_um2,
             }
             results.to_csv(lamella_ap_folder / "GIS_thickness.csv")
 
             # Save GIS thickness for each window
-            for window, gis_thickness in enumerate(GIS_um):
+            for window, gis_thickness in enumerate(gis_thickness_um):
                 if gis_thickness > 0:
                     gis_results_detailed.loc[len(gis_results_detailed)] = {
                         "image": f_basename,
@@ -248,13 +260,19 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 lamella_ap_folder / "GIS_thickness_detailed.csv"
             )
 
+            clean_foreground_prediction = gm.masks_to_labels(
+                lamella_mask=mask_lamella_clean,
+                gis_mask=mask_gis_clean,
+                crack_mask=mask_crack_clean,
+            )
+
             # plots
             gm.milling_cycle_plot(
                 sem_image=SEM_img.data,
                 first_prediction=prediction,
-                clean_prediction=mask_gis_clean,
+                clean_prediction=clean_foreground_prediction,
                 fib_image=FIB_img.data,
-                gis_thickness_um=GIS_um,
+                gis_thickness_um=gis_thickness_um,
                 gis_stop_um=self.config.gis_stop_um,
                 crack_area_um2=crack_area_um2,
                 img_name=f_basename,
@@ -263,9 +281,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             )
 
             # should we continue?
-            if min_GIS_um < float(self.config.gis_stop_um):
+            if min_gis_um < float(self.config.gis_stop_um):
                 logging.info(
-                    f"Stopping as minimum GIS (um) {min_GIS_um} < threshold "
+                    f"Stopping as minimum GIS (um) {min_gis_um} < threshold "
                     f"{self.config.gis_stop_um} um"
                 )
                 break
@@ -303,7 +321,10 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             milling_cycle += 1
             total_time += next_milling_interval
 
-        gm.summary_gis_plot(results=results, lamella_folder=lamella_folder)
+        gm.summary_gis_plot(
+            results=results,
+            save_path=lamella_ap_folder / f"{lamella_folder.stem}_GIS_thickness.png",
+        )
 
         # finish milling (clear patterns, restore imaging current)
         finish_milling(
