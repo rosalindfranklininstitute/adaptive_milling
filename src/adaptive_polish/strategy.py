@@ -187,7 +187,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
             # Segmentation
             logging.info("Starting segmentation")
-            prediction = gm.segment(SEM_img.data)
+            prediction = self.model.predict(SEM_img.data, fullsize=False)
             logging.info("Segmentation complete")
 
             mask_gis_clean = gm.clean_prediction(
