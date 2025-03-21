@@ -26,7 +26,6 @@ if typing.TYPE_CHECKING:
 
 _logger = logging.getLogger(__name__)
 
-### Utility functions ###
 
 class SegmentationLabels(enum.IntEnum):
     BACKGROUND = 0
@@ -36,6 +35,7 @@ class SegmentationLabels(enum.IntEnum):
     VACUUM = 4
 
 
+### Utility functions ###
 def open_image(path: str | PathLike[str]):
     path = Path(path)
     suffix = path.suffix.lower()
@@ -101,7 +101,9 @@ class AbstractAdaptivePolishingModel(ABC):
         self.model.eval()
 
     @abstractmethod
-    def _preprocess(self, image: NDArray[typing.Any]) -> torch.Tensor:
+    def _preprocess(
+        self, image: NDArray[typing.Any]
+    ) -> NDArray[typing.Any] | torch.Tensor:
         raise NotImplementedError(
             "AbstractAdaptivePolishingModel.preprocess must be overridden"
         )
@@ -113,17 +115,32 @@ class AbstractAdaptivePolishingModel(ABC):
             "AbstractAdaptivePolishingModel.load must be overridden"
         )
 
-    def _postprocess(prediction: torch.Tensor) -> NDArray[np.long]:
+    def _postprocess(self, prediction: torch.Tensor) -> NDArray[np.long]:
         # converts logist to label
         return torch.argmax(prediction, dim=1).squeeze(0).numpy(force=True)
 
     def predict(
-        self, image: NDArray[typing.Any] | torch.Tensor, full_size: bool = True
+        self,
+        image: NDArray[typing.Any] | str | PathLike[str],
+        full_size: bool = True,
     ) -> NDArray[typing.Any]:
+        if not isinstance(image, np.ndarray):
+            try:
+                image = Path(image)
+            except Exception:
+                raise ValueError(f"Failed to parse image '{image}'")
+            if not image.is_file():
+                raise FileNotFoundError(image)
+
+        image = open_image(image).squeeze()  # Ensure 2D images are 2D
+
+        if len(image.shape) != 2:
+            raise ValueError("Adaptive polishing SEM models only supports 2D images")
+
         with torch.no_grad():
             preprocessed = self._preprocess(image)  # try shortcut
 
-            if isinstance(preprocessed, np.ndarray):
+            if not torch.is_tensor(preprocessed):
                 preprocessed = torch.from_numpy(preprocessed)
 
             preprocessed = preprocessed.to(self.device)
@@ -150,8 +167,7 @@ class Gen0Model(AbstractAdaptivePolishingModel):
         self._image_size = max_image_size
         super().__init__(model_path=model_path, device=device, num_classes=4)
 
-    def preprocess(self, image: NDArray[typing.Any]) -> torch.Tensor:
-        assert len(image.shape) == 2
+    def _preprocess(self, image: NDArray[typing.Any]) -> torch.Tensor:
         smallest_dim = min(*image.shape)
         new_size = tuple(
             int(sz0 / smallest_dim * self._image_size) for sz0 in image.shape
@@ -173,7 +189,7 @@ class Gen0Model(AbstractAdaptivePolishingModel):
             ]
         )
 
-        return transform(image=image)["image"]
+        return transform(image=image)["image"].unsqueeze_(0)
 
     def load(self, model_path: str | PathLike[str]) -> torch.nn.Module:
         model_path = Path(model_path)
@@ -192,7 +208,7 @@ class Gen0Model(AbstractAdaptivePolishingModel):
         model_arch = None
 
         model_kwargs = {
-            "classes": 4,
+            "classes": self.num_classes,
             "encoder_weights": None,
             "in_channels": 1,
             "activation": None,
@@ -228,7 +244,7 @@ class Gen0Model(AbstractAdaptivePolishingModel):
 
         model = model_arch(**model_kwargs)
 
-        model.load_state_dict(model_st_dict, map_location=self.device)
+        model.load_state_dict(model_st_dict)
 
         return model
 
@@ -243,8 +259,14 @@ class Gen1Model(AbstractAdaptivePolishingModel):
         self._image_size = max_image_size
         super().__init__(model_path=model_path, device=device, num_classes=5)
 
-    def preprocess(self, image: NDArray[typing.Any]) -> torch.Tensor:
+    def _preprocess(self, image: NDArray[typing.Any]) -> torch.Tensor:
         # Hopefully this is a more efficient implementation of Casper's preprocessing
+        image_shape_array = np.asarray(image.shape)
+        axis_multiplier = np.min(self._image_size / image_shape_array)
+        target_shape = tuple(
+            np.round(image_shape_array * axis_multiplier).astype(int).tolist()
+        )
+
         with torch.no_grad():
             image = torch.from_numpy(image.astype(np.float32)).to(self.device)
             mean, std = image.mean(), image.std()
@@ -254,7 +276,10 @@ class Gen1Model(AbstractAdaptivePolishingModel):
             image /= 3 * std
             image.clamp_(0, 1)
 
-            image = v2.functional.resize(image, size=None, max_size=self.max_size)
+            image = v2.functional.resize(
+                image.unsqueeze_(0).unsqueeze_(0),  # expect channel and batch axes
+                size=target_shape,
+            )
             # No need to pad image as the we're not processing batches
 
             return v2.functional.grayscale_to_rgb(image).to(
@@ -265,7 +290,8 @@ class Gen1Model(AbstractAdaptivePolishingModel):
         model = smp.Unet(
             encoder_name="efficientnet-b4",
             encoder_weights=None,
-            classes=5,
+            classes=self.num_classes,
+            in_channels=3,
             activation=None,
             decoder_attention_type="scse",
         )
@@ -287,8 +313,8 @@ def _get_newest_generation_key():
 
 def load_model(
     model_path: str | PathLike[str],
-    device: torch.DeviceLikeType | None = None,
     generation: int | str | None = None,
+    device: torch.DeviceLikeType | None = None,
 ) -> AbstractAdaptivePolishingModel:
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
