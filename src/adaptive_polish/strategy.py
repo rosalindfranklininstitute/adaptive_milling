@@ -50,6 +50,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
     max_milling_cycles: int = 30
     window_size_px: int = 10
     model_generation: str | None = None
+    minimum_lamella_area_um2: float = 30.0  # 30μm²
 
     _advanced_attributes = []
 
@@ -67,6 +68,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
             "window_size_px": self.window_size_px,
             "max_crack_area_um2": self.max_crack_area_um2,
             "model_generation": self.model_generation,
+            "minimum_lamella_area_um2": self.minimum_lamella_area_um2,
         }
 
 
@@ -200,7 +202,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                     gm.clean_prediction(
                         prediction,
                         pixel_size_m=prediction_pixel_size_m,
-                        minimum_lamella_size_m2=30e-6,  # 30μm²
+                        minimum_lamella_size_um2=self.config.minimum_lamella_area_um2,
                     )
                 )
             except ValueError as e:

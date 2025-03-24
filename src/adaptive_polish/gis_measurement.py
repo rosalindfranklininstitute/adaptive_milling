@@ -73,7 +73,7 @@ def keep_only_largest_object(mask: NDArray[np.integer]) -> NDArray[np.bool_]:
 def clean_prediction(
     prediction: NDArray[np.integer],
     pixel_size_m: float,
-    minimum_lamella_size_m2: float = 0,
+    minimum_lamella_size_um2: float = 0,
 ) -> tuple[NDArray[np.bool_], NDArray[np.bool_], NDArray[np.bool_] | None]:
     logging.debug(
         "Cleaning prediction with shape: %s, pixel_size_m: %.4e",
@@ -106,9 +106,12 @@ def clean_prediction(
     )  # Gets the crack that's connected to the lamella
 
     # Ensure lamella and GIS object is bigger than minimum size
-    if np.sum(mask_connected_lamella) * pixel_size_m <= minimum_lamella_size_m2:
+    if (
+        np.sum(mask_connected_lamella) * pixel_size_m * constants.SI_TO_MICRO
+        <= minimum_lamella_size_um2
+    ):
         raise ValueError(
-            f"Failed to find lamella larger than {minimum_lamella_size_m2:.4e}um2",
+            f"Failed to find lamella larger than {minimum_lamella_size_um2:.4e}um2",
         )
 
     # Throw away GIS above the lamella mask
