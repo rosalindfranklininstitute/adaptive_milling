@@ -27,17 +27,19 @@ from fibsem.milling.patterning.patterns2 import (
     TrenchBitmapPattern,
 )
 from fibsem.structures import BeamType
-from fibsem.detection.detection import AdaptiveLamellaCentre
 
 # Adaptive polish
 import adaptive_polish.gis_measurement as gm
 import adaptive_polish.utils as ap_utils
+from adaptive_polish.dl_segmentation.sem_lamella_segmentor import SegmentationLabels
+from adaptive_polish.centring import AdaptiveLamellaCentre2
 
 if typing.TYPE_CHECKING:
     from os import PathLike
+    from numpy.typing import NDArray
     from fibsem.milling.base import FibsemMillingStage
     from fibsem.microscope import FibsemMicroscope
-    from fibsem.structures import ImageSettings
+    from fibsem.structures import FibsemImage, ImageSettings, Point
 
 _logger = logging.getLogger(__name__)
 
@@ -82,6 +84,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
     def __init__(self, config: AdaptivePolishMillingConfig = None):
         self.config = config or AdaptivePolishMillingConfig()
         self.model = None
+        self._centring_feature = AdaptiveLamellaCentre2()
 
     def to_dict(self):
         return {"name": self.name, "config": self.config.to_dict()}
@@ -201,16 +204,22 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 * (sem_image.data.shape[1] / prediction.shape[1])
             )
 
-            try:
-                mask_gis_clean, mask_lamella_clean, mask_crack_clean = (
-                    gm.clean_prediction(
-                        prediction,
-                        pixel_size_m=prediction_pixel_size_m,
-                        minimum_lamella_size_um2=self.config.minimum_lamella_area_um2,
-                    )
+            mask_lamella_clean, mask_gis_clean, mask_crack_clean = gm.clean_prediction(
+                prediction,
+                additional_labels=(SegmentationLabels.GIS, SegmentationLabels.CRACK),
+            )
+            if (
+                gm.get_mask_area_um2(
+                    mask_lamella_clean, pixel_size_um=prediction_pixel_size_um
                 )
-            except ValueError as e:
-                logging.warning("Failed to clean GIS prediction: %s", str(e))
+                >= self.config.minimum_lamella_area_um2
+            ):
+                _logger.warning(
+                    f"Failed to find lamella larger than {self.config.minimum_lamella_area_um2:.4e}um2",
+                )
+                break
+            if mask_gis_clean is None:
+                _logger.warning("No GIS found beneath the lamella")
                 break
 
             # Measure GIS
@@ -359,22 +368,104 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         prediction = self.model.predict(sem_image.data, full_size=False)
         _logger.info("Segmentation complete")
 
+        mask_lamella_clean, _, _ = gm.clean_prediction(
+            prediction,
+            additional_labels=(SegmentationLabels.GIS, SegmentationLabels.CRACK),
+        )
+
+        centre_m, centre_px = self._get_lamella_centre(
+            sem_image, labels=mask_lamella_clean
+        )
+
         # shift beam
         dx, dy = centre_m.x, centre_m.y
         microscope.beam_shift(dx, dy, BeamType.ELECTRON)
         _logger.info(f"Beamshift {BeamType.ELECTRON} by dx={dx}, dy={dy}")
-
-        # Plot centering stuff
-        plt.figure()
-        plt.imshow(prediction, cmap="gray")
-        plt.scatter(centre_px.x, centre_px.y, c="r", marker="+", label="lamella_centre")
-        plt.scatter(
-            sem_image.data.shape[1] // 2,
-            sem_image.data.shape[0] // 2,
-            c="g",
-            marker="+",
-            label="image_centre",
+        AdaptivePolishMillingStrategy._create_centring_plot(
+            sem_image=sem_image,
+            prediction=prediction,
+            mask_lamella_clean=mask_lamella_clean,
+            centre_px=centre_px,
+            plot_path=plot_path,
         )
-        plt.legend()
-        plt.savefig(plot_path)
-        plt.close()
+
+    @staticmethod
+    def _create_centring_plot(
+        sem_image: FibsemImage,
+        mask_lamella_clean: NDArray[np.bool_],
+        centre_px: Point,
+        centre_m: Point,
+        plot_path: Path,
+        prediction: NDArray[np.integer] | None = None,
+    ) -> None:
+        # Plot centring stuff
+        if prediction is not None:
+            fig, axs = plt.subplots(1, 2)
+            axs = axs.ravel()[::-1]
+        else:
+            fig, ax = plt.subplots(1, 2)
+            axs = [ax]
+
+        _ = axs[0].imshow(sem_image.data, cmap="gray")
+        extent = _.get_extent()
+        axs[0].imshow(
+            # Overlay the cleaned lamella
+            mask_lamella_clean,
+            cmap=ListedColormap(
+                [(0, 0, 0, 0), gm.LABEL_CMAP(SegmentationLabels.LAMELLA.value)]
+            ),
+            extent=extent,
+        )
+        if prediction is not None:
+            axs[1].imshow(prediction, cmap=gm.LABEL_CMAP, extent=extent)
+
+        for ax in axs:
+            # Add centre markers to both
+            ax.scatter(
+                centre_px.x,
+                centre_px.y,
+                c="r",
+                marker="+",
+                label="lamella_centre",
+            )
+            ax.scatter(
+                mask_lamella_clean.shape[1] // 2,
+                mask_lamella_clean.shape[0] // 2,
+                c="g",
+                marker="+",
+                label="image_centre",
+            )
+            ax.set_xticks([])
+            ax.set_yticks([])
+
+        axs[-1].legend()  # No need to have a duplicate legend
+
+        fig.suptitle(
+            f"Lamella centre (x, y): {centre_m.x * constants.SI_TO_MICRO}, {centre_m.y * constants.SI_TO_MICRO} $\mum$"
+        )
+        fig.tight_layout()
+
+        fig.savefig(plot_path)
+        plt.close(fig)
+
+    def _get_lamella_centre(
+        self, sem_image: NDArray[typing.Any], lamella_mask: NDArray[np.bool_]
+    ) -> tuple[Point, Point]:
+        # This does assume square pixels
+        if sem_image.data.shape[1] == lamella_mask.shape[1]:
+            labels_pixel_size_m = sem_image.metadata.pixel_size.x
+        else:
+            labels_pixel_size_m = sem_image.metadata.pixel_size.x * (
+                sem_image.data.shape[1] / lamella_mask.shape[1]
+            )
+
+        centre_px = self._centring_feature.detect(sem_image.data, lamella_mask, None)
+
+        # Convert to microscope image coordinates (0, 0 at centre of image)
+        centre_m = conversions.image_to_microscope_image_coordinates(
+            centre_px, lamella_mask, labels_pixel_size_m, subpixel_precision=True
+        )
+        return (
+            centre_m,
+            centre_px,
+        )
