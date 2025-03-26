@@ -184,17 +184,19 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 f"Acquiring images for milling cycle {milling_cycle}/{self.config.max_milling_cycles}"
             )
             fib_imaging_settings.filename = f"{f_basename}_FIB.tif"
-            FIB_img = acquire.new_image(microscope, fib_imaging_settings)
+            fib_image = acquire.new_image(microscope, fib_imaging_settings)
             sem_imaging_settings.filename = f"{f_basename}_SEM.tif"
-            SEM_img = acquire.new_image(microscope, sem_imaging_settings)
+            sem_image = acquire.new_image(microscope, sem_imaging_settings)
 
             # Segmentation
             logging.info("Starting segmentation")
-            prediction = self.model.predict(SEM_img.data, fullsize=False)
+            prediction = self.model.predict(sem_image.data, fullsize=False)
             logging.info("Segmentation complete")
 
-            prediction_pixel_size_m = SEM_img.metadata.pixel_size.x * (
-                SEM_img.data.shape[1] / prediction.shape[1]
+            prediction_pixel_size_um = (
+                sem_image.metadata.pixel_size.x
+                * constants.SI_TO_MICRO
+                * (sem_image.data.shape[1] / prediction.shape[1])
             )
 
             try:
@@ -213,11 +215,11 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             gis_thickness_um = (
                 gm.filter_gis_thickness(
                     np.sum(
-                        gm.resize_image(mask_gis_clean, new_shape=SEM_img.data.shape),
+                        gm.resize_image(mask_gis_clean, new_shape=sem_image.data.shape),
                         axis=0,
                     ),
                     window_size_m=self.config.window_size_m,
-                    pixel_size_m=SEM_img.metadata.pixel_size.x,
+                    pixel_size_m=sem_image.metadata.pixel_size.x,
                 )
                 * constants.SI_TO_MICRO
             )
@@ -230,7 +232,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             if mask_crack_clean is None:
                 crack_area_um2 = 0
             else:
-                crack_area_um2 = gm.get_mask_area_um2(mask_crack_clean)
+                crack_area_um2 = gm.get_mask_area_um2(
+                    mask_crack_clean, pixel_size_um=prediction_pixel_size_um
+                )
 
             logging.info(
                 f"Area of cracks found in milling cycle {milling_cycle} = "
@@ -270,10 +274,10 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
             # plots
             gm.milling_cycle_plot(
-                sem_image=SEM_img.data,
+                sem_image=sem_image.data,
                 first_prediction=prediction,
                 clean_prediction=clean_foreground_prediction,
-                fib_image=FIB_img.data,
+                fib_image=fib_image.data,
                 gis_thickness_um=gis_thickness_um,
                 gis_stop_um=self.config.gis_stop_um,
                 crack_area_um2=crack_area_um2,
@@ -344,19 +348,18 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         logging.info("Using sem beam shift alignment for adaptive polishing")
 
         # Take reference images
-        SEM_img = acquire.new_image(microscope, sem_imaging_settings)
+        sem_image = acquire.new_image(microscope, sem_imaging_settings)
 
         # Find center
         logging.info("Starting segmentation")
-        prediction = self.model.predict(SEM_img.data)
+        prediction = self.model.predict(sem_image.data)
         logging.info("Segmentation complete")
         feature = AdaptiveLamellaCentre()
-        centre_px = feature.detect(SEM_img.data, prediction, None)
+        centre_px = feature.detect(sem_image.data, prediction, None)
 
         # Convert to microscope image coordinates (0, 0 at centre of image)
         centre_m = conversions.image_to_microscope_image_coordinates(
-            centre_px, SEM_img.data, SEM_img.metadata.pixel_size.x
-        )
+            centre_px, sem_image.data, sem_image.metadata.pixel_size.x
 
         # shift beam
         dx, dy = centre_m.x, centre_m.y
@@ -368,8 +371,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         plt.imshow(prediction, cmap="gray")
         plt.scatter(centre_px.x, centre_px.y, c="r", marker="+", label="lamella_centre")
         plt.scatter(
-            SEM_img.data.shape[1] // 2,
-            SEM_img.data.shape[0] // 2,
+            sem_image.data.shape[1] // 2,
+            sem_image.data.shape[0] // 2,
             c="g",
             marker="+",
             label="image_centre",
