@@ -56,6 +56,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
     window_size_px: int = 10
     model_generation: str | None = None
     minimum_lamella_area_um2: float = 30.0  # 30μm²
+    maximum_drift_um: float = 0.05
 
     _advanced_attributes = []
 
@@ -74,6 +75,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
             "max_crack_area_um2": self.max_crack_area_um2,
             "model_generation": self.model_generation,
             "minimum_lamella_area_um2": self.minimum_lamella_area_um2,
+            "maximum_drift_um": self.maximum_drift_um,
         }
 
 
@@ -297,6 +299,30 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 fib_screenshot=None,
                 save_path=lamella_ap_plots_folder / f"{f_basename}_plot.png",
             )
+
+            # Check for lamella centre
+            centre_m, mask_centre_px = self._get_lamella_centre(
+                sem_image, labels=prediction
+            )
+            centre_drift_um = (
+                np.sqrt(centre_m.x**2, centre_m.y**2) * constants.SI_TO_MICRO
+            )
+            if centre_drift_um > self.config.maximum_drift_um:
+                _logger.warning(
+                    "Stopping as total drift (um) %.4f > threshold %.4f (might be a segmentation problem)",
+                    self.config.maximum_drift_um,
+                    centre_drift_um,
+                )
+                # Create centring plot if centring is found to be beyond the threshold
+                AdaptivePolishMillingStrategy._create_centring_plot(
+                    sem_image=sem_image,
+                    mask_lamella_clean=mask_lamella_clean,
+                    mask_centre_px=mask_centre_px,
+                    mask_centre_m=centre_m,
+                    plot_path=lamella_ap_plots_folder
+                    / f"{f_basename}_centring_problem.png",
+                )
+                break
 
             # should we continue?
             if min_gis_um < float(self.config.gis_stop_um):
