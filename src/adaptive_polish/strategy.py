@@ -39,6 +39,8 @@ if typing.TYPE_CHECKING:
     from fibsem.microscope import FibsemMicroscope
     from fibsem.structures import ImageSettings
 
+_logger = logging.getLogger(__name__)
+
 
 @dataclass
 class AdaptivePolishMillingConfig(MillingStrategyConfig):
@@ -180,7 +182,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             f_basename = f"{lamella_folder.stem}_AP_img_{milling_cycle:03}"
 
             # Acquire images
-            logging.info(
+            _logger.info(
                 f"Acquiring images for milling cycle {milling_cycle}/{self.config.max_milling_cycles}"
             )
             fib_imaging_settings.filename = f"{f_basename}_FIB.tif"
@@ -189,9 +191,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             sem_image = acquire.new_image(microscope, sem_imaging_settings)
 
             # Segmentation
-            logging.info("Starting segmentation")
+            _logger.info("Starting segmentation")
             prediction = self.model.predict(sem_image.data, fullsize=False)
-            logging.info("Segmentation complete")
+            _logger.info("Segmentation complete")
 
             prediction_pixel_size_um = (
                 sem_image.metadata.pixel_size.x
@@ -224,8 +226,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 * constants.SI_TO_MICRO
             )
             min_gis_um = np.nanmin(gis_thickness_um)
-            logging.info(f"Took {len(gis_thickness_um)} GIS measurements along x")
-            logging.info(
+            _logger.info(f"Took {len(gis_thickness_um)} GIS measurements along x")
+            _logger.info(
                 f"Minimum GIS thickness for milling cycle {milling_cycle} = {min_gis_um}"
             )
 
@@ -236,7 +238,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                     mask_crack_clean, pixel_size_um=prediction_pixel_size_um
                 )
 
-            logging.info(
+            _logger.info(
                 f"Area of cracks found in milling cycle {milling_cycle} = "
                 f"{crack_area_um2} um2"
             )
@@ -288,16 +290,18 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
             # should we continue?
             if min_gis_um < float(self.config.gis_stop_um):
-                logging.info(
-                    f"Stopping as minimum GIS (um) {min_gis_um} < threshold "
-                    f"{self.config.gis_stop_um} um"
+                _logger.info(
+                    "Stopping as minimum GIS (um) %f < threshold %f um",
+                    min_gis_um,
+                    self.config.gis_stop_um,
                 )
                 break
 
             if crack_area_um2 > float(self.config.max_crack_area_um2):
-                logging.info(
-                    f"Stopping as crack area (um2) {crack_area_um2} > threshold "
-                    f"{self.config.max_crack_area_um2} um2"
+                _logger.info(
+                    "Stopping as crack area (um2) %f > threshold %f um2",
+                    crack_area_um2,
+                    self.config.max_crack_area_um2,
                 )
                 break
 
@@ -317,9 +321,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                     milling_voltage=stage.milling.milling_voltage,
                     asynch=False,
                 )
-                logging.info("Completed milling.")
+                _logger.info("Completed milling.")
             except Exception as e:
-                logging.error(f"The following error occurred doing milling. {str(e)}")
+                _logger.error(f"The following error occurred doing milling. {str(e)}")
             finally:
                 microscope.stop_milling()  # dont use milling.finish_milling as it would clear patterns
 
@@ -345,26 +349,20 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         sem_imaging_settings: ImageSettings,
         plot_path: Path,
     ) -> None:
-        logging.info("Using sem beam shift alignment for adaptive polishing")
+        _logger.info("Using sem beam shift alignment for adaptive polishing")
 
         # Take reference images
         sem_image = acquire.new_image(microscope, sem_imaging_settings)
 
         # Find center
-        logging.info("Starting segmentation")
-        prediction = self.model.predict(sem_image.data)
-        logging.info("Segmentation complete")
-        feature = AdaptiveLamellaCentre()
-        centre_px = feature.detect(sem_image.data, prediction, None)
-
-        # Convert to microscope image coordinates (0, 0 at centre of image)
-        centre_m = conversions.image_to_microscope_image_coordinates(
-            centre_px, sem_image.data, sem_image.metadata.pixel_size.x
+        _logger.info("Starting segmentation")
+        prediction = self.model.predict(sem_image.data, full_size=False)
+        _logger.info("Segmentation complete")
 
         # shift beam
         dx, dy = centre_m.x, centre_m.y
         microscope.beam_shift(dx, dy, BeamType.ELECTRON)
-        logging.info(f"Beamshift {BeamType.ELECTRON} by dx={dx}, dy={dy}")
+        _logger.info(f"Beamshift {BeamType.ELECTRON} by dx={dx}, dy={dy}")
 
         # Plot centering stuff
         plt.figure()
