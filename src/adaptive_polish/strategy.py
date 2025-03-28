@@ -61,10 +61,10 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
     _advanced_attributes = []
 
     @staticmethod
-    def from_dict(d: dict) -> "AdaptivePolishMillingConfig":
+    def from_dict(d: dict[str, typing.Any]) -> typing.Self:
         return AdaptivePolishMillingConfig(**d)
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, typing.Any]:
         return {
             "model_path": self.model_path,
             "align_sem": self.align_sem,
@@ -89,11 +89,11 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         self.model = None
         self._centring_feature = AdaptiveLamellaCentre2()
 
-    def to_dict(self):
+    def to_dict(self) -> dict[str, typing.Any]:
         return {"name": self.name, "config": self.config.to_dict()}
 
     @staticmethod
-    def from_dict(d: dict) -> "AdaptivePolishMillingStrategy":
+    def from_dict(d: dict[str, typing.Any]) -> typing.Self:
         config = AdaptivePolishMillingConfig.from_dict(d["config"])
         return AdaptivePolishMillingStrategy(config=config)
 
