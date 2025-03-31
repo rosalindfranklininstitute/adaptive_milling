@@ -1,0 +1,157 @@
+import pytest
+
+import typing
+from dataclasses import dataclass, field, InitVar
+import numpy as np
+
+from adaptive_polish.centring import (
+    AdaptiveLamellaCentre,
+    AdaptiveLamellaCentre2,
+    get_lamella_bounding_box,
+    get_lamella_centre,
+)
+
+
+@dataclass(repr=False)
+class TestRectangleLamella:
+    shape: InitVar[typing.Union[np.typing.NDArray[np.integer], typing.Tuple[int, int]]]
+    box_proportion: InitVar[int] = 20
+    array: np.typing.NDArray[np.integer] = field(init=False)
+    centre: np.typing.NDArray[np.integer] = field(init=False)
+    bounding_box: np.typing.NDArray[np.integer] = field(init=False)
+
+    def __post_init__(self, shape, box_proportion) -> None:
+        array_shape = np.asarray(shape)
+        array = np.zeros(array_shape, dtype=np.bool_)
+        box_centre_to_edge = array_shape // (2 * box_proportion)
+        box_size = box_centre_to_edge * 2 + 1
+        centre = np.random.randint(box_size, array_shape - box_size, size=2)
+        bbox = np.concat((centre - box_centre_to_edge, centre + box_centre_to_edge))
+        array[bbox[0] : bbox[2] + 1, bbox[1] : bbox[3] + 1] = True
+
+        self.array = array
+        self.centre = centre
+        self.bounding_box = bbox
+
+
+@pytest.mark.parametrize("edge_finding", ["median", "mean"])
+def test_get_lamella_bounding_box_simple(edge_finding: str) -> None:
+    test_lamella = TestRectangleLamella((100, 200), 20)
+    # All the edge finding methods should be the same for this case
+    found_bounding_box = get_lamella_bounding_box(
+        test_lamella.array, edge_finding=edge_finding
+    )
+    np.testing.assert_array_equal(
+        found_bounding_box,
+        test_lamella.bounding_box,
+        err_msg="The found bounding box does not match the actual bounding box",
+    )
+
+
+def test_get_lamella_bounding_box_median() -> None:
+    test_lamella = TestRectangleLamella((100, 200), 20)
+
+    # Add to under half of one edge
+    test_lamella.array[
+        test_lamella.bounding_box[0] : test_lamella.bounding_box[0]
+        - (test_lamella.bounding_box[2] - test_lamella.bounding_box[0]) // 2
+        - 1,
+        test_lamella.bounding_box[1] - 1,
+    ] = True
+
+    # Cut away just under half of the edge
+    test_lamella.array[
+        test_lamella.bounding_box[0]
+        - (test_lamella.bounding_box[2] - test_lamella.bounding_box[0])
+        // 2 : test_lamella.bounding_box[2] + 1,
+        test_lamella.bounding_box[1] + 1,
+    ] = False
+
+    # All the edge finding methods should be the same for this case
+    found_bounding_box = get_lamella_bounding_box(
+        test_lamella.array, edge_finding="median"
+    )
+    np.testing.assert_array_equal(
+        found_bounding_box,
+        test_lamella.bounding_box,
+        err_msg="The found bounding box does not match the expected bounding box",
+    )
+
+
+def test_get_lamella_bounding_box_mean() -> None:
+    shape = np.asarray((100, 200))
+    triangle_array = np.triu(np.ones(shape, dtype=np.bool_), k=0)
+    triangle_array = np.roll(triangle_array, 1, axis=1)  # roll so the edges are filled
+    expected_bounding_box = [
+        0,
+        0,
+        # expected mean:
+        (((shape[0] - 1) / 2) * shape[0] + (shape[0] - 1) * (shape[1] - shape[0]))
+        / shape[1],
+        shape[1] - 1,
+    ]
+
+    found_bounding_box = get_lamella_bounding_box(triangle_array, edge_finding="mean")
+
+    np.testing.assert_array_equal(
+        found_bounding_box,
+        expected_bounding_box,
+        err_msg="The found bounding box does not match the expected bounding box",
+    )
+
+
+def test_get_lamella_centre() -> None:
+    test_lamella = TestRectangleLamella((100, 200), 20)
+    found_centre = get_lamella_centre(test_lamella.array)
+    np.testing.assert_array_equal(
+        found_centre,
+        test_lamella.centre,
+        err_msg="The found centre does not match the actual centre",
+    )
+
+
+def test_methods_equivalent_for_simple_rectangle() -> None:
+    # Required to be fairly big due to `detect_centre_point` threshold defaulting to 500
+    test_lamella = TestRectangleLamella((1000, 2000))
+    centre_1 = AdaptiveLamellaCentre().detect(
+        test_lamella.array, mask=test_lamella.array
+    )
+    centre_2 = AdaptiveLamellaCentre2().detect(
+        test_lamella.array, mask=test_lamella.array
+    )
+    assert centre_1 == centre_2, "Centres do not match"
+
+
+@pytest.mark.skip("No need to run this unless speed is being checked")
+def test_relative_speed() -> None:
+    from timeit import timeit
+
+    repeats = 100
+
+    test_lamella = TestRectangleLamella((2048, 3072))  # Typical dims
+
+    # AdaptiveLamellaCentre2 is ~2.1x slower for this size array (gets worse
+    # with size). However, it should be more accurate.
+    centre_feature_1 = AdaptiveLamellaCentre()
+    centre_feature_2 = AdaptiveLamellaCentre2()
+
+    centre_1_time = (
+        timeit(
+            lambda: centre_feature_1.detect(
+                test_lamella.array, mask=test_lamella.array
+            ),
+            number=repeats,
+        )
+        / repeats
+    )
+    centre_2_time = (
+        timeit(
+            lambda: centre_feature_2.detect(
+                test_lamella.array, mask=test_lamella.array
+            ),
+            number=repeats,
+        )
+        / repeats
+    )
+    print(f"AdaptiveLamellaCentre: {centre_1_time} s")
+    print(f"AdaptiveLamellaCentre2: {centre_2_time} s")
