@@ -4,9 +4,6 @@ import pytest
 
 import typing
 
-# from setup import setup_experiment, setup_microscope
-
-
 _MODELS_PATH = (
     Path.home()
     / "OneDrive - The Rosalind Franklin Institute"
