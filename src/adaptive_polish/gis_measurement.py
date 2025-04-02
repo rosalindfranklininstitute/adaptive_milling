@@ -164,7 +164,7 @@ def filter_gis_thickness(
         # An even window size means we won't get central point of the curve
         window_size_px += 1
     sigma = window_size_px / 6
-    gaussian_curve = gaussian(window_size_m, std=sigma)
+    gaussian_curve = gaussian(window_size_px, std=sigma)
     gaussian_curve /= gaussian_curve.sum()
     return np.convolve(
         np.pad(gis_thickness_px, int(gaussian_curve.size / 2)),
