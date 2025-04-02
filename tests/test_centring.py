@@ -13,7 +13,7 @@ from adaptive_polish.centring import (
 
 
 @dataclass(repr=False)
-class TestRectangleLamella:
+class SimpleRectangleLamellaMask:
     shape: InitVar[typing.Union[np.typing.NDArray[np.integer], typing.Tuple[int, int]]]
     box_proportion: InitVar[int] = 20
     array: np.typing.NDArray[np.integer] = field(init=False)
@@ -36,7 +36,7 @@ class TestRectangleLamella:
 
 @pytest.mark.parametrize("edge_finding", ["median", "mean"])
 def test_get_lamella_bounding_box_simple(edge_finding: str) -> None:
-    test_lamella = TestRectangleLamella((100, 200), 20)
+    test_lamella = SimpleRectangleLamellaMask((100, 200), 20)
     # All the edge finding methods should be the same for this case
     found_bounding_box = get_lamella_bounding_box(
         test_lamella.array, edge_finding=edge_finding
@@ -49,7 +49,7 @@ def test_get_lamella_bounding_box_simple(edge_finding: str) -> None:
 
 
 def test_get_lamella_bounding_box_median() -> None:
-    test_lamella = TestRectangleLamella((100, 200), 20)
+    test_lamella = SimpleRectangleLamellaMask((100, 200), 20)
 
     # Add to under half of one edge
     test_lamella.array[
@@ -101,7 +101,7 @@ def test_get_lamella_bounding_box_mean() -> None:
 
 
 def test_get_lamella_centre() -> None:
-    test_lamella = TestRectangleLamella((100, 200), 20)
+    test_lamella = SimpleRectangleLamellaMask((100, 200), 20)
     found_centre = get_lamella_centre(test_lamella.array)
     np.testing.assert_array_equal(
         found_centre,
@@ -112,7 +112,7 @@ def test_get_lamella_centre() -> None:
 
 def test_methods_equivalent_for_simple_rectangle() -> None:
     # Required to be fairly big due to `detect_centre_point` threshold defaulting to 500
-    test_lamella = TestRectangleLamella((1000, 2000))
+    test_lamella = SimpleRectangleLamellaMask((1000, 2000))
     centre_1 = AdaptiveLamellaCentre().detect(
         test_lamella.array, mask=test_lamella.array
     )
@@ -128,7 +128,7 @@ def test_relative_speed() -> None:
 
     repeats = 100
 
-    test_lamella = TestRectangleLamella((2048, 3072))  # Typical dims
+    test_lamella = SimpleRectangleLamellaMask((2048, 3072))  # Typical dims
 
     # AdaptiveLamellaCentre2 is ~2.1x slower for this size array (gets worse
     # with size). However, it should be more accurate.
