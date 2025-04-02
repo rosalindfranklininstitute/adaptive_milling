@@ -452,9 +452,16 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 [(0, 0, 0, 0), gm.LABEL_CMAP(SegmentationLabels.LAMELLA.value)]
             ),
             extent=extent,
+            alpha=0.5,
         )
         if prediction is not None:
-            axs[1].imshow(prediction, cmap=gm.LABEL_CMAP, extent=extent)
+            axs[1].imshow(
+                prediction,
+                cmap=gm.LABEL_CMAP,
+                extent=extent,
+                vmin=0,
+                vmax=len(gm.LABEL_CMAP.colors),
+            )
 
         for ax in axs:
             # Add centre markers to both
@@ -466,8 +473,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 label="lamella_centre",
             )
             ax.scatter(
-                mask_lamella_clean.shape[1] // 2,
-                mask_lamella_clean.shape[0] // 2,
+                sem_image.data.shape[1] // 2,
+                sem_image.data.shape[0] // 2,
                 c="g",
                 marker="+",
                 label="image_centre",
