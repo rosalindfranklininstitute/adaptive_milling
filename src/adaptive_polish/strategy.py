@@ -235,7 +235,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                         gm.resize_image(mask_gis_clean, new_shape=sem_image.data.shape),
                         axis=0,
                     ),
-                    window_size_m=self.config.window_size_m,
+                    window_size_m=self.config.window_size_px
+                    * sem_image.metadata.pixel_size.x,
                     pixel_size_m=sem_image.metadata.pixel_size.x,
                 )
                 * constants.SI_TO_MICRO
@@ -308,7 +309,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
             # Check for lamella centre
             centre_m, mask_centre_px = self._get_lamella_centre(
-                sem_image, lamella_mask=prediction
+                sem_image, lamella_mask=mask_lamella_clean
             )
             centre_drift_um = (
                 np.sqrt(centre_m.x**2, centre_m.y**2) * constants.SI_TO_MICRO
