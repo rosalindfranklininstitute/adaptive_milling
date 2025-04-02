@@ -148,7 +148,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             self._align_beam(
                 microscope=microscope,
                 sem_imaging_settings=sem_imaging_settings,
-                plot_path=lamella_ap_folder / "centering.png",
+                plot_path=lamella_ap_folder / "centring.png",
             )
 
         # Set lamella folders for saving images
@@ -397,7 +397,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         # Take reference images
         sem_image = acquire.new_image(microscope, sem_imaging_settings)
 
-        # Find center
+        # Find centre
         _logger.info("Starting segmentation")
         prediction = self.model.predict(sem_image.data, full_size=False)
         _logger.info("Segmentation complete")
