@@ -296,7 +296,7 @@ def milling_cycle_plot(
         alpha=0.4,
         cmap=LABEL_CMAP,
         vmin=0,
-        vmax=10,
+        vmax=len(LABEL_CMAP.colors),
         extent=sem_image_extent,
         interpolation="nearest",
     )
@@ -310,7 +310,7 @@ def milling_cycle_plot(
         alpha=0.4,
         cmap=LABEL_CMAP,
         vmin=0,
-        vmax=10,
+        vmax=len(LABEL_CMAP.colors),
         extent=sem_image_extent,
         interpolation="nearest",
     )
