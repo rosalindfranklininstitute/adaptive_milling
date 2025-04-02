@@ -201,7 +201,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
             # Segmentation
             _logger.info("Starting segmentation")
-            prediction = self.model.predict(sem_image.data, fullsize=False)
+            prediction = self.model.predict(sem_image.data, full_size=False)
             _logger.info("Segmentation complete")
 
             prediction_pixel_size_um = (
@@ -309,7 +309,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
             # Check for lamella centre
             centre_m, mask_centre_px = self._get_lamella_centre(
-                sem_image, labels=prediction
+                sem_image, lamella_mask=prediction
             )
             centre_drift_um = (
                 np.sqrt(centre_m.x**2, centre_m.y**2) * constants.SI_TO_MICRO
@@ -408,7 +408,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         )
 
         centre_m, centre_px = self._get_lamella_centre(
-            sem_image, labels=mask_lamella_clean
+            sem_image, lamella_mask=mask_lamella_clean
         )
 
         # shift beam
@@ -422,6 +422,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             prediction=prediction,
             mask_lamella_clean=mask_lamella_clean,
             centre_px=centre_px,
+            centre_m=centre_m,
             plot_path=plot_path,
         )
 
