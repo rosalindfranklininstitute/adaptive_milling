@@ -135,8 +135,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
         # load model
         if self.model is None:
-            if not self.config.model_path.is_file():
-                raise FileNotFoundError(f"Failed to find '{self.config.model_path}'")
+            model_path = Path(self.config.model_path)
+            if not model_path.is_file():
+                raise FileNotFoundError(f"Failed to find '{model_path}'")
             self.model = gm.load_sem_model(
                 model_path=self.config.model_path,
                 generation=self.config.model_generation,
