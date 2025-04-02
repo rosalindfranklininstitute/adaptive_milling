@@ -66,7 +66,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
 
     def to_dict(self) -> dict[str, typing.Any]:
         return {
-            "model_path": self.model_path,
+            "model_path": str(self.model_path),
             "align_sem": self.align_sem,
             "milling_interval_s": self.milling_interval_s,
             "gis_stop_um": self.gis_stop_um,
