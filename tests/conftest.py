@@ -1,4 +1,5 @@
 from __future__ import annotations
+import pkg_resources
 from pathlib import Path
 import pytest
 
@@ -48,3 +49,22 @@ def experiment_template_path() -> Path:
 @pytest.fixture(scope="session")
 def protocol_template_path() -> Path:
     return Path(__file__).parent / "data" / "protocol.yaml"
+
+
+@pytest.fixture(scope="session")
+def microscope_config_demo2_path() -> Path:
+    return Path(
+        pkg_resources.resource_filename(
+            "fibsem", "config/microscope-configuration-demo2.yaml"
+        )
+    )
+
+
+@pytest.fixture(scope="session")
+def fib_image_dir() -> Path:
+    return Path(__file__).parent / "data" / "images" / "fib"
+
+
+@pytest.fixture(scope="session")
+def sem_image_dir() -> Path:
+    return Path(__file__).parent / "data" / "images" / "sem"
