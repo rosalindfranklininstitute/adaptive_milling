@@ -121,7 +121,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         sem_imaging_settings = microscope.get_imaging_settings(BeamType.ELECTRON)
         lamella_folder = Path(fib_imaging_settings.path)
         lamella_ap_folder = lamella_folder / "adaptive_polish"
-        if lamella_ap_folder.is_dir() is True:
+        if lamella_ap_folder.is_dir():
             logging.info(
                 "Lamella folder %s already exists, some data may be overwritten",
                 lamella_ap_folder,
@@ -144,7 +144,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             )
 
         # align SEM
-        if self.config.align_sem is True:
+        if self.config.align_sem:
             self._align_beam(
                 microscope=microscope,
                 sem_imaging_settings=sem_imaging_settings,
