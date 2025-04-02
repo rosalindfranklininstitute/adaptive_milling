@@ -181,11 +181,10 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         results, gis_results_detailed = ap_utils.setup_results_df()
 
         # Initialise counts
-        milling_cycle = 0
         total_time = 0
 
         # run adaptive polishing
-        while milling_cycle <= int(self.config.max_milling_cycles):
+        for milling_cycle in range(self.config.max_milling_cycles):
             f_basename = f"{lamella_folder.stem}_AP_img_{milling_cycle:03}"
 
             # Acquire images
@@ -371,7 +370,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 microscope.stop_milling()  # dont use milling.finish_milling as it would clear patterns
 
             # Increment counters
-            milling_cycle += 1
             total_time += next_milling_interval
 
         gm.summary_gis_plot(
