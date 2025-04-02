@@ -469,14 +469,14 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 centre_px.y,
                 c="r",
                 marker="+",
-                label="lamella_centre",
+                label="Lamella Centre",
             )
             ax.scatter(
                 sem_image.data.shape[1] // 2,
                 sem_image.data.shape[0] // 2,
                 c="g",
                 marker="+",
-                label="image_centre",
+                label="Image Centre",
             )
             ax.set_xticks([])
             ax.set_yticks([])
