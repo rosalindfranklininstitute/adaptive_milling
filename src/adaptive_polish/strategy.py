@@ -213,14 +213,13 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 prediction,
                 additional_labels=(SegmentationLabels.GIS, SegmentationLabels.CRACK),
             )
-            if (
-                gm.get_mask_area_um2(
-                    mask_lamella_clean, pixel_size_um=prediction_pixel_size_um
-                )
-                >= self.config.minimum_lamella_area_um2
-            ):
+            lamella_area_um = gm.get_mask_area_um2(
+                mask_lamella_clean, pixel_size_um=prediction_pixel_size_um
+            )
+            if lamella_area_um < self.config.minimum_lamella_area_um2:
                 _logger.warning(
-                    "Failed to find lamella larger than %.4e um2",
+                    "Lamella found was only %.4e um2, below the threshold of %.4e um2 ()",
+                    lamella_area_um,
                     self.config.minimum_lamella_area_um2,
                 )
                 break
