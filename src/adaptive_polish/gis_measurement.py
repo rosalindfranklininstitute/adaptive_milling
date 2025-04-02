@@ -318,7 +318,7 @@ def milling_cycle_plot(
         axs[0, 2].axvline(x=xlims[0])
         axs[0, 2].axvline(x=xlims[1])
     axs[0, 2].axis("off")
-    axs[0, 2].set_title(f"SEM, clean, crack area $\mum^2$ = {crack_area_um2:.2f}")
+    axs[0, 2].set_title(f"SEM, clean, crack area $\mu m^2$ = {crack_area_um2:.2f}")
 
     # FIB image
     axs[1, 0].imshow(fib_image, cmap="Greys_r")
