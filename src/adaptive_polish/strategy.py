@@ -485,7 +485,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         axs[-1].legend()  # No need to have a duplicate legend
 
         fig.suptitle(
-            f"Lamella centre (x, y): {centre_m.x * constants.SI_TO_MICRO}, {centre_m.y * constants.SI_TO_MICRO} $\mum$"
+            f"Lamella centre (x, y): {centre_m.x * constants.SI_TO_MICRO}, {centre_m.y * constants.SI_TO_MICRO} $\mu m$"
         )
         fig.tight_layout()
 

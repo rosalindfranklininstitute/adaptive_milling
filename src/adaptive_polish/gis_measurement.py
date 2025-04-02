@@ -345,7 +345,7 @@ def milling_cycle_plot(
     # GIS thickness
     axs[1, 2].plot(gis_thickness_um, ".-")
     axs[1, 2].set_xlabel("Distance along x $px$")
-    axs[1, 2].set_ylabel("GIS thickness ($\mum$)")
+    axs[1, 2].set_ylabel("GIS thickness ($\mu m$)")
     axs[1, 2].set_xlim(0, len(gis_thickness_um))
     axs[1, 2].set_ylim(
         0,
@@ -358,7 +358,7 @@ def milling_cycle_plot(
         linestyles="dashed",
         colors="C1",
     )
-    axs[1, 2].set_title(f"GIS thickness, min={np.nanmin(gis_thickness_um):.2f} $\mum$")
+    axs[1, 2].set_title(f"GIS thickness, min={np.nanmin(gis_thickness_um):.2f} $\mu m$")
     axs[1, 2].legend()
 
     fig.savefig(save_path)
@@ -367,12 +367,14 @@ def milling_cycle_plot(
 
 def summary_gis_plot(results: pd.DataFrame, save_path: str | PathLike[str]):
     save_path = Path(save_path)
-    fig, ax = plt.subplot(1, 1)
+    fig, ax = plt.subplots(1, 1)
     ax.plot(
-        results.milling_time_s, results.min_GIS_um, label="Minimum GIS thickness $\mum$"
+        results.milling_time_s,
+        results.min_GIS_um,
+        label="Minimum GIS thickness $\mu m$",
     )
     ax.set_xlabel("Milling Time $s$")
-    ax.set_ylabel("GIS Thickness $\mum$")
+    ax.set_ylabel("GIS Thickness $\mu m$")
     fig.suptitle(save_path.stem)
     fig.tight_layout()
     fig.savefig(save_path)
