@@ -115,18 +115,19 @@ def clean_prediction(
 
     mask_connected_lamella = connected_masks.pop(sgm.SegmentationLabels.LAMELLA)
 
-    if connected_masks:
-        # Throw away GIS and crack above the lamella mask
+    mask_connected_gis = connected_masks.get(sgm.SegmentationLabels.GIS, None)
+    if mask_connected_gis is not None:
         coords_lamella_bottom = mask_connected_lamella.shape[0] - np.argmax(
             mask_connected_lamella[::-1, :], axis=0
         )
-        for key, mask in connected_masks.items():
-            # Remove GIS and crack beneath
-            for x, coord in enumerate(coords_lamella_bottom):
-                mask[:coord, x] = False
-            if not np.sum(mask):
-                # No need to keep an array of 0s
-                connected_masks[key] = None
+        # Filter out GIS above lamella
+        for x, coord in enumerate(coords_lamella_bottom):
+            mask_connected_gis[:coord, x] = False
+
+    for key, mask in connected_masks.items():
+        if not np.sum(mask):
+            # No need to keep an array of 0s
+            connected_masks[key] = None
 
     return (
         mask_connected_lamella,
