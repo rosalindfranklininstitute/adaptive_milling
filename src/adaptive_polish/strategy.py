@@ -113,7 +113,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             asynch (bool, optional): Run asynchronously? Defaults to False.
             parent_ui (_type_, optional): Napari UI. Defaults to None.
         """
-        logging.info(f"Running {self.fullname} for {stage.name}")
+        logging.info("Running %s for %s", self.fullname, stage.name)
 
         # setup milling
         setup_milling(microscope=microscope, milling_stage=stage)
@@ -123,7 +123,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         lamella_ap_folder = lamella_folder / "adaptive_polish"
         if lamella_ap_folder.is_dir() is True:
             logging.info(
-                "Lamella folder %s already exists, some data may be overwritten.",
+                "Lamella folder %s already exists, some data may be overwritten",
                 lamella_ap_folder,
             )
         else:
@@ -189,7 +189,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
             # Acquire images
             _logger.info(
-                f"Acquiring images for milling cycle {milling_cycle}/{self.config.max_milling_cycles}"
+                "Acquiring images for milling cycle %i/%i",
+                milling_cycle,
+                self.config.max_milling_cycles,
             )
             fib_imaging_settings.filename = f"{f_basename}_FIB.tif"
             fib_image = acquire.new_image(microscope, fib_imaging_settings)
@@ -218,7 +220,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 >= self.config.minimum_lamella_area_um2
             ):
                 _logger.warning(
-                    f"Failed to find lamella larger than {self.config.minimum_lamella_area_um2:.4e}um2",
+                    "Failed to find lamella larger than %.4e um2",
+                    self.config.minimum_lamella_area_um2,
                 )
                 break
             if mask_gis_clean is None:
@@ -240,7 +243,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             min_gis_um = np.nanmin(gis_thickness_um)
             _logger.info(f"Took {len(gis_thickness_um)} GIS measurements along x")
             _logger.info(
-                f"Minimum GIS thickness for milling cycle {milling_cycle} = {min_gis_um}"
+                "Minimum GIS thickness for milling cycle %i = %.4e um",
+                milling_cycle,
+                min_gis_um,
             )
 
             if mask_crack_clean is None:
@@ -251,8 +256,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 )
 
             _logger.info(
-                f"Area of cracks found in milling cycle {milling_cycle} = "
-                f"{crack_area_um2} um2"
+                "Area of cracks found in milling cycle %i = %.4e um2",
+                milling_cycle,
+                crack_area_um2,
             )
 
             # Save results
@@ -357,9 +363,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                     milling_voltage=stage.milling.milling_voltage,
                     asynch=False,
                 )
-                _logger.info("Completed milling.")
-            except Exception as e:
-                _logger.error(f"The following error occurred doing milling. {str(e)}")
+                _logger.info("Completed milling")
+            except Exception:
+                _logger.error("An error occurred during milling", exc_info=True)
             finally:
                 microscope.stop_milling()  # dont use milling.finish_milling as it would clear patterns
 
@@ -407,7 +413,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         # shift beam
         dx, dy = centre_m.x, centre_m.y
         microscope.beam_shift(dx, dy, BeamType.ELECTRON)
-        _logger.info(f"Beamshift {BeamType.ELECTRON} by dx={dx}, dy={dy}")
+        _logger.info(
+            "Beamshift %s by dx=%.4e, dy=%.4e m", BeamType.ELECTRON.name, dx, dy
+        )
         AdaptivePolishMillingStrategy._create_centring_plot(
             sem_image=sem_image,
             prediction=prediction,
