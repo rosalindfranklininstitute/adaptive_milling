@@ -324,8 +324,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 AdaptivePolishMillingStrategy._create_centring_plot(
                     sem_image=sem_image,
                     mask_lamella_clean=mask_lamella_clean,
-                    mask_centre_px=mask_centre_px,
-                    mask_centre_m=centre_m,
+                    centre_px=mask_centre_px,
+                    centre_m=centre_m,
                     plot_path=lamella_ap_plots_folder
                     / f"{f_basename}_centring_problem.png",
                 )
