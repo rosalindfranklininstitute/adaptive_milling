@@ -1,5 +1,6 @@
 from __future__ import annotations
 import logging
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from matplotlib.colors import ListedColormap
@@ -311,7 +312,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 sem_image, lamella_mask=mask_lamella_clean
             )
             centre_drift_um = (
-                np.sqrt(centre_m.x**2, centre_m.y**2) * constants.SI_TO_MICRO
+                math.sqrt(centre_m.x**2 + centre_m.y**2) * constants.SI_TO_MICRO
             )
             if centre_drift_um > self.config.maximum_drift_um:
                 _logger.warning(
