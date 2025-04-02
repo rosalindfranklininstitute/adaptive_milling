@@ -132,7 +132,9 @@ class AbstractAdaptivePolishingModel(ABC):
             if not image.is_file():
                 raise FileNotFoundError(image)
 
-        image = open_image(image).squeeze()  # Ensure 2D images are 2D
+            image = open_image(image)
+
+        image = image.squeeze()  # Ensure 2D images are 2D
 
         if len(image.shape) != 2:
             raise ValueError("Adaptive polishing SEM models only supports 2D images")
