@@ -1,14 +1,8 @@
-from __future__ import annotations
-
 import typing
 import yaml
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from datetime import datetime
-
-
-if typing.TYPE_CHECKING:
-    from adaptive_polish.strategy import AdaptivePolishMillingConfig
 
 
 def setup_test_microscope_config(
@@ -39,7 +33,7 @@ def setup_test_microscope_config(
 def setup_protocol_path(
     protocol_template_path: Path,
     temporary_directory: Path,
-    adaptive_polish_config: AdaptivePolishMillingConfig,
+    adaptive_polish_config_dict: dict[str, typing.Any],
     ap_only: bool,
 ) -> Path:
     with protocol_template_path.open() as f:
@@ -47,7 +41,7 @@ def setup_protocol_path(
 
     # Update protocol from config
     protocol_dict["milling"]["mill_polishing"][0]["strategy"]["config"] = (
-        adaptive_polish_config.to_dict()
+        adaptive_polish_config_dict
     )
 
     if ap_only:
