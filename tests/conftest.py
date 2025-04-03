@@ -43,7 +43,7 @@ def sem_segmentation_model(
 
 @pytest.fixture(scope="session")
 def experiment_template_path() -> Path:
-    return Path(__file__).parent / "data" / "experiment.yaml"
+    return (Path(__file__).parent / "data" / "experiment.yaml").resolve()
 
 
 @pytest.fixture(scope="session")
