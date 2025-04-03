@@ -86,7 +86,7 @@ positions:
           resolution:
             - 1536
             - 1024
-          save: { { save_images } }
+          save: {{ save_images }}
           scan_interlacing: null
         milling:
           acquire_images: false
