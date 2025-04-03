@@ -1,5 +1,5 @@
 milling:
-    fiducial:
+  fiducial:
     - milling:
         milling_current: 2.0e-09
         # spot_size:
@@ -20,11 +20,11 @@ milling:
         depth: 1.0e-06
         rotation: 45
         cross_section: Rectangle
-        point: {"x": 2.5e-05, "y": 0.0}
+        point: { "x": 2.5e-05, "y": 0.0 }
         shapes: null
         name: Fiducial
       strategy: {}
-    mill_rough:
+  mill_rough:
     - milling:
         milling_current: 2.0e-09
         spot_size: 5.0e-08
@@ -33,7 +33,7 @@ milling:
         hfw: 4.0e-05
         patterning_mode: Parallel
         application_file: Si
-        preset: ''
+        preset: ""
         # spacing:
         # milling_voltage:
         # milling_channel:
@@ -59,7 +59,7 @@ milling:
         hfw: 4.0e-05
         patterning_mode: Parallel
         application_file: Si
-        preset: ''
+        preset: ""
         # spacing:
         # milling_voltage:
         # milling_channel:
@@ -85,7 +85,7 @@ milling:
         hfw: 4.0e-05
         patterning_mode: Parallel
         application_file: Si
-        preset: ''
+        preset: ""
         # spacing:
         # milling_voltage:
         # milling_channel:
@@ -111,7 +111,7 @@ milling:
         hfw: 4.0e-05
         patterning_mode: Parallel
         application_file: Si
-        preset: ''
+        preset: ""
         # spacing:
         # milling_voltage:
         # milling_channel:
@@ -129,7 +129,7 @@ milling:
         name: Trench
         # shapes:
       strategy: {}
-    mill_polishing:
+  mill_polishing:
     - milling:
         milling_current: 2.0e-11
         spot_size: 5.0e-08
@@ -138,7 +138,7 @@ milling:
         hfw: 4.0e-05
         patterning_mode: Parallel
         application_file: Si
-        preset: ''
+        preset: ""
         # spacing:
         # milling_voltage:
         # milling_channel:
@@ -155,18 +155,8 @@ milling:
         # point:
         name: Trench
         # shapes:
-      strategy: {"name": AdaptivePolishing,
-          config: {
-            align_sem: {{ align_sem }},
-            milling_interval_s: {{ milling_interval_s }},
-            gis_stop_um: {{ gis_stop_um }},
-            max_milling_cycles: {{ max_milling_cycles }},
-            window_size_px: {{ window_size_px }},
-            max_crack_area_um2: {{ max_crack_area_um2 }},
-            model_path: {{ model_path }}
-          }
-        }
-    microexpansion:
+      strategy: { name: AdaptivePolishing, config: {} }
+  microexpansion:
     - milling:
         milling_current: 2.0e-09
         # spot_size:
@@ -190,7 +180,7 @@ milling:
         # point:
         # shapes:
       strategy: {}
-    notch:
+  notch:
     - milling:
         milling_current: 2.0e-06
         # spot_size:
@@ -217,33 +207,36 @@ milling:
         name: WaffleNotch
         # point:
         # shapes:
+
 options:
-    alignment_at_milling_current: false
-    alignment_attempts: 3
-    checkpoint: autolamella-mega-20240107.pt
-    high_quality_image:
-        dwell_time: 2.0e-06
-        enabled: false
-        frame_integration: 2
-        hfw: 5.0e-05
-        resolution:
-        - 3072
-        - 2048
-    lamella_tilt_angle: -23
-    method: autolamella-on-grid
-    name: autolamella-adaptive-polish
-    num_polishing_stages: 2
-    supervise:
-        features: false
-        lamella: false
-        mill_polishing: false
-        mill_regular: false
-        mill_rough: false
-        setup_lamella: false
-        trench: false
-        undercut: false
-    take_final_overview_image: true
-    take_final_reference_images: true
-    use_fiducial: true
-    use_microexpansion: true
-    use_notch: false
+  name: autolamella-adaptive-polish
+  method: autolamella-on-grid
+  checkpoint: autolamella-mega-20240107.pt
+  alignment_attempts: 3
+  alignment_at_milling_current: false
+  take_final_overview_image: true
+  take_final_reference_images: true
+  use_fiducial: true
+  use_microexpansion: true
+  use_notch: false
+  num_polishing_stages: 2
+  lamella_tilt_angle: -23
+
+  high_quality_image:
+    dwell_time: 2.0e-06
+    enabled: false
+    frame_integration: 2
+    hfw: 5.0e-05
+    resolution:
+      - 3072
+      - 2048
+
+  supervise:
+    features: false
+    lamella: false
+    mill_polishing: false
+    mill_regular: false
+    mill_rough: false
+    setup_lamella: false
+    trench: false
+    undercut: false

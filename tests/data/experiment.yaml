@@ -4,177 +4,177 @@ method: AutoLamella-Trench
 name: AutoLamella-{{ now }}
 path: {{ tmp_dir }}/AutoLamella-{{ now }}
 positions:
--   alignment_area:
-        height: 1.0
-        left: 0.0
-        top: 0.0
-        width: 1.0
-    failure_note: ''
+  - alignment_area:
+      height: 1.0
+      left: 0.0
+      top: 0.0
+      width: 1.0
+    failure_note: ""
     failure_timestamp: null
     history: []
     id: 2416ffde-685f-41fe-860c-e8de0dc0032d
     is_failure: false
     landing_selected: false
     landing_state:
-        electron_beam:
-            beam_current: null
-            beam_type: ELECTRON
-            dwell_time: null
-            hfw: null
-            resolution: null
-            scan_rotation: null
-            shift: null
-            stigmation: null
-            voltage: null
-            working_distance: null
-        electron_detector:
-            brightness: 0.5
-            contrast: 0.5
-            mode: null
-            type: null
-        ion_beam:
-            beam_current: null
-            beam_type: ION
-            dwell_time: null
-            hfw: null
-            resolution: null
-            scan_rotation: null
-            shift: null
-            stigmation: null
-            voltage: null
-            working_distance: null
-        ion_detector:
-            brightness: 0.5
-            contrast: 0.5
-            mode: null
-            type: null
-        stage_position:
-            coordinate_system: null
-            name: null
-            r: null
-            t: null
-            x: null
-            y: null
-            z: null
-        timestamp: 1741646050.6562
+      electron_beam:
+        beam_current: null
+        beam_type: ELECTRON
+        dwell_time: null
+        hfw: null
+        resolution: null
+        scan_rotation: null
+        shift: null
+        stigmation: null
+        voltage: null
+        working_distance: null
+      electron_detector:
+        brightness: 0.5
+        contrast: 0.5
+        mode: null
+        type: null
+      ion_beam:
+        beam_current: null
+        beam_type: ION
+        dwell_time: null
+        hfw: null
+        resolution: null
+        scan_rotation: null
+        shift: null
+        stigmation: null
+        voltage: null
+        working_distance: null
+      ion_detector:
+        brightness: 0.5
+        contrast: 0.5
+        mode: null
+        type: null
+      stage_position:
+        coordinate_system: null
+        name: null
+        r: null
+        t: null
+        x: null
+        y: null
+        z: null
+      timestamp: 1741646050.6562
     number: 1
     path: {{ tmp_dir }}/AutoLamella-{{ now }}\01-strong-salmon
     petname: 01-strong-salmon
     protocol:
-        trench:
-        -   alignment:
-                enabled: false
-                interval: 30
-                interval_enabled: false
-                rect:
-                    height: 0.4
-                    left: 0.7
-                    top: 0.3
-                    width: 0.25
-            imaging:
-                autocontrast: false
-                autogamma: false
-                beam_type: ELECTRON
-                drift_correction: false
-                dwell_time: 1.0e-06
-                filename: default_image
-                frame_integration: null
-                hfw: 0.00015
-                line_integration: null
-                path: {{ cwd }}
-                reduced_area: null
-                resolution:
-                - 1536
-                - 1024
-                save: false
-                scan_interlacing: null
-            milling:
-                acquire_images: false
-                application_file: Si
-                dwell_time: 1.0e-06
-                hfw: 0.00018
-                milling_channel: ION
-                milling_current: 7.6e-09
-                milling_voltage: 30000
-                patterning_mode: Serial
-                preset: 30 keV; 2.5 nA
-                rate: 3.0e-11
-                spacing: 1.0
-                spot_size: 5.0e-08
-            name: Trench
-            num: 0
-            pattern:
-                cross_section: Rectangle
-                depth: 1.25e-06
-                lower_trench_height: 3.2e-05
-                name: Trench
-                point:
-                    x: 0.0
-                    y: 0.0
-                spacing: 2.5e-05
-                time: 0
-                upper_trench_height: 1.6e-05
-                width: 2.2e-05
-            strategy:
-                config: {}
-                name: Standard
+      trench:
+        alignment:
+          enabled: false
+          interval: 30
+          interval_enabled: false
+          rect:
+            height: 0.4
+            left: 0.7
+            top: 0.3
+            width: 0.25
+        imaging:
+          autocontrast: false
+          autogamma: false
+          beam_type: ELECTRON
+          drift_correction: false
+          dwell_time: 1.0e-06
+          filename: default_image
+          frame_integration: null
+          hfw: 0.00015
+          line_integration: null
+          path: { { cwd } }
+          reduced_area: null
+          resolution:
+            - 1536
+            - 1024
+          save: { { save_images } }
+          scan_interlacing: null
+        milling:
+          acquire_images: false
+          application_file: Si
+          dwell_time: 1.0e-06
+          hfw: 0.00018
+          milling_channel: ION
+          milling_current: 7.6e-09
+          milling_voltage: 30000
+          patterning_mode: Serial
+          preset: 30 keV; 2.5 nA
+          rate: 3.0e-11
+          spacing: 1.0
+          spot_size: 5.0e-08
+        name: Trench
+        num: 0
+        pattern:
+          cross_section: Rectangle
+          depth: 1.25e-06
+          lower_trench_height: 3.2e-05
+          name: Trench
+          point:
+            x: 0.0
+            y: 0.0
+          spacing: 2.5e-05
+          time: 0
+          upper_trench_height: 1.6e-05
+          width: 2.2e-05
+        strategy:
+          config: {}
+          name: Standard
     state:
-        end_timestamp: null
-        microscope_state:
-            electron_beam:
-                beam_current: 1.0e-12
-                beam_type: ELECTRON
-                dwell_time: 1.0e-06
-                hfw: 0.00015
-                resolution:
-                - 1536
-                - 1024
-                scan_rotation: 0
-                shift:
-                    x: 0
-                    y: 0
-                stigmation:
-                    x: 0
-                    y: 0
-                voltage: 2000
-                working_distance: 0.004
-            electron_detector:
-                brightness: 0.5
-                contrast: 0.5
-                mode: SecondaryElectrons
-                type: ETD
-            ion_beam:
-                beam_current: 2.0e-11
-                beam_type: ION
-                dwell_time: 1.0e-06
-                hfw: 0.00015
-                resolution:
-                - 1536
-                - 1024
-                scan_rotation: 0
-                shift:
-                    x: 0
-                    y: 0
-                stigmation:
-                    x: 0
-                    y: 0
-                voltage: 30000
-                working_distance: 0.0165
-            ion_detector:
-                brightness: 0.5
-                contrast: 0.5
-                mode: SecondaryElectrons
-                type: ETD
-            stage_position:
-                coordinate_system: RAW
-                name: null
-                r: 0.0
-                t: 0.0
-                x: 0.0
-                y: 0.0
-                z: 0.0
-            timestamp: 1741646221.125587
-        stage: Created
-        start_timestamp: 1741646060.667116
+      end_timestamp: null
+      microscope_state:
+        electron_beam:
+          beam_current: 1.0e-12
+          beam_type: ELECTRON
+          dwell_time: 1.0e-06
+          hfw: 0.00015
+          resolution:
+            - 1536
+            - 1024
+          scan_rotation: 0
+          shift:
+            x: 0
+            y: 0
+          stigmation:
+            x: 0
+            y: 0
+          voltage: 2000
+          working_distance: 0.004
+        electron_detector:
+          brightness: 0.5
+          contrast: 0.5
+          mode: SecondaryElectrons
+          type: ETD
+        ion_beam:
+          beam_current: 2.0e-11
+          beam_type: ION
+          dwell_time: 1.0e-06
+          hfw: 0.00015
+          resolution:
+            - 1536
+            - 1024
+          scan_rotation: 0
+          shift:
+            x: 0
+            y: 0
+          stigmation:
+            x: 0
+            y: 0
+          voltage: 30000
+          working_distance: 0.0165
+        ion_detector:
+          brightness: 0.5
+          contrast: 0.5
+          mode: SecondaryElectrons
+          type: ETD
+        stage_position:
+          coordinate_system: RAW
+          name: null
+          r: 0.0
+          t: 0.0
+          x: 0.0
+          y: 0.0
+          z: 0.0
+        timestamp: 1741646221.125587
+      stage: Created
+      start_timestamp: 1741646060.667116
     states: {}
 program: AutoLamella
