@@ -8,8 +8,9 @@ from pathlib import Path
 
 from fibsem import utils, acquire
 from fibsem.milling import get_milling_stages, mill_stages
+# TODO: look into why this is required
+# Necessary to ensure AP strategy is registered:
 from fibsem.milling.strategy import register_strategy
-from fibsem.structures import BeamType
 from autolamella.protocol.validation import validate_protocol
 from autolamella.structures import Experiment, AutoLamellaProtocol
 from adaptive_polish.strategy import AdaptivePolishMillingConfig
@@ -41,8 +42,8 @@ def microscope_config_path(
     return setup.setup_test_microscope_config(
         microscope_config_demo2_path,
         tmp_path,
-        fib_image_dir=fib_image_dir,
-        sem_image_dir=sem_image_dir,
+        fib_image_dir=str(fib_image_dir),
+        sem_image_dir=str(sem_image_dir),
         cycle_images=True,
     )
 
@@ -51,7 +52,7 @@ def microscope_config_path(
 def protocol_path(
     protocol_template_path: Path,
     tmp_path: Path,
-    sem_segmentation_model,
+    sem_segmentation_model: tuple[str, Path],
 ) -> Path:
     ap_config = AdaptivePolishMillingConfig(
         model_generation=sem_segmentation_model[0],
@@ -60,13 +61,33 @@ def protocol_path(
     )
 
     return setup.setup_protocol_path(
-        protocol_template_path, tmp_path, ap_config, ap_only=True
+        protocol_template_path, tmp_path, ap_config.to_dict(), ap_only=True
     )
 
 
 @pytest.fixture
 def experiment_config_path(experiment_template_path, tmp_path: Path):
     return setup.setup_test_experiment(experiment_template_path, tmp_path)
+
+
+def raise_error_after_num_calls(
+    fn: typing.Callable,
+    calls_before_exception: int,
+) -> typing.Any:
+    _calls = 0
+
+    @functools.wraps(fn)
+    def raise_error_after_wrapper(
+        *args: typing.Any, **kwargs: typing.Any
+    ) -> typing.Any:
+        nonlocal _calls
+        if _calls >= calls_before_exception:
+            _calls = 0  # Reset for other loops
+            raise Exception("Raising error to exit test")
+        _calls += 1
+        return fn(*args, **kwargs)
+
+    return raise_error_after_wrapper
 
 
 def test_runs(
@@ -83,25 +104,6 @@ def test_runs(
 
     original_stop_milling = microscope.stop_milling
 
-    def raise_error_after_num_calls(
-        fn: typing.Callable,
-        calls_before_exception: int,
-    ) -> typing.Any:
-        _calls = 0
-
-        @functools.wraps(fn)
-        def raise_error_after_wrapper(
-            *args: typing.Any, **kwargs: typing.Any
-        ) -> typing.Any:
-            nonlocal _calls
-            if _calls >= calls_before_exception:
-                _calls = 0  # Reset for other loops
-                raise Exception("Raising error to exit test")
-            _calls += 1
-            return fn(*args, **kwargs)
-
-        return raise_error_after_wrapper
-
     with patch.object(microscope, "stop_milling") as mock_stop_milling:
         mock_stop_milling.side_effect = raise_error_after_num_calls(
             original_stop_milling, calls_before_exception=calls_before_exception
@@ -111,10 +113,11 @@ def test_runs(
 
         lamella_directory = tmp_path / "lamella"
         lamella_directory.mkdir()
-        fib_adaptive_polish_dir = lamella_directory / "adaptive_polish"
+        adaptive_polish_dir = lamella_directory / "adaptive_polish"
 
         settings.image.path = lamella_directory
 
+        # Necessary to set imaging settings path
         acquire.take_reference_images(microscope, settings.image)
 
         milling_stages = get_milling_stages("mill_polishing", protocol["milling"])
@@ -132,11 +135,9 @@ def test_runs(
         )
 
         # Check directories were created
-        assert fib_adaptive_polish_dir.is_dir(), (
-            "adaptive_polish directory wasn't created"
-        )
+        assert adaptive_polish_dir.is_dir(), "adaptive_polish directory wasn't created"
         for name in ("plots", "sem", "fib"):
-            assert (fib_adaptive_polish_dir / name).is_dir(), (
+            assert (adaptive_polish_dir / name).is_dir(), (
                 f"{name} subdirectory wasn't created"
             )
 
@@ -151,8 +152,6 @@ def test_runs(
         print(f"Workflow: {protocol.method.workflow}")
 
         acquire.take_reference_images(microscope, settings.image)
-
-        dirs = tuple(fib_adaptive_polish_dir.rglob("*"))
 
         milling_stages = protocol.milling["mill_polishing"]
         strategy_config: AdaptivePolishMillingConfig = milling_stages[0].strategy.config
@@ -169,18 +168,16 @@ def test_runs(
             "stop_milling was called an unexpected number of times"
         )
 
-    dirs = tuple(fib_adaptive_polish_dir.rglob("*"))
-
     expected_stems = [f"lamella_AP_img_{_:>03}_" for _ in range(expected_loops)]
 
     # Check plots exist
-    centring_plot_path = fib_adaptive_polish_dir / "centring.png"
+    centring_plot_path = adaptive_polish_dir / "centring.png"
     assert centring_plot_path.is_file(), f"{centring_plot_path.name} was not created"
-    gis_thickness_plot_path = fib_adaptive_polish_dir / "lamella_GIS_thickness.png"
+    gis_thickness_plot_path = adaptive_polish_dir / "lamella_GIS_thickness.png"
     assert gis_thickness_plot_path.is_file(), (
         f"{gis_thickness_plot_path.name} plot was not created"
     )
-    plots_dir = fib_adaptive_polish_dir / "plots"
+    plots_dir = adaptive_polish_dir / "plots"
     plot_paths = set(plots_dir.glob("*.png"))
     assert len(plot_paths), "No plots have been created"
     expected_plot_file_names = (f"{_}plot.png" for _ in expected_stems)
@@ -189,18 +186,18 @@ def test_runs(
         "Expected plot file paths do not match found plot paths"
     )
 
-    results_paths = set(fib_adaptive_polish_dir.glob("*.csv"))
+    results_paths = set(adaptive_polish_dir.glob("*.csv"))
     assert len(results_paths), "No results have been created"
     expected_results_file_names = ("GIS_thickness.csv", "GIS_thickness_detailed.csv")
     expected_results_paths = set(
-        (fib_adaptive_polish_dir / _ for _ in expected_results_file_names)
+        (adaptive_polish_dir / _ for _ in expected_results_file_names)
     )
     assert results_paths == expected_results_paths, (
         "Expected results file paths do not match found .csv paths"
     )
 
     for image_type in ("sem", "fib"):
-        image_path = fib_adaptive_polish_dir / image_type
+        image_path = adaptive_polish_dir / image_type
         image_paths = set(image_path.glob("*.tif"))
         assert len(image_paths), f"No {image_type} images have been created"
         expected_plot_file_names = (
