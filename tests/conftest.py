@@ -57,14 +57,14 @@ def microscope_config_demo2_path() -> Path:
         pkg_resources.resource_filename(
             "fibsem", "config/microscope-configuration-demo2.yaml"
         )
-    )
+    ).resolve()
 
 
 @pytest.fixture(scope="session")
 def fib_image_dir() -> Path:
-    return Path(__file__).parent / "data" / "images" / "fib"
+    return (Path(__file__).parent / "data" / "images" / "fib").resolve()
 
 
 @pytest.fixture(scope="session")
 def sem_image_dir() -> Path:
-    return Path(__file__).parent / "data" / "images" / "sem"
+    return (Path(__file__).parent / "data" / "images" / "sem").resolve()
