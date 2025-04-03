@@ -14,8 +14,8 @@ if typing.TYPE_CHECKING:
 def setup_test_microscope_config(
     microscope_template_path: Path,
     temporary_directory: Path,
-    fib_image_dir: Path,
-    sem_image_dir: Path,
+    fib_image_dir: str | None = None,
+    sem_image_dir: str | None = None,
     cycle_images: bool = True,
 ) -> Path:
     """Sets up a demo microscope"""
@@ -24,8 +24,8 @@ def setup_test_microscope_config(
 
     # Update protocol from config
     microscope_template_dict["demo2"] = {
-        "SEM_folder_path_str": str(sem_image_dir.absolute()),
-        "FIB_folder_path_str": str(fib_image_dir.absolute()),
+        "SEM_folder_path_str": sem_image_dir,
+        "FIB_folder_path_str": fib_image_dir,
         "cycle": cycle_images,
     }
 
