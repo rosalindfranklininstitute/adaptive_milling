@@ -42,6 +42,9 @@ if typing.TYPE_CHECKING:
     from fibsem.milling.base import FibsemMillingStage
     from fibsem.microscope import FibsemMicroscope
     from fibsem.structures import FibsemImage, ImageSettings, Point
+    from adaptive_polish.dl_segmentation.sem_lamella_segmentor import (
+        AbstractAdaptivePolishingModel,
+    )
 
 _logger = logging.getLogger(__name__)
 
@@ -98,7 +101,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
     def __init__(self, config: AdaptivePolishMillingConfig) -> None:
         self.config = config
-        self.model = None
+        self.model: AbstractAdaptivePolishingModel | None = None
         self._centring_feature = AdaptiveLamellaCentre2()
 
     def to_dict(self) -> dict[str, typing.Any]:
