@@ -96,8 +96,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
     name: str = "AdaptivePolishing"
     fullname: str = "Adaptive polishing according to GIS thickness"
 
-    def __init__(self, config: AdaptivePolishMillingConfig = None):
-        self.config = config or AdaptivePolishMillingConfig()
+    def __init__(self, config: AdaptivePolishMillingConfig) -> None:
+        self.config = config
         self.model = None
         self._centring_feature = AdaptiveLamellaCentre2()
 
