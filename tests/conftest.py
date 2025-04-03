@@ -52,6 +52,15 @@ def protocol_template_path() -> Path:
 
 
 @pytest.fixture(scope="session")
+def microscope_config_path() -> Path:
+    return Path(
+        pkg_resources.resource_filename(
+            "fibsem", "config/microscope-configuration.yaml"
+        )
+    ).resolve()
+
+
+@pytest.fixture(scope="session")
 def microscope_config_demo2_path() -> Path:
     return Path(
         pkg_resources.resource_filename(
