@@ -48,7 +48,7 @@ def experiment_template_path() -> Path:
 
 @pytest.fixture(scope="session")
 def protocol_template_path() -> Path:
-    return Path(__file__).parent / "data" / "protocol.yaml"
+    return (Path(__file__).parent / "data" / "protocol.yaml").resolve()
 
 
 @pytest.fixture(scope="session")
