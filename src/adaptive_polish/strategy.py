@@ -48,6 +48,7 @@ if typing.TYPE_CHECKING:
 
 _logger = logging.getLogger(__name__)
 
+
 class _AdaptivePolishMillingException(Exception):
     # Base class to make it easy to catch all
     pass
@@ -59,6 +60,7 @@ class StopMillingException(_AdaptivePolishMillingException):
 
 class StopEarlyError(_AdaptivePolishMillingException):
     pass
+
 
 @dataclass
 class AdaptivePolishMillingConfig(MillingStrategyConfig):
@@ -101,7 +103,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
     def __init__(self, config: AdaptivePolishMillingConfig) -> None:
         self.config = config
-        self.model: AbstractAdaptivePolishingModel | None = None
+        self.model: typing.Optional[AbstractAdaptivePolishingModel] = None
         self._centring_feature = AdaptiveLamellaCentre2()
 
     def to_dict(self) -> dict[str, typing.Any]:
@@ -411,7 +413,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         self,
         microscope: FibsemMicroscope,
         sem_imaging_settings: ImageSettings,
-        plot_path: Path | None = None,
+        plot_path: typing.Optional[Path] = None,
     ) -> None:
         _logger.info("Using sem beam shift alignment for adaptive polishing")
 
