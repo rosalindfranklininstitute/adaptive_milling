@@ -411,7 +411,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         self,
         microscope: FibsemMicroscope,
         sem_imaging_settings: ImageSettings,
-        plot_path: Path,
+        plot_path: Path | None = None,
     ) -> None:
         _logger.info("Using sem beam shift alignment for adaptive polishing")
 
@@ -438,14 +438,16 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         _logger.info(
             "Beamshift %s by dx=%.4e, dy=%.4e m", BeamType.ELECTRON.name, dx, dy
         )
-        AdaptivePolishMillingStrategy._create_centring_plot(
-            sem_image=sem_image,
-            prediction=prediction,
-            mask_lamella_clean=mask_lamella_clean,
-            centre_px=centre_px,
-            centre_m=centre_m,
-            plot_path=plot_path,
-        )
+
+        if plot_path is not None:
+            AdaptivePolishMillingStrategy._create_centring_plot(
+                sem_image=sem_image,
+                prediction=prediction,
+                mask_lamella_clean=mask_lamella_clean,
+                centre_px=centre_px,
+                centre_m=centre_m,
+                plot_path=plot_path,
+            )
 
     @staticmethod
     def _create_centring_plot(
