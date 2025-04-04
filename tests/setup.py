@@ -8,8 +8,8 @@ from datetime import datetime
 def setup_test_microscope_config(
     microscope_template_path: Path,
     temporary_directory: Path,
-    fib_image_dir: str | None = None,
-    sem_image_dir: str | None = None,
+    fib_image_dir: typing.Optional[str] = None,
+    sem_image_dir: typing.Optional[str] = None,
     cycle_images: bool = True,
 ) -> Path:
     """Sets up a demo microscope"""
