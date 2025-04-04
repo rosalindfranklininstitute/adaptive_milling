@@ -116,7 +116,7 @@ def create_bitmap_array(
     blanking_width_m: float = 5e-7,
     nan_value: float = 0,
     as_image: bool = True,
-) -> NDArray[np.uint8] | NDArray[typing.Any]:
+) -> NDArray[typing.Union[np.uint8, typing.Any]]:
     """
     Creates bitmap array for TFS AutoScript API.
     This has two behaviours:

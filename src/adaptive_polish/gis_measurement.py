@@ -81,14 +81,19 @@ def check_minimum_area(mask: NDArray[np.bool_], pixel_size, minimum_size) -> boo
 
 def clean_prediction(
     prediction: NDArray[np.integer],
-    additional_labels: Sequence[
-        typing.Literal[
-            sgm.SegmentationLabels.GIS,
-            sgm.SegmentationLabels.CRACK,
+    additional_labels: typing.Optional[
+        Sequence[
+            typing.Literal[
+                sgm.SegmentationLabels.GIS,
+                sgm.SegmentationLabels.CRACK,
+            ]
         ]
-    ]
-    | None = None,
-) -> tuple[NDArray[np.bool_], NDArray[np.bool_] | None, NDArray[np.bool_] | None]:
+    ] = None,
+) -> tuple[
+    NDArray[np.bool_],
+    typing.Optional[NDArray[np.bool_]],
+    typing.Optional[NDArray[np.bool_]],
+]:
     labels = [sgm.SegmentationLabels.LAMELLA]
     if additional_labels is not None:
         labels.extend(additional_labels)
@@ -153,7 +158,7 @@ def apply_binary_opening(
 
 
 def filter_gis_thickness(
-    gis_thickness_px: NDArray[np.integer | np.floating],
+    gis_thickness_px: NDArray[typing.Union[np.integer, np.floating]],
     window_size_m: int,
     pixel_size_m: float,
 ) -> tuple[NDArray[np.float64], tuple[int, int]]:
@@ -175,7 +180,7 @@ def filter_gis_thickness(
 
 
 def filter_gis_thickness_fast(
-    gis_thickness_px: NDArray[np.integer | np.floating],
+    gis_thickness_px: NDArray[typing.Union[np.integer, np.floating]],
     window_size_m: int,
     pixel_size_m: float,
 ) -> tuple[NDArray[np.float64], tuple[int, int]]:
@@ -243,12 +248,12 @@ def get_mask_area_um2(mask: NDArray[np.bool_], pixel_size_um: float) -> float:
 
 
 def masks_to_labels(
-    lamella_mask: NDArray[np.bool_] | None = None,
-    gis_mask: NDArray[np.bool_] | None = None,
-    crack_mask: NDArray[np.bool_] | None = None,
-    background_mask: NDArray[np.bool_] | None = None,
-    vacuum_mask: NDArray[np.bool] | None = None,
-    default_value: int | float = np.nan,
+    lamella_mask: typing.Optional[NDArray[np.bool_]] = None,
+    gis_mask: typing.Optional[NDArray[np.bool_]] = None,
+    crack_mask: typing.Optional[NDArray[np.bool_]] = None,
+    background_mask: typing.Optional[NDArray[np.bool_]] = None,
+    vacuum_mask: typing.Optional[NDArray[np.bool]] = None,
+    default_value: typing.Union[int, float] = np.nan,
 ) -> NDArray[typing.Any]:
     mask_label_pairs = [
         (lamella_mask, sgm.SegmentationLabels.LAMELLA),
@@ -275,10 +280,10 @@ def milling_cycle_plot(
     gis_thickness_um: ArrayLike,
     gis_stop_um: float,
     crack_area_um2: float,
-    xlims: tuple[int, int] | None = None,
-    fib_screenshot: NDArray[typing.Any] | None = None,
-    img_name: str | None = None,
-    save_path: str | PathLike[str] | None = None,
+    xlims: typing.Optional[tuple[int, int]] = None,
+    fib_screenshot: typing.Optional[NDArray[typing.Any]] = None,
+    img_name: typing.Optional[str] = None,
+    save_path: typing.Optional[typing.Union[str, PathLike]] = None,
 ):
     _logger.debug("milling_cycle_plot()")
     fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(12, 8), tight_layout=True)
@@ -368,7 +373,7 @@ def milling_cycle_plot(
     plt.close(fig)
 
 
-def summary_gis_plot(results: pd.DataFrame, save_path: str | PathLike[str]):
+def summary_gis_plot(results: pd.DataFrame, save_path: typing.Union[str, PathLike]):
     save_path = Path(save_path)
     fig, ax = plt.subplots(1, 1)
     ax.plot(

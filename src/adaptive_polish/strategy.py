@@ -64,14 +64,14 @@ class StopEarlyError(_AdaptivePolishMillingException):
 
 @dataclass
 class AdaptivePolishMillingConfig(MillingStrategyConfig):
-    model_path: str | PathLike[str]
+    model_path: typing.Union[str, PathLike]
     align_sem: bool = True
     milling_interval_s: int = 10
     gis_stop_um: float = 0.2
     max_crack_area_um2: float = 2
     max_milling_cycles: int = 30
     window_size_px: int = 10
-    model_generation: str | None = None
+    model_generation: typing.Optional[str] = None
     minimum_lamella_area_um2: float = 30.0  # 30μm²
     maximum_drift_um: float = 0.05
 
@@ -458,7 +458,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         centre_px: Point,
         centre_m: Point,
         plot_path: Path,
-        prediction: NDArray[np.integer] | None = None,
+        prediction: typing.Optional[NDArray[np.integer]] = None,
     ) -> None:
         # Plot centring stuff
         if prediction is not None:

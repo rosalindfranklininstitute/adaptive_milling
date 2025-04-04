@@ -36,7 +36,9 @@ class SegmentationLabels(enum.IntEnum):
 
 
 ### Utility functions ###
-def open_image(path: str | PathLike[str]):
+def open_image(
+    path: typing.Union[str, PathLike],
+) -> typing.Union[NDArray[typing.Any], None]:
     path = Path(path)
     suffix = path.suffix.lower()
 
@@ -90,7 +92,7 @@ def normalize_by_mean_std_with_clip(image, **kwargs):
 class AbstractAdaptivePolishingModel(ABC):
     def __init__(
         self,
-        model_path: str | PathLike[str],
+        model_path: typing.Union[str, PathLike],
         device: torch.DeviceLikeType,
         num_classes: int,
     ) -> None:
@@ -103,14 +105,14 @@ class AbstractAdaptivePolishingModel(ABC):
     @abstractmethod
     def _preprocess(
         self, image: NDArray[typing.Any]
-    ) -> NDArray[typing.Any] | torch.Tensor:
+    ) -> typing.Union[NDArray[typing.Any], torch.Tensor]:
         raise NotImplementedError(
             "AbstractAdaptivePolishingModel.preprocess must be overridden"
         )
 
     @staticmethod
     @abstractmethod
-    def load(model_path: str | PathLike[str]) -> torch.nn.Module:
+    def load(model_path: typing.Union[str, PathLike]) -> torch.nn.Module:
         raise NotImplementedError(
             "AbstractAdaptivePolishingModel.load must be overridden"
         )
@@ -121,7 +123,7 @@ class AbstractAdaptivePolishingModel(ABC):
 
     def predict(
         self,
-        image: NDArray[typing.Any] | str | PathLike[str],
+        image: typing.Union[NDArray[typing.Any], typing.Union[str, PathLike]],
         full_size: bool = True,
     ) -> NDArray[typing.Any]:
         if not isinstance(image, np.ndarray):
@@ -162,7 +164,7 @@ class AbstractAdaptivePolishingModel(ABC):
 class Gen0Model(AbstractAdaptivePolishingModel):
     def __init__(
         self,
-        model_path: str | PathLike[str],
+        model_path: typing.Union[str, PathLike],
         device: torch.DeviceLikeType,
         max_image_size: int = 512,
     ) -> None:
@@ -193,7 +195,7 @@ class Gen0Model(AbstractAdaptivePolishingModel):
 
         return transform(image=image)["image"].unsqueeze_(0)
 
-    def load(self, model_path: str | PathLike[str]) -> torch.nn.Module:
+    def load(self, model_path: typing.Union[str, PathLike]) -> torch.nn.Module:
         model_path = Path(model_path)
         m = Path(model_path).name.lower()
 
@@ -254,7 +256,7 @@ class Gen0Model(AbstractAdaptivePolishingModel):
 class Gen1Model(AbstractAdaptivePolishingModel):
     def __init__(
         self,
-        model_path: str | PathLike[str],
+        model_path: typing.Union[str, PathLike],
         device: torch.DeviceLikeType,
         max_image_size: int = 1536,
     ) -> None:
@@ -288,7 +290,7 @@ class Gen1Model(AbstractAdaptivePolishingModel):
                 self.device
             )  # Ensure it's still on the correct device
 
-    def load(self, model_path: str | PathLike[str]) -> torch.nn.Module:
+    def load(self, model_path: typing.Union[str, PathLike]) -> torch.nn.Module:
         model = smp.Unet(
             encoder_name="efficientnet-b4",
             encoder_weights=None,
@@ -314,9 +316,9 @@ def _get_newest_generation_key():
 
 
 def load_model(
-    model_path: str | PathLike[str],
-    generation: int | str | None = None,
-    device: torch.DeviceLikeType | None = None,
+    model_path: typing.Union[str, PathLike],
+    generation: typing.Optional[typing.Union[int, str]] = None,
+    device: typing.Optional[torch.DeviceLikeType] = None,
 ) -> AbstractAdaptivePolishingModel:
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
