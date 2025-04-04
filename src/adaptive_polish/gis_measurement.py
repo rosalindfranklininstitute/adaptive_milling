@@ -111,7 +111,9 @@ def clean_prediction(
     # (e.g. layers of gis and crack would mess up the GIS reading) but this
     # seems unlikely.
     # TODO: check whether the crack need to be touching lamella to be a crack
-    mask_largest_foreground = keep_only_largest_object(sum(masks.values()))
+    mask_largest_foreground = keep_only_largest_object(
+        np.sum(list(masks.values()), axis=0, dtype=np.bool_)
+    )
 
     # Gets the label that's connected to the other foreground elements
     connected_masks = {
