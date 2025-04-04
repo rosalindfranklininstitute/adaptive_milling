@@ -39,6 +39,7 @@ from adaptive_polish.centring import AdaptiveLamellaCentre2
 if typing.TYPE_CHECKING:
     from os import PathLike
     from numpy.typing import NDArray
+    from pandas import DataFrame
     from fibsem.milling.base import FibsemMillingStage
     from fibsem.microscope import FibsemMicroscope
     from fibsem.structures import FibsemImage, ImageSettings, Point
@@ -174,31 +175,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         fib_imaging_settings.path = lamella_ap_fib_folder
         sem_imaging_settings.path = lamella_ap_sem_folder
 
-        self._mill(
-            microscope=microscope,
-            fib_imaging_settings=fib_imaging_settings,
-            sem_imaging_settings=sem_imaging_settings,
-            stage=stage,
-            lamella_folder=lamella_folder,
-            lamella_ap_folder=lamella_ap_folder,
-            lamella_ap_plots_folder=lamella_ap_plots_folder,
-        )
-
-    def _mill(
-        self,
-        microscope: FibsemMicroscope,
-        fib_imaging_settings: ImageSettings,
-        sem_imaging_settings: ImageSettings,
-        stage: FibsemMillingStage,
-        lamella_folder: Path,
-        lamella_ap_folder: Path,
-        lamella_ap_plots_folder: Path,
-    ) -> None:
         # setup results
         results, gis_results_detailed = ap_utils.setup_results_df()
-
-        # Initialise counts
-        total_time = 0
 
         # run adaptive polishing
         try:
@@ -216,172 +194,17 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 sem_imaging_settings.filename = f"{f_basename}_SEM.tif"
                 sem_image = acquire.new_image(microscope, sem_imaging_settings)
 
-                # Segmentation
-                _logger.info("Starting segmentation")
-                prediction = self.model.predict(sem_image.data, full_size=False)
-                _logger.info("Segmentation complete")
-
-                prediction_pixel_size_um = (
-                    sem_image.metadata.pixel_size.x
-                    * constants.SI_TO_MICRO
-                    * (sem_image.data.shape[1] / prediction.shape[1])
-                )
-
-                mask_lamella_clean, mask_gis_clean, mask_crack_clean = (
-                    gm.clean_prediction(
-                        prediction,
-                        additional_labels=(
-                            SegmentationLabels.GIS,
-                            SegmentationLabels.CRACK,
-                        ),
-                    )
-                )
-                lamella_area_um = gm.get_mask_area_um2(
-                    mask_lamella_clean, pixel_size_um=prediction_pixel_size_um
-                )
-                if lamella_area_um < self.config.minimum_lamella_area_um2:
-                    raise StopEarlyError(
-                        f"Lamella found was only {lamella_area_um:.4e} um2, below the threshold of {self.config.minimum_lamella_area_um2:.4e} um2 ()"
-                    )
-                if mask_gis_clean is None:
-                    raise StopEarlyError("No GIS found beneath the lamella")
-
-                # Measure GIS
-                gis_thickness_um = (
-                    gm.filter_gis_thickness(
-                        np.sum(
-                            gm.resize_image(
-                                mask_gis_clean, new_shape=sem_image.data.shape
-                            ),
-                            axis=0,
-                        ),
-                        window_size_m=self.config.window_size_px
-                        * sem_image.metadata.pixel_size.x,
-                        pixel_size_m=sem_image.metadata.pixel_size.x,
-                    )
-                    * constants.SI_TO_MICRO
-                )
-                min_gis_um = np.nanmin(gis_thickness_um)
-                _logger.info(f"Took {len(gis_thickness_um)} GIS measurements along x")
-                _logger.info(
-                    "Minimum GIS thickness for milling cycle %i = %.4e um",
+                self._check_lamella(
                     milling_cycle,
-                    min_gis_um,
+                    image_name=f_basename,
+                    fib_image=fib_image,
+                    sem_image=sem_image,
+                    lamella_ap_folder=lamella_ap_folder,
+                    lamella_ap_plots_folder=lamella_ap_plots_folder,
+                    results=results,
+                    gis_results_detailed=gis_results_detailed,
                 )
-
-                if mask_crack_clean is None:
-                    crack_area_um2 = 0
-                else:
-                    crack_area_um2 = gm.get_mask_area_um2(
-                        mask_crack_clean, pixel_size_um=prediction_pixel_size_um
-                    )
-
-                _logger.info(
-                    "Area of cracks found in milling cycle %i = %.4e um2",
-                    milling_cycle,
-                    crack_area_um2,
-                )
-
-                # Save results
-                results.loc[milling_cycle] = {
-                    "image": f"adapt_mill_img_{milling_cycle:03}",
-                    "milling_time_s": total_time,
-                    "min_GIS_um": min_gis_um,
-                    "crack_area_um2": crack_area_um2,
-                }
-                results.to_csv(lamella_ap_folder / "GIS_thickness.csv")
-
-                # Save GIS thickness for each window
-                for window, gis_thickness in enumerate(gis_thickness_um):
-                    if gis_thickness > 0:
-                        gis_results_detailed.loc[len(gis_results_detailed)] = {
-                            "image": f_basename,
-                            "milling_time_s": total_time,
-                            "window": window,
-                            "gis_windowed_um": gis_thickness,
-                        }
-                    else:
-                        pass
-
-                gis_results_detailed.to_csv(
-                    lamella_ap_folder / "GIS_thickness_detailed.csv"
-                )
-
-                clean_foreground_prediction = gm.masks_to_labels(
-                    lamella_mask=mask_lamella_clean,
-                    gis_mask=mask_gis_clean,
-                    crack_mask=mask_crack_clean,
-                )
-
-                # plots
-                gm.milling_cycle_plot(
-                    sem_image=sem_image.data,
-                    first_prediction=prediction,
-                    clean_prediction=clean_foreground_prediction,
-                    fib_image=fib_image.data,
-                    gis_thickness_um=gis_thickness_um,
-                    gis_stop_um=self.config.gis_stop_um,
-                    crack_area_um2=crack_area_um2,
-                    img_name=f_basename,
-                    fib_screenshot=None,
-                    save_path=lamella_ap_plots_folder / f"{f_basename}_plot.png",
-                )
-
-                # Check for lamella centre
-                centre_m, mask_centre_px = self._get_lamella_centre(
-                    sem_image, lamella_mask=mask_lamella_clean
-                )
-                centre_drift_um = (
-                    math.sqrt(centre_m.x**2 + centre_m.y**2) * constants.SI_TO_MICRO
-                )
-                if self._get_drift_too_large(crack_area_um2):
-                    # Create centring plot if centring is found to be beyond the threshold
-                    AdaptivePolishMillingStrategy._create_centring_plot(
-                        sem_image=sem_image,
-                        mask_lamella_clean=mask_lamella_clean,
-                        centre_px=mask_centre_px,
-                        centre_m=centre_m,
-                        plot_path=lamella_ap_plots_folder
-                        / f"{f_basename}_centring_problem.png",
-                    )
-                    raise StopEarlyError(
-                        f"Total drift (um) {centre_drift_um:.4e} > threshold {self.config.maximum_drift_um:.4e} (might be a segmentation problem)"
-                    )
-
-                if self._get_gis_too_thin(min_gis_um):
-                    raise StopMillingException(
-                        f"Minimum GIS thickness (um) {min_gis_um:.4e} < threshold {self.config.gis_stop_um:.4e} um"
-                    )
-
-                if self._get_crack_too_large(crack_area_um2):
-                    raise StopMillingException(
-                        f"Crack area (um2) {crack_area_um2:.4e} > threshold {self.config.max_crack_area_um2:.4e} um2"
-                    )
-
-                # get pattern - this is where bitmap will come in later
-                pattern = stage.pattern.define()
-
-                # adjust milling interval TODO
-                next_milling_interval = self.config.milling_interval_s
-                pattern[0].time = next_milling_interval
-
-                # mill
-                draw_patterns(microscope=microscope, patterns=pattern)
-                try:
-                    run_milling(
-                        microscope=microscope,
-                        milling_current=stage.milling.milling_current,
-                        milling_voltage=stage.milling.milling_voltage,
-                        asynch=False,
-                    )
-                    _logger.info("Completed milling")
-                except Exception:
-                    _logger.error("An error occurred during milling", exc_info=True)
-                finally:
-                    microscope.stop_milling()  # dont use milling.finish_milling as it would clear patterns
-
-                # Increment counters
-                total_time += next_milling_interval
+                self._mill(microscope=microscope, stage=stage)
         except StopMillingException as e:
             _logger.info(f"Stopping milling due to: {e}")
         except StopEarlyError as e:
@@ -408,6 +231,177 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 imaging_current=microscope.system.ion.beam.beam_current,
                 imaging_voltage=microscope.system.ion.beam.voltage,
             )
+
+    def _check_lamella(
+        self,
+        milling_cycle: int,
+        image_name: str,
+        fib_image: FibsemImage,
+        sem_image: FibsemImage,
+        lamella_ap_folder: Path,
+        lamella_ap_plots_folder: Path,
+        results: DataFrame,
+        gis_results_detailed: DataFrame,
+    ) -> None:
+        # Segmentation
+        _logger.info("Starting segmentation")
+        prediction = self.model.predict(sem_image.data, full_size=False)
+        _logger.info("Segmentation complete")
+
+        prediction_pixel_size_um = (
+            sem_image.metadata.pixel_size.x
+            * constants.SI_TO_MICRO
+            * (sem_image.data.shape[1] / prediction.shape[1])
+        )
+
+        mask_lamella_clean, mask_gis_clean, mask_crack_clean = gm.clean_prediction(
+            prediction,
+            additional_labels=(
+                SegmentationLabels.GIS,
+                SegmentationLabels.CRACK,
+            ),
+        )
+        lamella_area_um = gm.get_mask_area_um2(
+            mask_lamella_clean, pixel_size_um=prediction_pixel_size_um
+        )
+        if lamella_area_um < self.config.minimum_lamella_area_um2:
+            raise StopEarlyError(
+                f"Lamella found was only {lamella_area_um:.4e} um2, below the threshold of {self.config.minimum_lamella_area_um2:.4e} um2 ()"
+            )
+        if mask_gis_clean is None:
+            raise StopEarlyError("No GIS found beneath the lamella")
+
+        # Measure GIS
+        gis_thickness_um = (
+            gm.filter_gis_thickness(
+                np.sum(
+                    gm.resize_image(mask_gis_clean, new_shape=sem_image.data.shape),
+                    axis=0,
+                ),
+                window_size_m=self.config.window_size_px
+                * sem_image.metadata.pixel_size.x,
+                pixel_size_m=sem_image.metadata.pixel_size.x,
+            )
+            * constants.SI_TO_MICRO
+        )
+        min_gis_um = np.nanmin(gis_thickness_um)
+        _logger.info(f"Took {len(gis_thickness_um)} GIS measurements along x")
+        _logger.info(
+            "Minimum GIS thickness for milling cycle %i = %.4e um",
+            milling_cycle,
+            min_gis_um,
+        )
+
+        if mask_crack_clean is None:
+            crack_area_um2 = 0
+        else:
+            crack_area_um2 = gm.get_mask_area_um2(
+                mask_crack_clean, pixel_size_um=prediction_pixel_size_um
+            )
+
+        _logger.info(
+            "Area of cracks found in milling cycle %i = %.4e um2",
+            milling_cycle,
+            crack_area_um2,
+        )
+
+        total_time = self.config.milling_interval_s * (milling_cycle + 1)
+        # Save results
+        results.loc[milling_cycle] = {
+            "image": f"adapt_mill_img_{milling_cycle:03}",
+            "milling_time_s": total_time,
+            "min_GIS_um": min_gis_um,
+            "crack_area_um2": crack_area_um2,
+        }
+        results.to_csv(lamella_ap_folder / "GIS_thickness.csv")
+
+        # Save GIS thickness for each window
+        for window, gis_thickness in enumerate(gis_thickness_um):
+            if gis_thickness > 0:
+                gis_results_detailed.loc[len(gis_results_detailed)] = {
+                    "image": image_name,
+                    "milling_time_s": total_time,
+                    "window": window,
+                    "gis_windowed_um": gis_thickness,
+                }
+            else:
+                pass
+
+        gis_results_detailed.to_csv(lamella_ap_folder / "GIS_thickness_detailed.csv")
+
+        clean_foreground_prediction = gm.masks_to_labels(
+            lamella_mask=mask_lamella_clean,
+            gis_mask=mask_gis_clean,
+            crack_mask=mask_crack_clean,
+        )
+
+        # plots
+        gm.milling_cycle_plot(
+            sem_image=sem_image.data,
+            first_prediction=prediction,
+            clean_prediction=clean_foreground_prediction,
+            fib_image=fib_image.data,
+            gis_thickness_um=gis_thickness_um,
+            gis_stop_um=self.config.gis_stop_um,
+            crack_area_um2=crack_area_um2,
+            img_name=image_name,
+            fib_screenshot=None,
+            save_path=lamella_ap_plots_folder / f"{image_name}_plot.png",
+        )
+
+        # Check for lamella centre
+        centre_m, mask_centre_px = self._get_lamella_centre(
+            sem_image, lamella_mask=mask_lamella_clean
+        )
+        centre_drift_um = (
+            math.sqrt(centre_m.x**2 + centre_m.y**2) * constants.SI_TO_MICRO
+        )
+        if self._get_drift_too_large(crack_area_um2):
+            # Create centring plot if centring is found to be beyond the threshold
+            AdaptivePolishMillingStrategy._create_centring_plot(
+                sem_image=sem_image,
+                mask_lamella_clean=mask_lamella_clean,
+                centre_px=mask_centre_px,
+                centre_m=centre_m,
+                plot_path=lamella_ap_plots_folder
+                / f"{image_name}_centring_problem.png",
+            )
+            raise StopEarlyError(
+                f"Total drift (um) {centre_drift_um:.4e} > threshold {self.config.maximum_drift_um:.4e} (might be a segmentation problem)"
+            )
+
+        if self._get_gis_too_thin(min_gis_um):
+            raise StopMillingException(
+                f"Minimum GIS thickness (um) {min_gis_um:.4e} < threshold {self.config.gis_stop_um:.4e} um"
+            )
+
+        if self._get_crack_too_large(crack_area_um2):
+            raise StopMillingException(
+                f"Crack area (um2) {crack_area_um2:.4e} > threshold {self.config.max_crack_area_um2:.4e} um2"
+            )
+
+    def _mill(self, microscope: FibsemMicroscope, stage: FibsemMillingStage) -> None:
+        # get pattern - this is where bitmap will come in later
+        pattern = stage.pattern.define()
+
+        # adjust milling interval TODO
+        next_milling_interval = self.config.milling_interval_s
+        pattern[0].time = next_milling_interval
+
+        # mill
+        draw_patterns(microscope=microscope, patterns=pattern)
+        try:
+            run_milling(
+                microscope=microscope,
+                milling_current=stage.milling.milling_current,
+                milling_voltage=stage.milling.milling_voltage,
+                asynch=False,
+            )
+            _logger.info("Completed milling")
+        except Exception:
+            _logger.error("An error occurred during milling", exc_info=True)
+        finally:
+            microscope.stop_milling()  # dont use milling.finish_milling as it would clear patterns
 
     def _align_beam(
         self,
@@ -465,7 +459,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             fig, axs = plt.subplots(1, 2)
             axs = axs.ravel()[::-1]
         else:
-            fig, ax = plt.subplots(1, 2)
+            fig, ax = plt.subplots(1, 1)
             axs = [ax]
 
         _ = axs[0].imshow(sem_image.data, cmap="gray")
