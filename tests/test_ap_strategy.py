@@ -107,6 +107,7 @@ def test_ap_folders_created(
     _, stages = setup_protocol_and_milling_stages(
         ap_config.to_dict(), protocol_template_path, tmp_path
     )
+    stage = stages[0]
 
     microscope, settings = setup_microscope_and_settings(
         microscope_config_path, tmp_path
@@ -123,7 +124,7 @@ def test_ap_folders_created(
 
     with pytest.raises(FileNotFoundError):
         # This will raise an error but should make directories first
-        strategy.run(microscope, stages[0])
+        strategy.run(microscope, stage)
 
     adaptive_polish_dir = lamella_directory / "adaptive_polish"
     # Check directories were created
@@ -150,6 +151,7 @@ def test_loads_sem_model(
     _, stages = setup_protocol_and_milling_stages(
         ap_config.to_dict(), protocol_template_path, tmp_path
     )
+    stage = stages[0]
 
     microscope, settings = setup_microscope_and_settings(
         microscope_config_path, tmp_path
@@ -166,8 +168,7 @@ def test_loads_sem_model(
 
     mock_load_sem_model.side_effect = ExceptionForMocking("Expected exception")
     with pytest.raises(ExceptionForMocking):
-        # This will raise an error but should make directories first
-        strategy.run(microscope, stages[0])
+        strategy.run(microscope, stage)
 
     mock_load_sem_model.assert_called_once_with(
         model_path=Path(model_path), generation=None
@@ -202,6 +203,7 @@ def test_reference_images_saved_correctly(
     microscope, settings = setup_microscope_and_settings(
         microscope_config_path, tmp_path
     )
+    stage = stages[0]
 
     strategy = ap_strategy.AdaptivePolishMillingStrategy(config=ap_config)
 
@@ -217,8 +219,7 @@ def test_reference_images_saved_correctly(
         mock_model.predict.side_effect = ExceptionForMocking("Expected exception")
 
         with pytest.raises(ExceptionForMocking):
-            # This will raise an error but should make directories first
-            strategy.run(microscope, stages[0])
+            strategy.run(microscope, stage)
 
         mock_model.predict.assert_called_once()
 
@@ -265,6 +266,7 @@ def test_milling_stops_when_check_fails(
     _, stages = setup_protocol_and_milling_stages(
         ap_config.to_dict(), protocol_template_path, tmp_path
     )
+    stage = stages[0]
 
     microscope, settings = setup_microscope_and_settings(
         microscope_config_demo2_path,
@@ -290,8 +292,7 @@ def test_milling_stops_when_check_fails(
             side_effect=ExceptionForMocking("Unexpected exception")
         ),
     ) as mock_draw_patterns:
-        # This will raise an error but should make directories first
-        strategy.run(microscope, stages[0])
+        strategy.run(microscope, stage)
         mock_draw_patterns.assert_not_called()
 
 
