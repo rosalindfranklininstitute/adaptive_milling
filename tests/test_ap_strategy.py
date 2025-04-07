@@ -31,7 +31,7 @@ _AP_PASS_CHECKS_CONFIG = {
 }
 
 
-class TestException(Exception):
+class ExceptionForMocking(Exception):
     pass
 
 
@@ -164,8 +164,8 @@ def test_loads_sem_model(
     # Necessary to set imaging settings path
     acquire.take_reference_images(microscope, settings.image)
 
-    mock_load_sem_model.side_effect = TestException("Expected exception")
-    with pytest.raises(TestException):
+    mock_load_sem_model.side_effect = ExceptionForMocking("Expected exception")
+    with pytest.raises(ExceptionForMocking):
         # This will raise an error but should make directories first
         strategy.run(microscope, stages[0])
 
@@ -180,6 +180,7 @@ def test_imaging_settings_applied() -> None:
     existing settings if they are different"""
     # TODO: turns out I don't understand what is needed here
     pass
+
 
 def test_reference_images_saved_correctly(
     protocol_template_path: Path,
@@ -213,9 +214,9 @@ def test_reference_images_saved_correctly(
 
     with patch.object(strategy, "model") as mock_model:
         # Exit test at prediction step
-        mock_model.predict.side_effect = TestException("Expected exception")
+        mock_model.predict.side_effect = ExceptionForMocking("Expected exception")
 
-        with pytest.raises(TestException):
+        with pytest.raises(ExceptionForMocking):
             # This will raise an error but should make directories first
             strategy.run(microscope, stages[0])
 
@@ -286,7 +287,7 @@ def test_milling_stops_when_check_fails(
         "draw_patterns",
         MagicMock(
             # Ensure test doesn't keep looping:
-            side_effect=TestException("Unexpected exception")
+            side_effect=ExceptionForMocking("Unexpected exception")
         ),
     ) as mock_draw_patterns:
         # This will raise an error but should make directories first
