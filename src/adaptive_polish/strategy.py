@@ -331,7 +331,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             "min_GIS_um": min_gis_um,
             "crack_area_um2": crack_area_um2,
         }
-        results.to_csv(lamella_ap_folder / "GIS_thickness.csv")
+        results.to_json(lamella_ap_folder / "GIS_thickness.json")
 
         # Save GIS thickness
         detailed_results = {
@@ -344,7 +344,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         }
 
         gis_results_detailed.loc[milling_cycle] = detailed_results
-        gis_results_detailed.to_csv(lamella_ap_folder / "GIS_thickness_detailed.csv")
+        gis_results_detailed.to_json(lamella_ap_folder / "GIS_thickness_detailed.json")
 
         try:
             # Create plots

@@ -170,9 +170,9 @@ def test_runs(
     )
 
     # Results (csv)
-    results_paths = set(adaptive_polish_dir.glob("*.csv"))
+    results_paths = set(adaptive_polish_dir.glob("*.json"))
     assert len(results_paths), "No results have been created"
-    expected_results_file_names = ("GIS_thickness.csv", "GIS_thickness_detailed.csv")
+    expected_results_file_names = ("GIS_thickness.json", "GIS_thickness_detailed.json")
     expected_results_paths = set(
         (adaptive_polish_dir / _ for _ in expected_results_file_names)
     )
