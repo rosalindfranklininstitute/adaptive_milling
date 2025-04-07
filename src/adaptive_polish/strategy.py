@@ -261,12 +261,12 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 SegmentationLabels.CRACK,
             ),
         )
-        lamella_area_um = gm.get_mask_area_um2(
+        lamella_area_um2 = gm.get_mask_area_um2(
             mask_lamella_clean, pixel_size_um=prediction_pixel_size_um
         )
-        if lamella_area_um < self.config.minimum_lamella_area_um2:
+        if lamella_area_um2 < self.config.minimum_lamella_area_um2:
             raise StopEarlyError(
-                f"Lamella found was only {lamella_area_um:.4e} um2, below the threshold of {self.config.minimum_lamella_area_um2:.4e} um2 ()"
+                f"Lamella found was only {lamella_area_um2:.4e} um2, below the threshold of {self.config.minimum_lamella_area_um2:.4e} um2 ()"
             )
         if mask_gis_clean is None:
             raise StopEarlyError("No GIS found beneath the lamella")
