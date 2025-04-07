@@ -13,6 +13,7 @@ from fibsem.milling import get_milling_stages, mill_stages
 # Necessary to ensure AP strategy is registered:
 from fibsem.milling.strategy import register_strategy
 from autolamella.protocol.validation import validate_protocol
+from autolamella.structures import AutoLamellaProtocol
 from adaptive_polish.strategy import AdaptivePolishMillingConfig
 
 from . import setup
@@ -96,8 +97,8 @@ def test_runs(
     # connect to microscope
     microscope, settings = utils.setup_session(config_path=microscope_config_path)
 
-    protocol = validate_protocol(utils.load_protocol(protocol_path=protocol_path))
-
+    # Check Autolamella loads protocol correctly
+    protocol = AutoLamellaProtocol.load(protocol_path)
     milling_stages = protocol.milling["mill_polishing"]
     protocol_strategy_config: AdaptivePolishMillingConfig = milling_stages[
         0
@@ -117,11 +118,15 @@ def test_runs(
     # Necessary to set imaging settings path
     acquire.take_reference_images(microscope, settings.image)
 
+    # Check fibsem loads protocol and loads strategy correctly
+    protocol = validate_protocol(utils.load_protocol(protocol_path=protocol_path))
+
     milling_stages = get_milling_stages("mill_polishing", protocol["milling"])
     assert milling_stages[0].strategy.config == protocol_strategy_config, (
         "The strategy and protocol configs do not match"
     )
 
+    # Check milling loop runs but exits at the end of loop calls_before_exception + 1
     with patch.object(
         microscope,
         "stop_milling",
@@ -145,9 +150,10 @@ def test_runs(
             f"{name} subdirectory wasn't created"
         )
 
+    # Check all expected output files have been created:
     expected_fn_stems = [f"lamella_AP_img_{_:>03}_" for _ in range(expected_loops)]
 
-    # Check plots exist
+    # Plots (png)
     centring_plot_path = adaptive_polish_dir / "centring.png"
     assert centring_plot_path.is_file(), f"{centring_plot_path.name} was not created"
     gis_thickness_plot_path = adaptive_polish_dir / "lamella_GIS_thickness.png"
@@ -163,6 +169,7 @@ def test_runs(
         "Expected plot file paths do not match found plot paths"
     )
 
+    # Results (csv)
     results_paths = set(adaptive_polish_dir.glob("*.csv"))
     assert len(results_paths), "No results have been created"
     expected_results_file_names = ("GIS_thickness.csv", "GIS_thickness_detailed.csv")
@@ -173,6 +180,7 @@ def test_runs(
         "Expected results file paths do not match found .csv paths"
     )
 
+    # FIB and SEM images (tif)
     for image_type in ("sem", "fib"):
         image_path = adaptive_polish_dir / image_type
         image_paths = set(image_path.glob("*.tif"))
