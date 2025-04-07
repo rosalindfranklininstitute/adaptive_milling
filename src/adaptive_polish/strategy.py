@@ -326,7 +326,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         # Save results
         total_time = config.milling_interval_s * (milling_cycle + 1)
         results.loc[milling_cycle] = {
-            "image": f"adapt_mill_img_{milling_cycle:03}",
+            "image": image_name,
             "milling_time_s": total_time,
             "min_GIS_um": min_gis_um,
             "crack_area_um2": crack_area_um2,
