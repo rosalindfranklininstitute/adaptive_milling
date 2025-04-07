@@ -145,7 +145,7 @@ def create_bitmap_array(
     bitmap_offset = int(np.floor(window_size_m / (2 * pixel_size_m)))
 
     if as_image:
-        dwell_time_range = (1, 255)
+        dwell_time_range = (0, 255)
         dwell_time_channel = 2
         blanking_flag_value = 0
         bitmap_array = np.ones(  # If flags channel were all 0s, it would blank everything
@@ -160,7 +160,7 @@ def create_bitmap_array(
         )
     else:
         # TODO: find out what the lowest value can be. Docs say 'If the value is 0, the pixel is skipped' but what if it is smaller than 1/255?
-        dwell_time_range = (1 / 255, 1)
+        dwell_time_range = (0, 1)
         dwell_time_channel = 0
         blanking_flag_value = 1
         bitmap_array = np.zeros(
