@@ -176,13 +176,6 @@ def test_loads_sem_model(
     mock_is_file.assert_called_once()
 
 
-def test_imaging_settings_applied() -> None:
-    """Test that the config imaging settings are applied rather than
-    existing settings if they are different"""
-    # TODO: turns out I don't understand what is needed here
-    pass
-
-
 def test_reference_images_saved_correctly(
     protocol_template_path: Path,
     microscope_config_path: Path,
