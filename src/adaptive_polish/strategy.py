@@ -358,14 +358,13 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             first_prediction=prediction,
             clean_prediction=clean_foreground_prediction,
             fib_image=fib_image.data,
-            gis_thickness_filtered_um=gis_thickness_filtered_um,
+            gis_thickness_um=gis_thickness_filtered_um,
             gis_stop_um=config.gis_stop_um,
             crack_area_um2=crack_area_um2,
             xlims=xlims_px,
             img_name=image_name,
             fib_screenshot=None,
             save_path=lamella_ap_plots_folder / f"{image_name}_plot.png",
-            bounding_box=lamella_bbox,
         )
 
         centre_drift_um = (
@@ -382,6 +381,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 centre_m=centre_m,
                 plot_path=lamella_ap_plots_folder
                 / f"{image_name}_centring_problem.png",
+                bounding_box=lamella_bbox,
             )
             raise StopEarlyError(
                 f"Total drift (um) {centre_drift_um:.4e} > threshold {config.maximum_drift_um:.4e} (might be a segmentation problem)"
