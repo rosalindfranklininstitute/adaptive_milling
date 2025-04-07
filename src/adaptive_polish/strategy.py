@@ -3,6 +3,7 @@ import logging
 import math
 from dataclasses import dataclass
 from pathlib import Path
+from matplotlib.patches import Rectangle
 from matplotlib.colors import ListedColormap
 import matplotlib.pyplot as plt
 import numpy as np
