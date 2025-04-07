@@ -29,7 +29,7 @@ from fibsem.milling.patterning.patterns2 import (
     TrenchPattern,
     TrenchBitmapPattern,
 )
-from fibsem.structures import BeamType
+from fibsem.structures import BeamType, Point
 
 # Adaptive polish
 import adaptive_polish.gis_measurement as gm
@@ -46,7 +46,7 @@ if typing.TYPE_CHECKING:
     from pandas import DataFrame
     from fibsem.milling.base import FibsemMillingStage
     from fibsem.microscope import FibsemMicroscope
-    from fibsem.structures import FibsemImage, ImageSettings, Point
+    from fibsem.structures import FibsemImage, ImageSettings
     from adaptive_polish.dl_segmentation.sem_lamella_segmentor import (
         AbstractAdaptivePolishingModel,
     )
@@ -257,14 +257,11 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         prediction = model.predict(sem_image.data, full_size=False)
         _logger.info("Segmentation complete")
 
-        prediction_to_image_scale_multiplier = (
-            sem_image.data.shape[1] / prediction.shape[1]
-        )
-
         prediction_pixel_size_um = (
             sem_image.metadata.pixel_size.x
             * constants.SI_TO_MICRO
-            * prediction_to_image_scale_multiplier
+            * sem_image.data.shape[1]
+            / prediction.shape[1]
         )
 
         mask_lamella_clean, mask_gis_clean, mask_crack_clean = gm.clean_prediction(
@@ -292,29 +289,21 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         )
 
         # Measure GIS
-        gis_thickness_full = np.sum(
+        gis_thickness_um = np.sum(
             gm.resize_image(mask_gis_clean, new_shape=sem_image.data.shape),
             axis=0,
         )
 
         # Use lamella bounds to determine gis edges
-        xlims_px = np.round(
-            (
-                lamella_bbox[1] * prediction_to_image_scale_multiplier,
-                lamella_bbox[3] * prediction_to_image_scale_multiplier,
-            )
-        ).astype(np.uint32)
+        xlims_px = np.round((lamella_bbox[1], lamella_bbox[3])).astype(np.uint32)
 
-        gis_thickness_um = (
-            gm.filter_gis_thickness(
-                gis_thickness_full[xlims_px[0] : xlims_px[1]],
-                window_size_m=config.window_size_px * sem_image.metadata.pixel_size.x,
-                pixel_size_m=sem_image.metadata.pixel_size.x,
-            )
-            * constants.SI_TO_MICRO
+        gis_thickness_filtered_um = gm.filter_gis_thickness(
+            gis_thickness_um[xlims_px[0] : xlims_px[1] + 1],
+            window_size_m=config.window_size_px * sem_image.metadata.pixel_size.x,
+            pixel_size_m=sem_image.metadata.pixel_size.x,
         )
-        min_gis_um = np.nanmin(gis_thickness_um)
-        _logger.info(f"Took {len(gis_thickness_um)} GIS measurements along x")
+        min_gis_um = np.nanmin(gis_thickness_filtered_um)
+        _logger.info(f"Took {len(gis_thickness_filtered_um)} GIS measurements along x")
         _logger.info(
             "Minimum GIS thickness for milling cycle %i = %.4e um",
             milling_cycle,
@@ -369,7 +358,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             first_prediction=prediction,
             clean_prediction=clean_foreground_prediction,
             fib_image=fib_image.data,
-            gis_thickness_um=gis_thickness_um,
+            gis_thickness_filtered_um=gis_thickness_filtered_um,
             gis_stop_um=config.gis_stop_um,
             crack_area_um2=crack_area_um2,
             xlims=xlims_px,
@@ -569,23 +558,31 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
     ]:
         # This does assume square pixels
         if sem_image.data.shape[1] == lamella_mask.shape[1]:
+            prediction_to_image_scale_multiplier = 1
             labels_pixel_size_m = sem_image.metadata.pixel_size.x
         else:
-            labels_pixel_size_m = sem_image.metadata.pixel_size.x * (
+            prediction_to_image_scale_multiplier = (
                 sem_image.data.shape[1] / lamella_mask.shape[1]
             )
+            labels_pixel_size_m = (
+                sem_image.metadata.pixel_size.x * prediction_to_image_scale_multiplier
+            )
 
-        bbox = get_lamella_bounding_box(sem_image.data, lamella_mask, None)
-        centre_px = get_centre_from_bounding_box(bbox)
+        bbox_mask = get_lamella_bounding_box(lamella_mask, edge_finding="median")
+
+        bbox_image = tuple(_ * prediction_to_image_scale_multiplier for _ in bbox_mask)
+
+        centre_px = get_centre_from_bounding_box(bbox_image, subpixel_accuracy=True)
+        centre_px_point = Point(x=centre_px[1], y=centre_px[0])
 
         # Convert to microscope image coordinates (0, 0 at centre of image)
         centre_m = conversions.image_to_microscope_image_coordinates(
-            centre_px, lamella_mask, labels_pixel_size_m, subpixel_precision=True
+            centre_px_point, lamella_mask, labels_pixel_size_m, subpixel_precision=True
         )
         return (
             centre_m,
-            centre_px,
-            bbox,
+            centre_px_point,
+            bbox_image,
         )
 
     @staticmethod
