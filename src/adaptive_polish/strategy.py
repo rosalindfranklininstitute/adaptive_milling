@@ -345,13 +345,16 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         results.to_csv(lamella_ap_folder / "GIS_thickness.csv")
 
         # Save GIS thickness
-        gis_results_detailed.loc[len(gis_results_detailed)] = {
+        detailed_results = {
             "image": image_name,
             "milling_time_s": total_time,
-            "gis_thickness_um": gis_thickness_full[xlims_px[0] : xlims_px[1]],
-            "gis_thickness_filtered_um": gis_thickness_um,
+            "gis_thickness_um": gis_thickness_um[
+                xlims_px[0] : xlims_px[1] + 1
+            ].tolist(),
+            "gis_thickness_filtered_um": gis_thickness_filtered_um.tolist(),
         }
 
+        gis_results_detailed.loc[milling_cycle] = detailed_results
         gis_results_detailed.to_csv(lamella_ap_folder / "GIS_thickness_detailed.csv")
 
         clean_foreground_prediction = gm.masks_to_labels(

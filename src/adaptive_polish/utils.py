@@ -29,8 +29,8 @@ def setup_results_df():
         {
             "image": [],
             "milling_time_s": [],
-            "window": [],
-            "gis_windowed_um": [],
+            "gis_thickness_um": pd.Series([], dtype=object),
+            "gis_thickness_filtered_um": pd.Series([], dtype=object),
         }
     )
     return results, gis_results_detailed
