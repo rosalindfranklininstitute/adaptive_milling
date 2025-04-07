@@ -249,7 +249,7 @@ def test_milling_stops_when_check_fails(
 
     pass_checks_kwargs = _AP_PASS_CHECKS_CONFIG.copy()
     if failure_reason == "gis":
-        pass_checks_kwargs["gis_stop_um"] = 10
+        pass_checks_kwargs["gis_stop_um"] = 500
     elif failure_reason == "crack":
         pass_checks_kwargs["max_crack_area_um2"] = 0
     elif failure_reason == "lamella area":
