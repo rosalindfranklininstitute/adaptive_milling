@@ -344,17 +344,13 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         }
         results.to_csv(lamella_ap_folder / "GIS_thickness.csv")
 
-        # Save GIS thickness for each window
-        for window, gis_thickness in enumerate(gis_thickness_um):
-            if gis_thickness > 0:
-                gis_results_detailed.loc[len(gis_results_detailed)] = {
-                    "image": image_name,
-                    "milling_time_s": total_time,
-                    "window": window,
-                    "gis_windowed_um": gis_thickness,
-                }
-            else:
-                pass
+        # Save GIS thickness
+        gis_results_detailed.loc[len(gis_results_detailed)] = {
+            "image": image_name,
+            "milling_time_s": total_time,
+            "gis_thickness_um": gis_thickness_full[xlims_px[0] : xlims_px[1]],
+            "gis_thickness_filtered_um": gis_thickness_um,
+        }
 
         gis_results_detailed.to_csv(lamella_ap_folder / "GIS_thickness_detailed.csv")
 
