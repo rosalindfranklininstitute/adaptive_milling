@@ -256,10 +256,14 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         prediction = model.predict(sem_image.data, full_size=False)
         _logger.info("Segmentation complete")
 
+        prediction_to_image_scale_multiplier = (
+            sem_image.data.shape[1] / prediction.shape[1]
+        )
+
         prediction_pixel_size_um = (
             sem_image.metadata.pixel_size.x
             * constants.SI_TO_MICRO
-            * (sem_image.data.shape[1] / prediction.shape[1])
+            * prediction_to_image_scale_multiplier
         )
 
         mask_lamella_clean, mask_gis_clean, mask_crack_clean = gm.clean_prediction(
@@ -287,8 +291,22 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         )
 
         # Measure GIS
+        gis_thickness_full = np.sum(
+            gm.resize_image(mask_gis_clean, new_shape=sem_image.data.shape),
+            axis=0,
+        )
+
+        # Use lamella bounds to determine gis edges
+        xlims_px = np.round(
+            (
+                lamella_bbox[1] * prediction_to_image_scale_multiplier,
+                lamella_bbox[3] * prediction_to_image_scale_multiplier,
+            )
+        ).astype(np.uint32)
+
         gis_thickness_um = (
             gm.filter_gis_thickness(
+                gis_thickness_full[xlims_px[0] : xlims_px[1]],
                 window_size_m=config.window_size_px * sem_image.metadata.pixel_size.x,
                 pixel_size_m=sem_image.metadata.pixel_size.x,
             )

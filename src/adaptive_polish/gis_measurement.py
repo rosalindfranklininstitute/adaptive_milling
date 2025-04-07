@@ -158,6 +158,15 @@ def apply_binary_opening(
             mode="ignore",
         )
 
+def get_xlims(
+    mask_1d: NDArray[typing.Union[np.integer, np.floating]],
+) -> NDArray[np.uint32]:
+    mask_1d = mask_1d.squeeze()
+    return np.asarray(
+        (np.argmax(mask_1d), mask_1d.size - 1 - np.argmax(mask_1d[::-1])),
+        dtype=np.uint32,
+    )
+
 
 def filter_gis_thickness(
     gis_thickness_px: NDArray[typing.Union[np.integer, np.floating]],
@@ -282,7 +291,7 @@ def milling_cycle_plot(
     gis_thickness_um: ArrayLike,
     gis_stop_um: float,
     crack_area_um2: float,
-    xlims: typing.Optional[tuple[int, int]] = None,
+    xlims: typing.Optional[typing.Tuple[int, int]] = None,
     fib_screenshot: typing.Optional[NDArray[typing.Any]] = None,
     img_name: typing.Optional[str] = None,
     save_path: typing.Optional[typing.Union[str, PathLike]] = None,
