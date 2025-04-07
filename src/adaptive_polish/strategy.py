@@ -346,26 +346,29 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         gis_results_detailed.loc[milling_cycle] = detailed_results
         gis_results_detailed.to_csv(lamella_ap_folder / "GIS_thickness_detailed.csv")
 
-        clean_foreground_prediction = gm.masks_to_labels(
-            lamella_mask=mask_lamella_clean,
-            gis_mask=mask_gis_clean,
-            crack_mask=mask_crack_clean,
-        )
-
-        # plots
-        gm.milling_cycle_plot(
-            sem_image=sem_image.data,
-            first_prediction=prediction,
-            clean_prediction=clean_foreground_prediction,
-            fib_image=fib_image.data,
-            gis_thickness_um=gis_thickness_filtered_um,
-            gis_stop_um=config.gis_stop_um,
-            crack_area_um2=crack_area_um2,
-            xlims=xlims_px,
-            img_name=image_name,
-            fib_screenshot=None,
-            save_path=lamella_ap_plots_folder / f"{image_name}_plot.png",
-        )
+        try:
+            # Create plots
+            gm.milling_cycle_plot(
+                sem_image=sem_image.data,
+                first_prediction=prediction,
+                clean_prediction=gm.masks_to_labels(
+                    lamella_mask=mask_lamella_clean,
+                    gis_mask=mask_gis_clean,
+                    crack_mask=mask_crack_clean,
+                ),
+                fib_image=fib_image.data,
+                gis_thickness_um=gis_thickness_filtered_um,
+                gis_stop_um=config.gis_stop_um,
+                crack_area_um2=crack_area_um2,
+                xlims=xlims_px,
+                img_name=image_name,
+                fib_screenshot=None,
+                save_path=lamella_ap_plots_folder / f"{image_name}_plot.png",
+            )
+        except Exception:
+            _logger.error(
+                "Exception occurred creating the milling cycle plot", exc_info=True
+            )
 
         centre_drift_um = (
             math.sqrt(centre_m.x**2 + centre_m.y**2) * constants.SI_TO_MICRO
