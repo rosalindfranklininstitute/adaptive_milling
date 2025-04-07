@@ -89,7 +89,7 @@ def clean_prediction(
             ]
         ]
     ] = None,
-) -> tuple[
+) -> typing.Tuple[
     NDArray[np.bool_],
     typing.Optional[NDArray[np.bool_]],
     typing.Optional[NDArray[np.bool_]],
@@ -172,7 +172,7 @@ def filter_gis_thickness(
     gis_thickness_px: NDArray[typing.Union[np.integer, np.floating]],
     window_size_m: int,
     pixel_size_m: float,
-) -> tuple[NDArray[np.float64], tuple[int, int]]:
+) -> NDArray[np.float64]:
     # TODO: Change window_size_m to beam FWHM
     # FWHM is 2 * sqrt(2 * np.log(2)) * sigma, which is approx 2.355 * sigma
     # The number of points in the gaussian curve should be approx 6 * std for convolution
@@ -194,7 +194,7 @@ def filter_gis_thickness_fast(
     gis_thickness_px: NDArray[typing.Union[np.integer, np.floating]],
     window_size_m: int,
     pixel_size_m: float,
-) -> tuple[NDArray[np.float64], tuple[int, int]]:
+) -> NDArray[np.float64]:
     # Get window size in px
     window_size_px = int(window_size_m / pixel_size_m)
     _logger.info(f"window_size_px: {window_size_px}")
@@ -202,7 +202,7 @@ def filter_gis_thickness_fast(
     return (cumsum_vec[window_size_px:] - cumsum_vec[:-window_size_px]) / window_size_px
 
 
-def resize_image(image, new_shape: tuple[int, int]) -> NDArray[np.float32]:
+def resize_image(image, new_shape: typing.Tuple[int, int]) -> NDArray[np.float32]:
     return skimage.transform.resize(
         # Needs to be floating type if we want interpolation
         image.astype(np.float32),
