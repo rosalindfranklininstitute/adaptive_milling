@@ -480,6 +480,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 centre_px=centre_px,
                 centre_m=centre_m,
                 plot_path=plot_path,
+                bounding_box=lamella_bbox,
             )
 
     @staticmethod
@@ -490,6 +491,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         centre_m: Point,
         plot_path: Path,
         prediction: typing.Optional[NDArray[np.integer]] = None,
+        bounding_box: typing.Optional[tuple[float, float, float, float]] = None,
     ) -> None:
         # Plot centring stuff
         if prediction is not None:
@@ -510,6 +512,17 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             extent=extent,
             alpha=0.5,
         )
+        if bounding_box is not None:
+            axs[0].add_patch(
+                Rectangle(
+                    (bounding_box[1], bounding_box[0]),
+                    width=bounding_box[3] - bounding_box[1],
+                    height=bounding_box[2] - bounding_box[0],
+                    edgecolor="red",
+                    facecolor="none",
+                    alpha=0.5,
+                )
+            )
         if prediction is not None:
             axs[1].imshow(
                 prediction,
