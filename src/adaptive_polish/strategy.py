@@ -276,7 +276,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         )
         if lamella_area_um2 < config.minimum_lamella_area_um2:
             raise StopEarlyError(
-                f"Lamella found was only {lamella_area_um2:.4e} um2, below the threshold of {config.minimum_lamella_area_um2:.4e} um2 ()"
+                f"Lamella found was only {lamella_area_um2:.4e} um2, below the threshold of {config.minimum_lamella_area_um2:.4e} um2"
             )
         if mask_gis_clean is None:
             raise StopEarlyError("No GIS found beneath the lamella")
