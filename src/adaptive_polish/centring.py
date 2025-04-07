@@ -1,12 +1,14 @@
 import typing
+from dataclasses import dataclass
 
 import numpy as np
 
 from fibsem.detection.detection import AdaptiveLamellaCentre
 from fibsem.structures import Point
 
-
-class AdaptiveLamellaCentre2(AdaptiveLamellaCentre):
+@dataclass
+class AdaptivePolishLamellaCentre(AdaptiveLamellaCentre):
+    name: str = "AdaptivePolishLamellaCentre"
     def detect(
         self, img: np.ndarray, mask: np.ndarray = None, point: Point = None
     ) -> Point:
@@ -21,11 +23,13 @@ class AdaptiveLamellaCentre2(AdaptiveLamellaCentre):
         mask_shape = np.asarray(mask.shape)
         if np.any(img_shape != mask_shape):
             # Scale mask to image (in case mask is binned)
-            mask_lamella_centre *= img_shape / mask_shape
+            lamella_centre *= img_shape / mask_shape
+        else:
+            lamella_centre = mask_lamella_centre
 
         self.px = Point(
-            x=mask_lamella_centre[1],
-            y=mask_lamella_centre[0],
+            x=lamella_centre[1],
+            y=lamella_centre[0],
         )
         return self.px
 
@@ -59,6 +63,16 @@ def get_lamella_bounding_box(
     ymax = edge_fn(valid_ymaxs)
     return (ymin, xmin, ymax, xmax)
 
+def get_centre_from_bounding_box(
+    bbox: typing.Union[tuple[int, int, int, int], tuple[float, float, float, float]],
+    subpixel_accuracy: bool = False,
+):
+    cx = (bbox[1] + bbox[3]) / 2
+    cy = (bbox[0] + bbox[2]) / 2
+    if not subpixel_accuracy:
+        cx = int(round(cx))
+        cy = int(round(cy))
+    return (cy, cx)
 
 def get_lamella_centre(
     array: np.typing.NDArray[np.bool_],
@@ -66,9 +80,4 @@ def get_lamella_centre(
     subpixel_accuracy: bool = False,
 ) -> typing.Union[typing.Tuple[int, int], typing.Tuple[float, float]]:
     bbox = get_lamella_bounding_box(array, edge_finding=edge_finding)
-    cx = (bbox[1] + bbox[3]) / 2
-    cy = (bbox[0] + bbox[2]) / 2
-    if not subpixel_accuracy:
-        cx = int(round(cx))
-        cy = int(round(cy))
-    return (cy, cx)
+    return get_centre_from_bounding_box(bbox, subpixel_accuracy=subpixel_accuracy)
