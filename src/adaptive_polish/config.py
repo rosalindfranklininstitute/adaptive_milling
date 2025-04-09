@@ -17,9 +17,10 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
     max_crack_area_um2: float = 2
     max_milling_cycles: int = 30
     window_size_px: int = 10
-    model_generation: typing.Optional[str] = None
     minimum_lamella_area_um2: float = 30.0  # 30μm²
     maximum_drift_um: float = 0.05
+    model_generation: typing.Optional[str] = None  # Uses latest generation
+    model_image_max_size: typing.Optional[int] = None  # Uses model default
 
     _advanced_attributes = []
 
@@ -36,7 +37,8 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
             "max_milling_cycles": self.max_milling_cycles,
             "window_size_px": self.window_size_px,
             "max_crack_area_um2": self.max_crack_area_um2,
-            "model_generation": self.model_generation,
             "minimum_lamella_area_um2": self.minimum_lamella_area_um2,
             "maximum_drift_um": self.maximum_drift_um,
+            "model_generation": self.model_generation,
+            "model_image_max_size": self.model_image_max_size,
         }

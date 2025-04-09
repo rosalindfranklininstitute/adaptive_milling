@@ -319,6 +319,7 @@ def load_model(
     model_path: typing.Union[str, PathLike],
     generation: typing.Optional[typing.Union[int, str]] = None,
     device: typing.Optional[torch.DeviceLikeType] = None,
+    max_image_size: typing.Optional[int] = None,
 ) -> AbstractAdaptivePolishingModel:
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -335,8 +336,13 @@ def load_model(
     _logger.info("Loading %s generation model", generation)
     model_class = MODEL_GENERATIONS_DICT.get(str(generation), None)
 
+    model_kwargs = {}
+    if max_image_size is not None:
+        # If none, use model's default
+        model_kwargs["max_image_size"] = max_image_size
+
     try:
-        return model_class(model_path, device=device)
+        return model_class(model_path, device=device, **model_kwargs)
     except Exception:
         _logger.error(
             "Failed to load model with '%s'", model_class.__name__, exc_info=True

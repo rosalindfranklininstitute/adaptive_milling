@@ -123,6 +123,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             self.model = gm.load_sem_model(
                 model_path=model_path,
                 generation=self.config.model_generation,
+                image_max_size=self.config.model_image_max_size,
             )
 
         # align SEM
