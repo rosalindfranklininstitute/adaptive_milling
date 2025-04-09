@@ -34,33 +34,41 @@ class AdaptivePolishLamellaCentre(AdaptiveLamellaCentre):
         return self.px
 
 
-def get_lamella_bounding_box(
-    array: np.typing.NDArray[np.bool_],
-    edge_finding: typing.Literal["median", "mean"] = "median",
+def get_mask_bounding_box(
+    mask: np.typing.NDArray[np.bool_],
+    edge_finding: typing.Literal["median", "mean", "min", "max"] = "median",
 ) -> typing.Union[tuple[int, int, int, int], tuple[float, float, float, float]]:
     if edge_finding == "median":
-        edge_fn = np.median
+        edge_fn_min = np.median
+        edge_fn_max = np.median
     elif edge_finding == "mean":
-        edge_fn = np.mean
+        edge_fn_min = np.mean
+        edge_fn_max = np.mean
+    elif edge_finding == "min":
+        edge_fn_min = np.max
+        edge_fn_max = np.min
+    elif edge_finding == "max":
+        edge_fn_min = np.min
+        edge_fn_max = np.max
     else:
         raise ValueError(f"Invalid option edge_finding='{edge_finding}'")
 
-    x_mins = np.argmax(array, axis=1)
-    x_maxs = array.shape[1] - np.argmax(array[:, ::-1], axis=1) - 1
-    y_mins = np.argmax(array, axis=0)
-    y_maxs = array.shape[0] - np.argmax(array[::-1, :], axis=0) - 1
-    x_range = np.arange(array.shape[1])
-    y_range = np.arange(array.shape[0])
+    x_mins = np.argmax(mask, axis=1)
+    x_maxs = mask.shape[1] - np.argmax(mask[:, ::-1], axis=1) - 1
+    y_mins = np.argmax(mask, axis=0)
+    y_maxs = mask.shape[0] - np.argmax(mask[::-1, :], axis=0) - 1
+    x_range = np.arange(mask.shape[1])
+    y_range = np.arange(mask.shape[0])
     # Only include edge values that are True
     # This filters out any rows/columns that were all False
-    valid_xmins = x_mins[array[y_range, x_mins]]
-    valid_xmaxs = x_maxs[array[y_range, x_maxs]]
-    valid_ymins = y_mins[array[y_mins, x_range]]
-    valid_ymaxs = y_maxs[array[y_maxs, x_range]]
-    xmin = edge_fn(valid_xmins)
-    xmax = edge_fn(valid_xmaxs)
-    ymin = edge_fn(valid_ymins)
-    ymax = edge_fn(valid_ymaxs)
+    valid_xmins = x_mins[mask[y_range, x_mins]]
+    valid_xmaxs = x_maxs[mask[y_range, x_maxs]]
+    valid_ymins = y_mins[mask[y_mins, x_range]]
+    valid_ymaxs = y_maxs[mask[y_maxs, x_range]]
+    xmin = edge_fn_min(valid_xmins)
+    xmax = edge_fn_max(valid_xmaxs)
+    ymin = edge_fn_min(valid_ymins)
+    ymax = edge_fn_max(valid_ymaxs)
     return (ymin, xmin, ymax, xmax)
 
 def get_centre_from_bounding_box(

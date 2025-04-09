@@ -34,11 +34,11 @@ class SimpleRectangleLamellaMask:
         self.bounding_box = bbox
 
 
-@pytest.mark.parametrize("edge_finding", ["median", "mean"])
-def test_get_lamella_bounding_box_simple(edge_finding: str) -> None:
+@pytest.mark.parametrize("edge_finding", ["median", "mean", "min", "max"])
+def test_get_mask_bounding_box_simple(edge_finding: str) -> None:
     test_lamella = SimpleRectangleLamellaMask((100, 200), 20)
     # All the edge finding methods should be the same for this case
-    found_bounding_box = get_lamella_bounding_box(
+    found_bounding_box = get_mask_bounding_box(
         test_lamella.array, edge_finding=edge_finding
     )
     np.testing.assert_array_equal(
