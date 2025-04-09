@@ -251,9 +251,13 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         )
 
         # Measure GIS
-        gis_thickness_um = np.sum(
-            gm.resize_image(mask_gis_clean, new_shape=sem_image.data.shape),
-            axis=0,
+        gis_thickness_um = (
+            np.sum(
+                gm.resize_image(mask_gis_clean, new_shape=sem_image.data.shape),
+                axis=0,
+            )
+            * sem_image.metadata.pixel_size.x
+            * constants.SI_TO_MICRO
         )
 
         # Use lamella bounds to determine gis edges
