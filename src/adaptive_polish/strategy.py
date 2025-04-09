@@ -334,7 +334,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         centre_drift_um = (
             math.sqrt(centre_m.x**2 + centre_m.y**2) * constants.SI_TO_MICRO
         )
-        if AdaptivePolishMillingStrategy._get_drift_too_large(
+        # Only a valid check if sem is aligned
+        if config.align_sem and AdaptivePolishMillingStrategy._get_drift_too_large(
             centre_drift_um, config=config
         ):
             # Create centring plot if centring is found to be beyond the threshold
