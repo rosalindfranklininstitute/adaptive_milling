@@ -122,15 +122,6 @@ def clean_prediction(
 
     mask_connected_lamella = connected_masks.pop(sgm.SegmentationLabels.LAMELLA)
 
-    mask_connected_gis = connected_masks.get(sgm.SegmentationLabels.GIS, None)
-    if mask_connected_gis is not None:
-        coords_lamella_bottom = mask_connected_lamella.shape[0] - np.argmax(
-            mask_connected_lamella[::-1, :], axis=0
-        )
-        # Filter out GIS above lamella
-        for x, coord in enumerate(coords_lamella_bottom):
-            mask_connected_gis[:coord, x] = False
-
     for key, mask in connected_masks.items():
         if not np.sum(mask):
             # No need to keep an array of 0s
