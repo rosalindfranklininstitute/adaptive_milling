@@ -23,7 +23,7 @@ if typing.TYPE_CHECKING:
     from fibsem.milling.base import FibsemMillingStage
 
 _AP_PASS_CHECKS_CONFIG = {
-    "gis_stop_um": -1,
+    "gis_stop_um": 0,
     "max_crack_area_um2": np.inf,
     "minimum_lamella_area_um2": 0,
     "maximum_drift_um": np.inf,
@@ -252,7 +252,6 @@ def test_milling_stops_when_check_fails(
     ap_config = ap_strategy.AdaptivePolishMillingConfig(
         model_generation=sem_segmentation_model[0],
         model_path=sem_segmentation_model[1],
-        align_sem=False,
         **pass_checks_kwargs,
     )
     _, stages = setup_protocol_and_milling_stages(
@@ -276,15 +275,19 @@ def test_milling_stops_when_check_fails(
     # Necessary to set imaging settings path
     acquire.take_reference_images(microscope, settings.image)
 
-    with patch.object(
-        ap_strategy,
-        "draw_patterns",
-        MagicMock(
-            # Ensure test doesn't keep looping:
-            side_effect=ExceptionForMocking("Unexpected exception")
-        ),
-    ) as mock_draw_patterns:
+    with (
+        patch.object(
+            ap_strategy,
+            "draw_patterns",
+            MagicMock(
+                # Ensure test doesn't keep looping:
+                side_effect=ExceptionForMocking("Unexpected exception")
+            ),
+        ) as mock_draw_patterns,
+        patch.object(strategy, "_align_beam") as mock_align_beam,
+    ):
         strategy.run(microscope, stage)
+        mock_align_beam.assert_called_once()
         mock_draw_patterns.assert_not_called()
 
 
@@ -409,7 +412,7 @@ def test_results_saved(
     adaptive_polish_dir = lamella_directory / "adaptive_polish"
 
     # Necessary to set imaging settings path
-    acquire.take_reference_images(microscope, settings.image)
+    sem_image, _ = acquire.take_reference_images(microscope, settings.image)
 
     # Use this resolution to avoid any scaling so know the exact output
     mask_shape = microscope.electron_system.beam.resolution[::-1]
@@ -482,12 +485,20 @@ def test_results_saved(
     pd.testing.assert_frame_equal(
         results_df, expected_results_df, check_dtype=False, obj="Results DataFrame"
     )
+
     expected_detailed_results_df = pd.DataFrame(
         {
             "image": images_names,
             "milling_time_s": milling_times,
             "gis_thickness_um": pd.Series(
-                [expected_gis_thickness.tolist()] * max_milling_cycles, dtype=object
+                [
+                    [
+                        _ * sem_image.metadata.pixel_size.x * 1e6
+                        for _ in expected_gis_thickness
+                    ]
+                ]
+                * max_milling_cycles,
+                dtype=object,
             ),
             "gis_thickness_filtered_um": pd.Series(
                 [_.tolist() for _ in expected_filtered_gis_thicknesses], dtype=object
