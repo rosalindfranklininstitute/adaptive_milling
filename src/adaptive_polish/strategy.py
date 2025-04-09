@@ -12,7 +12,6 @@ import typing
 # fibsem
 from fibsem import (
     acquire,
-    conversions,
     constants,
 )
 from fibsem.milling import MillingStrategy
@@ -30,8 +29,8 @@ import adaptive_polish.gis_measurement as gm
 import adaptive_polish.utils as ap_utils
 from adaptive_polish.dl_segmentation.sem_lamella_segmentor import SegmentationLabels
 from adaptive_polish.centring import (
-    get_lamella_bounding_box,
-    get_centre_from_bounding_box,
+    get_bounding_box_scaled_to_image,
+    get_centre_points_from_bounding_box,
 )
 from adaptive_polish.config import AdaptivePolishMillingConfig
 
@@ -334,6 +333,12 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 "Exception occurred creating the milling cycle plot", exc_info=True
             )
 
+        centre_m, mask_centre_px = get_centre_points_from_bounding_box(
+            bbox=lamella_bbox,
+            image=sem_image.data,
+            pixel_size_m=sem_image.metadata.pixel_size.x,
+        )
+
         centre_drift_um = (
             math.sqrt(centre_m.x**2 + centre_m.y**2) * constants.SI_TO_MICRO
         )
@@ -416,12 +421,14 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             additional_labels=(SegmentationLabels.GIS, SegmentationLabels.CRACK),
         )
 
-        centre_m, centre_px, lamella_bbox = (
-            AdaptivePolishMillingStrategy._get_lamella_position(
-                sem_image.data,
-                pixel_size_m=sem_image.metadata.pixel_size.x,
-                lamella_mask=mask_lamella_clean,
-            )
+        lamella_bbox = get_bounding_box_scaled_to_image(
+            sem_image.data,
+            mask=mask_lamella_clean,
+        )
+        centre_m, centre_px = get_centre_points_from_bounding_box(
+            lamella_bbox,
+            image=sem_image.data,
+            pixel_size_m=sem_image.metadata.pixel_size.x,
         )
 
         # shift beam
@@ -519,41 +526,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
         fig.savefig(plot_path)
         plt.close(fig)
-
-    @staticmethod
-    def _get_lamella_position(
-        sem_image: NDArray[typing.Any],
-        pixel_size_m: float,
-        lamella_mask: NDArray[np.bool_],
-    ) -> tuple[
-        Point, Point, tuple[int, int, int, int] | tuple[float, float, float, float]
-    ]:
-        # This does assume square pixels
-        if sem_image.shape[1] == lamella_mask.shape[1]:
-            prediction_to_image_scale_multiplier = 1
-            labels_pixel_size_m = pixel_size_m
-        else:
-            prediction_to_image_scale_multiplier = (
-                sem_image.shape[1] / lamella_mask.shape[1]
-            )
-            labels_pixel_size_m = pixel_size_m * prediction_to_image_scale_multiplier
-
-        bbox_mask = get_lamella_bounding_box(lamella_mask, edge_finding="median")
-
-        bbox_image = tuple(_ * prediction_to_image_scale_multiplier for _ in bbox_mask)
-
-        centre_px = get_centre_from_bounding_box(bbox_image, subpixel_accuracy=True)
-        centre_px_point = Point(x=centre_px[1], y=centre_px[0])
-
-        # Convert to microscope image coordinates (0, 0 at centre of image)
-        centre_m = conversions.image_to_microscope_image_coordinates(
-            centre_px_point, lamella_mask, labels_pixel_size_m, subpixel_precision=True
-        )
-        return (
-            centre_m,
-            centre_px_point,
-            bbox_image,
-        )
 
     @staticmethod
     def _get_drift_too_large(

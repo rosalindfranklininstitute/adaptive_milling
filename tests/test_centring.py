@@ -6,8 +6,8 @@ import numpy as np
 
 from adaptive_polish.centring import (
     AdaptiveLamellaCentre,
-    AdaptiveLamellaCentre2,
-    get_lamella_bounding_box,
+    AdaptivePolishLamellaCentre,
+    get_mask_bounding_box,
     get_lamella_centre,
 )
 
@@ -68,7 +68,7 @@ def test_get_lamella_bounding_box_median() -> None:
     ] = False
 
     # All the edge finding methods should be the same for this case
-    found_bounding_box = get_lamella_bounding_box(
+    found_bounding_box = get_mask_bounding_box(
         test_lamella.array, edge_finding="median"
     )
     np.testing.assert_array_equal(
@@ -91,7 +91,7 @@ def test_get_lamella_bounding_box_mean() -> None:
         shape[1] - 1,
     ]
 
-    found_bounding_box = get_lamella_bounding_box(triangle_array, edge_finding="mean")
+    found_bounding_box = get_mask_bounding_box(triangle_array, edge_finding="mean")
 
     np.testing.assert_array_equal(
         found_bounding_box,
@@ -116,7 +116,7 @@ def test_methods_equivalent_for_simple_rectangle() -> None:
     centre_1 = AdaptiveLamellaCentre().detect(
         test_lamella.array, mask=test_lamella.array
     )
-    centre_2 = AdaptiveLamellaCentre2().detect(
+    centre_2 = AdaptivePolishLamellaCentre().detect(
         test_lamella.array, mask=test_lamella.array
     )
     assert centre_1 == centre_2, "Centres do not match"
@@ -133,7 +133,7 @@ def test_relative_speed() -> None:
     # AdaptiveLamellaCentre2 is ~2.1x slower for this size array (gets worse
     # with size). However, it should be more accurate.
     centre_feature_1 = AdaptiveLamellaCentre()
-    centre_feature_2 = AdaptiveLamellaCentre2()
+    centre_feature_2 = AdaptivePolishLamellaCentre()
 
     centre_1_time = (
         timeit(

@@ -3,8 +3,10 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from fibsem.detection.detection import AdaptiveLamellaCentre
+from fibsem import conversions
 from fibsem.structures import Point
+from fibsem.detection.detection import AdaptiveLamellaCentre
+
 
 @dataclass
 class AdaptivePolishLamellaCentre(AdaptiveLamellaCentre):
@@ -87,5 +89,43 @@ def get_lamella_centre(
     edge_finding: typing.Literal["median", "mean"] = "median",
     subpixel_accuracy: bool = False,
 ) -> typing.Union[typing.Tuple[int, int], typing.Tuple[float, float]]:
-    bbox = get_lamella_bounding_box(array, edge_finding=edge_finding)
+    bbox = get_mask_bounding_box(array, edge_finding=edge_finding)
     return get_centre_from_bounding_box(bbox, subpixel_accuracy=subpixel_accuracy)
+
+def get_bounding_box_scaled_to_image(
+    image: np.typing.NDArray[typing.Any],
+    mask: np.typing.NDArray[np.bool_],
+    edge_finding: typing.Literal["median", "mean", "min", "max"] = "median",
+) -> typing.Union[
+    typing.Tuple[int, int, int, int], typing.Tuple[float, float, float, float]
+]:
+    # This does assume square pixels
+    if image.shape[1] == mask.shape[1]:
+        prediction_to_image_scale_multiplier = 1
+    else:
+        prediction_to_image_scale_multiplier = image.shape[1] / mask.shape[1]
+
+    bbox_mask = get_mask_bounding_box(mask, edge_finding=edge_finding)
+
+    bbox_image = tuple(_ * prediction_to_image_scale_multiplier for _ in bbox_mask)
+    return bbox_image
+
+
+def get_centre_points_from_bounding_box(
+    bbox: typing.Union[
+        typing.Tuple[int, int, int, int], typing.Tuple[float, float, float, float]
+    ],
+    image: np.typing.NDArray[typing.Any],
+    pixel_size_m: float,
+) -> tuple[Point, Point]:
+    centre_px = get_centre_from_bounding_box(bbox, subpixel_accuracy=True)
+    centre_px_point = Point(x=centre_px[1], y=centre_px[0])
+
+    # Convert to microscope image coordinates (0, 0 at centre of image)
+    centre_m = conversions.image_to_microscope_image_coordinates(
+        centre_px_point,
+        image,
+        pixel_size_m,
+        subpixel_precision=True,
+    )
+    return centre_m, centre_px_point
