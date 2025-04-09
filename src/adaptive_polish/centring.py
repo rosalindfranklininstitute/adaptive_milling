@@ -11,6 +11,7 @@ from fibsem.detection.detection import AdaptiveLamellaCentre
 @dataclass
 class AdaptivePolishLamellaCentre(AdaptiveLamellaCentre):
     name: str = "AdaptivePolishLamellaCentre"
+
     def detect(
         self, img: np.ndarray, mask: np.ndarray = None, point: Point = None
     ) -> Point:
@@ -73,6 +74,7 @@ def get_mask_bounding_box(
     ymax = edge_fn_max(valid_ymaxs)
     return (ymin, xmin, ymax, xmax)
 
+
 def get_centre_from_bounding_box(
     bbox: typing.Union[tuple[int, int, int, int], tuple[float, float, float, float]],
     subpixel_accuracy: bool = False,
@@ -84,6 +86,7 @@ def get_centre_from_bounding_box(
         cy = int(round(cy))
     return (cy, cx)
 
+
 def get_lamella_centre(
     array: np.typing.NDArray[np.bool_],
     edge_finding: typing.Literal["median", "mean"] = "median",
@@ -91,6 +94,7 @@ def get_lamella_centre(
 ) -> typing.Union[typing.Tuple[int, int], typing.Tuple[float, float]]:
     bbox = get_mask_bounding_box(array, edge_finding=edge_finding)
     return get_centre_from_bounding_box(bbox, subpixel_accuracy=subpixel_accuracy)
+
 
 def get_bounding_box_scaled_to_image(
     image: np.typing.NDArray[typing.Any],
