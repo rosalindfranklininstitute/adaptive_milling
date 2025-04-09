@@ -15,21 +15,15 @@ from fibsem import (
     conversions,
     constants,
 )
-from fibsem.milling.base import (
-    MillingStrategy,
-    MillingStrategyConfig,
-)
+from fibsem.milling import MillingStrategy
 from fibsem.milling import (
     setup_milling,
     draw_patterns,
     run_milling,
     finish_milling,
 )
-from fibsem.milling.patterning.patterns2 import (
-    TrenchPattern,
-    TrenchBitmapPattern,
-)
 from fibsem.structures import BeamType, Point
+
 
 # Adaptive polish
 import adaptive_polish.gis_measurement as gm
@@ -39,12 +33,13 @@ from adaptive_polish.centring import (
     get_lamella_bounding_box,
     get_centre_from_bounding_box,
 )
+from adaptive_polish.config import AdaptivePolishMillingConfig
+
 
 if typing.TYPE_CHECKING:
-    from os import PathLike
     from numpy.typing import NDArray
     from pandas import DataFrame
-    from fibsem.milling.base import FibsemMillingStage
+    from fibsem.milling import FibsemMillingStage
     from fibsem.microscope import FibsemMicroscope
     from fibsem.structures import FibsemImage, ImageSettings
     from adaptive_polish.dl_segmentation.sem_lamella_segmentor import (
@@ -65,40 +60,6 @@ class StopMillingException(_AdaptivePolishMillingException):
 
 class StopEarlyError(_AdaptivePolishMillingException):
     pass
-
-
-@dataclass
-class AdaptivePolishMillingConfig(MillingStrategyConfig):
-    model_path: typing.Union[str, PathLike]
-    align_sem: bool = True
-    milling_interval_s: int = 10
-    gis_stop_um: float = 0.2
-    max_crack_area_um2: float = 2
-    max_milling_cycles: int = 30
-    window_size_px: int = 10
-    model_generation: typing.Optional[str] = None
-    minimum_lamella_area_um2: float = 30.0  # 30μm²
-    maximum_drift_um: float = 0.05
-
-    _advanced_attributes = []
-
-    @staticmethod
-    def from_dict(d: dict[str, typing.Any]) -> typing.Self:
-        return AdaptivePolishMillingConfig(**d)
-
-    def to_dict(self) -> dict[str, typing.Any]:
-        return {
-            "model_path": str(self.model_path),
-            "align_sem": self.align_sem,
-            "milling_interval_s": self.milling_interval_s,
-            "gis_stop_um": self.gis_stop_um,
-            "max_milling_cycles": self.max_milling_cycles,
-            "window_size_px": self.window_size_px,
-            "max_crack_area_um2": self.max_crack_area_um2,
-            "model_generation": self.model_generation,
-            "minimum_lamella_area_um2": self.minimum_lamella_area_um2,
-            "maximum_drift_um": self.maximum_drift_um,
-        }
 
 
 @dataclass
@@ -453,7 +414,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
         centre_m, centre_px, lamella_bbox = (
             AdaptivePolishMillingStrategy._get_lamella_position(
-                sem_image, lamella_mask=mask_lamella_clean
+                sem_image.data,
+                pixel_size_m=sem_image.metadata.pixel_size.x,
+                lamella_mask=mask_lamella_clean,
             )
         )
 
@@ -555,21 +518,21 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
     @staticmethod
     def _get_lamella_position(
-        sem_image: NDArray[typing.Any], lamella_mask: NDArray[np.bool_]
+        sem_image: NDArray[typing.Any],
+        pixel_size_m: float,
+        lamella_mask: NDArray[np.bool_],
     ) -> tuple[
         Point, Point, tuple[int, int, int, int] | tuple[float, float, float, float]
     ]:
         # This does assume square pixels
-        if sem_image.data.shape[1] == lamella_mask.shape[1]:
+        if sem_image.shape[1] == lamella_mask.shape[1]:
             prediction_to_image_scale_multiplier = 1
-            labels_pixel_size_m = sem_image.metadata.pixel_size.x
+            labels_pixel_size_m = pixel_size_m
         else:
             prediction_to_image_scale_multiplier = (
-                sem_image.data.shape[1] / lamella_mask.shape[1]
+                sem_image.shape[1] / lamella_mask.shape[1]
             )
-            labels_pixel_size_m = (
-                sem_image.metadata.pixel_size.x * prediction_to_image_scale_multiplier
-            )
+            labels_pixel_size_m = pixel_size_m * prediction_to_image_scale_multiplier
 
         bbox_mask = get_lamella_bounding_box(lamella_mask, edge_finding="median")
 
