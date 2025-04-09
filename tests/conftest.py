@@ -18,11 +18,14 @@ _MODEL_PATHS = {
     "0": [
         _MODELS_PATH / "Gen0" / "2024-02-24_0013_gis_lamela_crack_pytorch_AUnet.ptchkp"
     ],
-    "1": [
+    "1q": [
+        _MODELS_PATH / "Gen1" / "gen01_quality_1536_v3" / "gen01_quality_1536_v3.pth"
+    ],
+    "1p": [
         _MODELS_PATH
         / "Gen1"
-        / "gen01_quality_1536_v2"
-        / "20250228_gen01_quality_1536_v2.pth"
+        / "gen01_performance_768_v3"
+        / "gen01_performance_768_v3.pth"
     ],
 }
 

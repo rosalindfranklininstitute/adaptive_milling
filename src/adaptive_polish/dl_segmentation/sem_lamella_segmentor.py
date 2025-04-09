@@ -258,8 +258,10 @@ class Gen1Model(AbstractAdaptivePolishingModel):
         self,
         model_path: typing.Union[str, PathLike],
         device: torch.DeviceLikeType,
-        max_image_size: int = 1536,
+        max_image_size: int,
+        encoder_name: str,
     ) -> None:
+        self._encoder_name = encoder_name
         self._image_size = max_image_size
         super().__init__(model_path=model_path, device=device, num_classes=5)
 
@@ -292,7 +294,7 @@ class Gen1Model(AbstractAdaptivePolishingModel):
 
     def load(self, model_path: typing.Union[str, PathLike]) -> torch.nn.Module:
         model = smp.Unet(
-            encoder_name="efficientnet-b4",
+            encoder_name=self._encoder_name,
             encoder_weights=None,
             classes=self.num_classes,
             in_channels=3,
@@ -303,23 +305,53 @@ class Gen1Model(AbstractAdaptivePolishingModel):
         return model
 
 
+class Gen1QualityModel(Gen1Model):
+    def __init__(
+        self,
+        model_path: typing.Union[str, PathLike],
+        device: torch.DeviceLikeType,
+        max_image_size: int = 1536,
+    ) -> None:
+        super().__init__(
+            model_path=model_path,
+            device=device,
+            max_image_size=max_image_size,
+            encoder_name="efficientnet-b4",
+        )
+
+
+class Gen1PerformanceModel(Gen1Model):
+    def __init__(
+        self,
+        model_path: typing.Union[str, PathLike],
+        device: torch.DeviceLikeType,
+        max_image_size: int = 768,
+    ) -> None:
+        super().__init__(
+            model_path=model_path,
+            device=device,
+            max_image_size=max_image_size,
+            encoder_name="efficientnet-b3",
+        )
+
+
 # Using str keys allows for semantic versioning
 MODEL_GENERATIONS_DICT: dict[str, AbstractAdaptivePolishingModel] = {
     "0": Gen0Model,
-    "1": Gen1Model,
+    "1p": Gen1PerformanceModel,
+    "1q": Gen1QualityModel,
 }
 
 
 def _get_newest_generation_key():
-    # If no generation is specified, get the latest generation one
-    return sorted(MODEL_GENERATIONS_DICT.keys())[-1]
+    # If no generation is specified, get the last one specified
+    return MODEL_GENERATIONS_DICT.keys()[-1]
 
 
 def load_model(
     model_path: typing.Union[str, PathLike],
     generation: typing.Optional[typing.Union[int, str]] = None,
     device: typing.Optional[torch.DeviceLikeType] = None,
-    max_image_size: typing.Optional[int] = None,
 ) -> AbstractAdaptivePolishingModel:
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -336,13 +368,8 @@ def load_model(
     _logger.info("Loading %s generation model", generation)
     model_class = MODEL_GENERATIONS_DICT.get(str(generation), None)
 
-    model_kwargs = {}
-    if max_image_size is not None:
-        # If none, use model's default
-        model_kwargs["max_image_size"] = max_image_size
-
     try:
-        return model_class(model_path, device=device, **model_kwargs)
+        return model_class(model_path, device=device)
     except Exception:
         _logger.error(
             "Failed to load model with '%s'", model_class.__name__, exc_info=True

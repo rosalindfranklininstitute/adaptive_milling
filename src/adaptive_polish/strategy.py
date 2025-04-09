@@ -121,9 +121,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             if not model_path.is_file():
                 raise FileNotFoundError(f"Failed to find '{model_path}'")
             self.model = gm.load_sem_model(
-                model_path=model_path,
-                generation=self.config.model_generation,
-                image_max_size=self.config.model_image_max_size,
+                model_path=model_path, generation=self.config.model_generation
             )
 
         # align SEM
