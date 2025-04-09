@@ -9,9 +9,6 @@ from pathlib import Path
 from fibsem import utils, acquire
 from fibsem.milling import get_milling_stages, mill_stages
 
-# TODO: look into why this is required
-# Necessary to ensure AP strategy is registered:
-from fibsem.milling.strategy import register_strategy
 from autolamella.protocol.validation import validate_protocol
 from autolamella.structures import AutoLamellaProtocol
 from adaptive_polish.strategy import AdaptivePolishMillingConfig

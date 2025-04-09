@@ -10,9 +10,6 @@ import pandas as pd
 from fibsem import utils as fibsem_utils, acquire
 from fibsem.milling.base import get_milling_stages
 
-# TODO: look into why this is required
-# Necessary to ensure AP strategy is registered:
-from fibsem.milling.strategy import register_strategy
 from autolamella.protocol.validation import validate_protocol
 
 
