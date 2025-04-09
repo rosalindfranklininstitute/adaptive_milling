@@ -241,10 +241,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             raise StopEarlyError("No GIS found beneath the lamella")
 
         # Get lamella position
-        centre_m, mask_centre_px, lamella_bbox = (
-            AdaptivePolishMillingStrategy._get_lamella_position(
-                sem_image, lamella_mask=mask_lamella_clean
-            )
+        lamella_bbox = get_bounding_box_scaled_to_image(
+            sem_image.data, mask=mask_lamella_clean
         )
 
         # Measure GIS
