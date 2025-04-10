@@ -117,7 +117,9 @@ class AbstractAdaptivePolishingModel(ABC):
             "AbstractAdaptivePolishingModel.load must be overridden"
         )
 
-    def _postprocess(self, prediction: torch.Tensor) -> NDArray[np.long]:
+    def _postprocess(
+        self, prediction: torch.Tensor, image: NDArray[typing.Any]
+    ) -> NDArray[np.long]:
         # converts logist to label
         return torch.argmax(prediction, dim=1).squeeze(0).numpy(force=True)
 
@@ -151,7 +153,7 @@ class AbstractAdaptivePolishingModel(ABC):
 
             prediction = self.model(preprocessed)  # gets result in logits form
 
-            labels = self._postprocess(prediction)
+            labels = self._postprocess(prediction, image)
 
             if full_size:
                 # Resize model to full original dims
@@ -267,14 +269,10 @@ class Gen1Model(AbstractAdaptivePolishingModel):
 
     def _preprocess(self, image: NDArray[typing.Any]) -> torch.Tensor:
         # Hopefully this is a more efficient implementation of Casper's preprocessing
-        image_shape_array = np.asarray(image.shape)
-        axis_multiplier = np.min(self._image_size / image_shape_array)
-        target_shape = tuple(
-            np.round(image_shape_array * axis_multiplier).astype(int).tolist()
-        )
-
+        target_shape = self._get_resize_shape(image)
         with torch.no_grad():
             image = torch.from_numpy(image.astype(np.float32)).to(self.device)
+
             mean, std = image.mean(), image.std()
 
             # Calculate in place:
@@ -282,15 +280,52 @@ class Gen1Model(AbstractAdaptivePolishingModel):
             image /= 3 * std
             image.clamp_(0, 1)
 
-            image = v2.functional.resize(
-                image.unsqueeze_(0).unsqueeze_(0),  # expect channel and batch axes
-                size=target_shape,
-            )
-            # No need to pad image as the we're not processing batches
+            # the following functions expect channel and batch axes
+            image = image.unsqueeze_(0).unsqueeze_(0)
+            image = v2.functional.resize(image, size=target_shape)
+
+            # Pad to square
+            image_shape = image.shape[-2:]
+            large_axis = np.argmax(image_shape)
+            small_axis = 1 - large_axis
+            axes_diff = image_shape[large_axis] - image_shape[small_axis]
+            pad_size, remainder = divmod(axes_diff, 2)
+            # Padding is [left, top, right, bottom]
+            # Additional padding due to remainder will be added to the top or right
+            if small_axis == 0:
+                padding = [0, pad_size + remainder, 0, pad_size]
+            else:
+                padding = [pad_size, 0, pad_size + remainder, 0]
+
+            image = v2.functional.pad(image, padding, fill=0)
 
             return v2.functional.grayscale_to_rgb(image).to(
                 self.device
             )  # Ensure it's still on the correct device
+
+    def _get_resize_shape(self, image: NDArray[typing.Any]) -> tuple[int, int]:
+        image_shape_array = np.asarray(image.shape)
+        axis_multiplier = np.min(self._image_size / image_shape_array)
+        return tuple(np.round(image_shape_array * axis_multiplier).astype(int).tolist())
+
+    def _postprocess(
+        self, prediction: torch.Tensor, image: NDArray[typing.Any]
+    ) -> NDArray[np.long]:
+        # Trim off padding
+        resized_shape_array = np.asarray(self._get_resize_shape(image))
+        prediction_shape_array = np.asarray(prediction.shape[-2:])
+        padding_array = (prediction_shape_array - resized_shape_array) / 2
+
+        labels = super()._postprocess(prediction, image)
+
+        return labels[
+            int(np.floor(padding_array[0])) : int(
+                prediction_shape_array[0] - np.ceil(padding_array[0])
+            ),
+            int(np.floor(padding_array[1])) : int(
+                prediction_shape_array[1] - np.ceil(padding_array[1])
+            ),
+        ]
 
     def load(self, model_path: typing.Union[str, PathLike]) -> torch.nn.Module:
         model = smp.Unet(
