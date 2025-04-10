@@ -255,11 +255,35 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             * constants.SI_TO_MICRO
         )
 
-        # Use lamella bounds to determine gis edges
-        xlims_px = np.round((lamella_bbox[1], lamella_bbox[3])).astype(np.uint32)
+        gis_xlims_px = np.asarray(
+            (
+                np.argmax(gis_thickness_um > 1),
+                len(gis_thickness_um) - 1 - np.argmax(gis_thickness_um[::-1] > 1),
+            )
+        )
 
+        lamella_xlims_px = np.round(
+            (
+                lamella_bbox[1],
+                lamella_bbox[3],
+            )
+        ).astype(np.uint32)
+
+        maximum_side_difference_px = (
+            config.maximum_side_difference_um
+            * sem_image.metadata.pixel_size.x
+            * constants.SI_TO_MICRO
+        )
+
+        # Allow maximum of maximum_side_difference_um inward from lamella edge
+        xlims_px = (
+            min(gis_xlims_px[0], lamella_xlims_px[0] + maximum_side_difference_px),
+            max(gis_xlims_px[1], lamella_xlims_px[1] - maximum_side_difference_px),
+        )
+
+        gis_thickness_um = gis_thickness_um[xlims_px[0] : xlims_px[1] + 1]
         gis_thickness_filtered_um = gm.filter_gis_thickness(
-            gis_thickness_um[xlims_px[0] : xlims_px[1] + 1],
+            gis_thickness_um,
             window_size_m=config.window_size_px * sem_image.metadata.pixel_size.x,
             pixel_size_m=sem_image.metadata.pixel_size.x,
         )
@@ -318,7 +342,18 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                     crack_mask=mask_crack_clean,
                 ),
                 fib_image=fib_image.data,
-                gis_thickness_um=gis_thickness_filtered_um,
+                gis_thickness_um=np.pad(
+                    # Pad with NaNs so that plot works correctly
+                    gis_thickness_filtered_um,
+                    pad_width=np.asarray(
+                        (
+                            xlims_px[0],
+                            len(gis_thickness_um) - xlims_px[1],
+                        ),
+                        dtype=np.int32,
+                    ),
+                    constant_values=np.nan,
+                ),
                 gis_stop_um=config.gis_stop_um,
                 crack_area_um2=crack_area_um2,
                 xlims=xlims_px,
