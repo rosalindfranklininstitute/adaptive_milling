@@ -18,7 +18,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
     max_milling_cycles: int = 30
     window_size_px: int = 10
     minimum_lamella_area_um2: float = 30.0  # 30μm²
-    maximum_drift_um: float = 0.05
+    maximum_drift_um: float = 0.1
     model_generation: typing.Optional[str] = None  # Uses latest generation
 
     _advanced_attributes = []
