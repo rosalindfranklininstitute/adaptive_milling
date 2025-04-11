@@ -366,6 +366,11 @@ def milling_cycle_plot(
         linestyles="dashed",
         colors="C1",
     )
+
+    if xlims is not None:
+        axs[1, 2].axvline(x=xlims[0])
+        axs[1, 2].axvline(x=xlims[1])
+
     axs[1, 2].set_title(
         rf"GIS thickness, min={np.nanmin(gis_thickness_um):.2f} $\mu m$"
     )
