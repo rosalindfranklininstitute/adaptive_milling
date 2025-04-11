@@ -255,15 +255,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             * constants.SI_TO_MICRO
         )
 
-        gis_above_threshold = gis_thickness_um > config.gis_stop_um
-
-        gis_xlims_px = np.asarray(
-            (
-                np.argmax(gis_above_threshold),
-                len(gis_above_threshold) - 1 - np.argmax(gis_above_threshold[::-1]),
-            )
-        )
-
         lamella_xlims_px = np.round(
             (
                 lamella_bbox[1],
@@ -278,17 +269,27 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             )
         )
 
+        gis_thickness_filtered_um = gm.filter_gis_thickness(
+            gis_thickness_um,
+            window_size_m=config.window_size_px * sem_image.metadata.pixel_size.x,
+            pixel_size_m=sem_image.metadata.pixel_size.x,
+        )
+
+        gis_above_threshold = gis_thickness_filtered_um > config.gis_stop_um
+
+        gis_xlims_px = np.asarray(
+            (
+                np.argmax(gis_above_threshold),
+                len(gis_above_threshold) - 1 - np.argmax(gis_above_threshold[::-1]),
+            )
+        )
+
         # Allow maximum of maximum_side_difference_um inward from lamella edge
         xlims_px = (
             min(gis_xlims_px[0], lamella_xlims_px[0] + maximum_side_difference_px),
             max(gis_xlims_px[1], lamella_xlims_px[1] - maximum_side_difference_px),
         )
 
-        gis_thickness_filtered_um = gm.filter_gis_thickness(
-            gis_thickness_um,
-            window_size_m=config.window_size_px * sem_image.metadata.pixel_size.x,
-            pixel_size_m=sem_image.metadata.pixel_size.x,
-        )
         min_gis_um = np.nanmin(gis_thickness_filtered_um[xlims_px[0] : xlims_px[1] + 1])
         _logger.info(f"Took {len(gis_thickness_filtered_um)} GIS measurements along x")
         _logger.info(
