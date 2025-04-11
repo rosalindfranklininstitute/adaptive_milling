@@ -31,6 +31,7 @@ def setup_results_df() -> tuple[pd.DataFrame, pd.DataFrame]:
             "milling_time_s": [],
             "gis_thickness_um": pd.Series([], dtype=object),
             "gis_thickness_filtered_um": pd.Series([], dtype=object),
+            "xlims_px": pd.Series([], dtype=object),
         }
     )
     return results, gis_results_detailed

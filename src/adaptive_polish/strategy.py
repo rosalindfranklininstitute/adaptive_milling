@@ -284,13 +284,12 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             max(gis_xlims_px[1], lamella_xlims_px[1] - maximum_side_difference_px),
         )
 
-        gis_thickness_um = gis_thickness_um[xlims_px[0] : xlims_px[1] + 1]
         gis_thickness_filtered_um = gm.filter_gis_thickness(
             gis_thickness_um,
             window_size_m=config.window_size_px * sem_image.metadata.pixel_size.x,
             pixel_size_m=sem_image.metadata.pixel_size.x,
         )
-        min_gis_um = np.nanmin(gis_thickness_filtered_um)
+        min_gis_um = np.nanmin(gis_thickness_filtered_um[xlims_px[0] : xlims_px[1] + 1])
         _logger.info(f"Took {len(gis_thickness_filtered_um)} GIS measurements along x")
         _logger.info(
             "Minimum GIS thickness for milling cycle %i = %.4e um",
@@ -325,10 +324,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         detailed_results = {
             "image": image_name,
             "milling_time_s": total_time,
-            "gis_thickness_um": gis_thickness_um[
-                xlims_px[0] : xlims_px[1] + 1
-            ].tolist(),
+            "gis_thickness_um": gis_thickness_um.tolist(),
             "gis_thickness_filtered_um": gis_thickness_filtered_um.tolist(),
+            "xlims_px": xlims_px.tolist(),
         }
 
         gis_results_detailed.loc[milling_cycle] = detailed_results
@@ -345,18 +343,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                     crack_mask=mask_crack_clean,
                 ),
                 fib_image=fib_image.data,
-                gis_thickness_um=np.pad(
-                    # Pad with NaNs so that plot works correctly
-                    gis_thickness_filtered_um,
-                    pad_width=np.asarray(
-                        (
-                            xlims_px[0],
-                            len(gis_thickness_um) - xlims_px[1],
-                        ),
-                        dtype=np.int32,
-                    ),
-                    constant_values=np.nan,
-                ),
+                gis_thickness_um=gis_thickness_filtered_um,
                 gis_stop_um=config.gis_stop_um,
                 crack_area_um2=crack_area_um2,
                 xlims=xlims_px,
