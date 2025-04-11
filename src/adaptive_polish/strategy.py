@@ -246,19 +246,19 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         )
 
         # Measure GIS
+        gis_thickness_px = np.sum(
+            gm.resize_image(mask_gis_clean, new_shape=sem_image.data.shape),
+            axis=0,
+        )
+
         gis_thickness_um = (
-            np.sum(
-                gm.resize_image(mask_gis_clean, new_shape=sem_image.data.shape),
-                axis=0,
-            )
-            * sem_image.metadata.pixel_size.x
-            * constants.SI_TO_MICRO
+            gis_thickness_px * sem_image.metadata.pixel_size.x * constants.SI_TO_MICRO
         )
 
         gis_xlims_px = np.asarray(
             (
-                np.argmax(gis_thickness_um > 1),
-                len(gis_thickness_um) - 1 - np.argmax(gis_thickness_um[::-1] > 1),
+                np.argmax(gis_thickness_px > 1),
+                len(gis_thickness_px) - 1 - np.argmax(gis_thickness_px[::-1] > 1),
             )
         )
 
@@ -269,11 +269,12 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             )
         ).astype(np.uint32)
 
-        maximum_side_difference_px = int(round(
-            config.maximum_side_difference_um
-            * sem_image.metadata.pixel_size.x
-            * constants.SI_TO_MICRO
-        )) 
+        maximum_side_difference_px = int(
+            round(
+                config.maximum_side_difference_um
+                / (sem_image.metadata.pixel_size.x * constants.SI_TO_MICRO)
+            )
+        )
 
         # Allow maximum of maximum_side_difference_um inward from lamella edge
         xlims_px = (
