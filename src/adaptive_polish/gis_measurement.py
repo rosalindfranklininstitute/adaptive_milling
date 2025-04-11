@@ -323,8 +323,8 @@ def milling_cycle_plot(
         interpolation="nearest",
     )
     if xlims is not None:
-        axs[0, 2].axvline(x=xlims[0])
-        axs[0, 2].axvline(x=xlims[1])
+        axs[0, 2].axvline(x=xlims[0], color="C4")
+        axs[0, 2].axvline(x=xlims[1], color="C4")
     axs[0, 2].axis("off")
     axs[0, 2].set_title(rf"SEM, clean, crack area $\mu m^2$ = {crack_area_um2:.2f}")
 
@@ -368,8 +368,8 @@ def milling_cycle_plot(
     )
 
     if xlims is not None:
-        axs[1, 2].axvline(x=xlims[0])
-        axs[1, 2].axvline(x=xlims[1])
+        axs[1, 2].axvline(x=xlims[0], color="C4")
+        axs[1, 2].axvline(x=xlims[1], color="C4")
 
     axs[1, 2].set_title(
         rf"GIS thickness, min={np.nanmin(gis_thickness_um):.2f} $\mu m$"
