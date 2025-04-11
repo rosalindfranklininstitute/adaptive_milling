@@ -269,11 +269,11 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             )
         ).astype(np.uint32)
 
-        maximum_side_difference_px = (
+        maximum_side_difference_px = int(round(
             config.maximum_side_difference_um
             * sem_image.metadata.pixel_size.x
             * constants.SI_TO_MICRO
-        )
+        )) 
 
         # Allow maximum of maximum_side_difference_um inward from lamella edge
         xlims_px = (
