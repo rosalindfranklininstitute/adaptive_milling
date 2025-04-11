@@ -246,19 +246,21 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         )
 
         # Measure GIS
-        gis_thickness_px = np.sum(
-            gm.resize_image(mask_gis_clean, new_shape=sem_image.data.shape),
-            axis=0,
+        gis_thickness_um = (
+            np.sum(
+                gm.resize_image(mask_gis_clean, new_shape=sem_image.data.shape),
+                axis=0,
+            )
+            * sem_image.metadata.pixel_size.x
+            * constants.SI_TO_MICRO
         )
 
-        gis_thickness_um = (
-            gis_thickness_px * sem_image.metadata.pixel_size.x * constants.SI_TO_MICRO
-        )
+        gis_above_threshold = gis_thickness_um > config.gis_stop_um
 
         gis_xlims_px = np.asarray(
             (
-                np.argmax(gis_thickness_px > 1),
-                len(gis_thickness_px) - 1 - np.argmax(gis_thickness_px[::-1] > 1),
+                np.argmax(gis_above_threshold),
+                len(gis_above_threshold) - 1 - np.argmax(gis_above_threshold[::-1]),
             )
         )
 
