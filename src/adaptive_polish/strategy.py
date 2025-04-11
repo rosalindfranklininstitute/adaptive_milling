@@ -347,6 +347,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 gis_thickness_um=gis_thickness_filtered_um,
                 gis_stop_um=config.gis_stop_um,
                 crack_area_um2=crack_area_um2,
+                min_gis_um=min_gis_um,
                 xlims=xlims_px,
                 img_name=image_name,
                 fib_screenshot=None,

@@ -282,6 +282,7 @@ def milling_cycle_plot(
     gis_thickness_um: ArrayLike,
     gis_stop_um: float,
     crack_area_um2: float,
+    min_gis_um: float,
     xlims: typing.Optional[typing.Tuple[int, int]] = None,
     fib_screenshot: typing.Optional[NDArray[typing.Any]] = None,
     img_name: typing.Optional[str] = None,
@@ -371,9 +372,7 @@ def milling_cycle_plot(
         axs[1, 2].axvline(x=xlims[0], color="C4")
         axs[1, 2].axvline(x=xlims[1], color="C4")
 
-    axs[1, 2].set_title(
-        rf"GIS thickness, min={np.nanmin(gis_thickness_um):.2f} $\mu m$"
-    )
+    axs[1, 2].set_title(rf"GIS thickness, min={min_gis_um:.3f} $\mu m$")
     axs[1, 2].legend()
 
     fig.savefig(save_path)
