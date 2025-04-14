@@ -503,6 +503,13 @@ def test_results_saved(
             "gis_thickness_filtered_um": pd.Series(
                 [_.tolist() for _ in expected_filtered_gis_thicknesses], dtype=object
             ),
+            "xlims_px": pd.Series(
+                [
+                    (0, len(expected_gis_thickness) - 1)
+                    for _ in range(len(expected_filtered_gis_thicknesses))
+                ],
+                dtype=object,
+            ),
         }
     )
 
