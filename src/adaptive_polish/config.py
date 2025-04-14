@@ -10,7 +10,7 @@ if typing.TYPE_CHECKING:
 
 @dataclass
 class AdaptivePolishMillingConfig(MillingStrategyConfig):
-    model_path: typing.Union[str, PathLike]
+    model_path: typing.Union[str, PathLike] = "none"
     align_sem: bool = True
     milling_interval_s: int = 10
     gis_stop_um: float = 0.2
