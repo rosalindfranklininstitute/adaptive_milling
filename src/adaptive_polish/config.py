@@ -1,14 +1,14 @@
 from __future__ import annotations
-from dataclasses import dataclass
 import typing
+from os import PathLike
+from pydantic import ConfigDict
+from pydantic.dataclasses import dataclass
+
 
 from fibsem.milling.base import MillingStrategyConfig
 
-if typing.TYPE_CHECKING:
-    from os import PathLike
 
-
-@dataclass
+@dataclass(config=ConfigDict(validate_assignment=True))
 class AdaptivePolishMillingConfig(MillingStrategyConfig):
     model_path: typing.Union[str, PathLike] = "none"
     align_sem: bool = True
