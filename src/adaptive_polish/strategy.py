@@ -142,7 +142,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
         # run adaptive polishing
         try:
-            for milling_cycle in range(self.config.max_milling_cycles):
+            for milling_cycle in range(int(self.config.max_milling_cycles)):
                 f_basename = f"{lamella_folder.stem}_AP_img_{milling_cycle:03}"
 
                 # Acquire images
