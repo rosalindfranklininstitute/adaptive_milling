@@ -327,7 +327,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             "milling_time_s": total_time,
             "gis_thickness_um": gis_thickness_um.tolist(),
             "gis_thickness_filtered_um": gis_thickness_filtered_um.tolist(),
-            "xlims_px": xlims_px.tolist(),
+            "xlims_px": xlims_px,
         }
 
         gis_results_detailed.loc[milling_cycle] = detailed_results
