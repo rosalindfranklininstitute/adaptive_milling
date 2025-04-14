@@ -458,7 +458,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         )
 
         # shift beam
-        dx, dy = centre_m.x, centre_m.y
+        dx, dy = -centre_m.x, -centre_m.y
         microscope.beam_shift(dx, dy, BeamType.ELECTRON)
         _logger.info(
             "Beamshift %s by dx=%.4e, dy=%.4e m", BeamType.ELECTRON.name, dx, dy
