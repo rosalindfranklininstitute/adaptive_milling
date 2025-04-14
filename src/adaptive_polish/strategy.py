@@ -198,6 +198,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 imaging_current=microscope.system.ion.beam.beam_current,
                 imaging_voltage=microscope.system.ion.beam.voltage,
             )
+            microscope.reset_beam_shifts()
 
     @staticmethod
     def _check_lamella(
@@ -433,6 +434,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         sem_imaging_settings: ImageSettings,
         plot_path: typing.Optional[Path] = None,
     ) -> None:
+        beam_shifts = {
+            _: microscope.get("shift", _) for _ in (BeamType.ELECTRON, BeamType.ION)
+        }
         _logger.info("Using sem beam shift alignment for adaptive polishing")
 
         # Take reference images
@@ -475,6 +479,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 plot_path=plot_path,
                 bounding_box=lamella_bbox,
             )
+        return beam_shifts
 
     @staticmethod
     def _create_centring_plot(
