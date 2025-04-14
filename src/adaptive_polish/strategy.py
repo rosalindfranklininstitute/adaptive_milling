@@ -151,10 +151,11 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                     milling_cycle,
                     self.config.max_milling_cycles,
                 )
-                fib_imaging_settings.filename = f"{f_basename}_FIB.tif"
-                fib_image = acquire.new_image(microscope, fib_imaging_settings)
+
                 sem_imaging_settings.filename = f"{f_basename}_SEM.tif"
                 sem_image = acquire.new_image(microscope, sem_imaging_settings)
+                fib_imaging_settings.filename = f"{f_basename}_FIB.tif"
+                fib_image = acquire.new_image(microscope, fib_imaging_settings)
 
                 AdaptivePolishMillingStrategy._check_lamella(
                     milling_cycle,
