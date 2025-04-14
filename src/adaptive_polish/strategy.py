@@ -172,14 +172,14 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                     microscope=microscope, stage=stage, config=self.config
                 )
         except StopMillingException as e:
-            _logger.info(f"Stopping milling due to: {e}")
+            _logger.info("Stopping milling due to: %s", str(e))
         except StopEarlyError as e:
             # Likely due to something not working correctly (e.g.
             # segmentation issues)
-            _logger.warning(f"Stopping milling early due to: {e}")
+            _logger.warning("Stopping milling early due to: %s", str(e))
 
-        except Exception as e:
-            _logger.error(f"Stopping due to unexpected exception: {e}")
+        except Exception:
+            _logger.error("Stopping due to unexpected exception", exc_info=True)
             raise
         finally:
             # Always try to create a summary plot and finish milling
