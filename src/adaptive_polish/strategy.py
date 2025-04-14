@@ -281,7 +281,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             (
                 np.argmax(gis_above_threshold),
                 len(gis_above_threshold) - 1 - np.argmax(gis_above_threshold[::-1]),
-            )
+            ),
+            dtype=np.uint32,
         )
 
         # Allow maximum of maximum_side_difference_um inward from lamella edge
