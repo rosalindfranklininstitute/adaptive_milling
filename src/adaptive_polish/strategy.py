@@ -10,10 +10,7 @@ import numpy as np
 import typing
 
 # fibsem
-from fibsem import (
-    acquire,
-    constants,
-)
+from fibsem import acquire, constants, utils as fs_utils
 from fibsem.milling import MillingStrategy
 from fibsem.milling import (
     setup_milling,
@@ -101,7 +98,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         fib_imaging_settings = microscope.get_imaging_settings(BeamType.ION)
         sem_imaging_settings = microscope.get_imaging_settings(BeamType.ELECTRON)
         lamella_folder = Path(fib_imaging_settings.path)
-        lamella_ap_folder = lamella_folder / "adaptive_polish"
+        lamella_ap_folder = (
+            lamella_folder / f"adaptive_polish_{fs_utils.current_timestamp()}"
+        )
         if lamella_ap_folder.is_dir():
             logging.info(
                 "Lamella folder %s already exists, some data may be overwritten",
