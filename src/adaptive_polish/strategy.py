@@ -413,9 +413,13 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         next_milling_interval = config.milling_interval_s
         pattern[0].time = next_milling_interval
 
-        # mill
+        # ensure milling settings are still correctly set
+        microscope.setup_milling(mill_settings=stage.milling)
+
+        # draw patterns
         draw_patterns(microscope=microscope, patterns=pattern)
         try:
+            # mill
             run_milling(
                 microscope=microscope,
                 milling_current=stage.milling.milling_current,
