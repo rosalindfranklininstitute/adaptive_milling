@@ -479,6 +479,14 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 plot_path=plot_path,
                 bounding_box=lamella_bbox,
             )
+
+        # shift beam
+        dx, dy = -centre_m.x, -centre_m.y
+        microscope.beam_shift(dx, dy, BeamType.ELECTRON)
+        _logger.info(
+            "Beamshift %s by dx=%.4e, dy=%.4e m", BeamType.ELECTRON.name, dx, dy
+        )
+
         return beam_shifts
 
     @staticmethod
