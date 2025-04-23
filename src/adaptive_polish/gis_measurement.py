@@ -15,28 +15,21 @@ from __future__ import annotations
 import logging
 import typing
 import xml.etree.ElementTree as ET  # to handle metadata as xml
-from pathlib import Path
 
 import skimage
-import pandas as pd
 import numpy as np
 from scipy.signal.windows import gaussian
-import matplotlib.pyplot as plt
 
 from adaptive_polish.dl_segmentation import sem_lamella_segmentor as sgm
 
 if typing.TYPE_CHECKING:
-    from os import PathLike
     from collections.abc import Sequence
-    from numpy.typing import NDArray, ArrayLike
+    from numpy.typing import NDArray
 
 
 _logger = logging.getLogger(__name__)
 
 load_sem_model = sgm.load_model
-
-
-LABEL_CMAP = plt.get_cmap("tab10")
 
 
 def get_pixel_width(img):
@@ -148,6 +141,7 @@ def apply_binary_opening(
             ],
             mode="ignore",
         )
+
 
 def get_xlims(
     mask_1d: NDArray[typing.Union[np.integer, np.floating]],
@@ -272,124 +266,3 @@ def masks_to_labels(
             masks.append(mask)
             label_values.append(label.value)
     return np.select(masks, label_values, default=default_value)
-
-
-def milling_cycle_plot(
-    sem_image: NDArray[typing.Any],
-    first_prediction: NDArray[np.integer],
-    clean_prediction: NDArray[typing.Any],
-    fib_image: NDArray[typing.Any],
-    gis_thickness_um: ArrayLike,
-    gis_stop_um: float,
-    crack_area_um2: float,
-    min_gis_um: float,
-    xlims: typing.Optional[typing.Tuple[int, int]] = None,
-    fib_screenshot: typing.Optional[NDArray[typing.Any]] = None,
-    img_name: typing.Optional[str] = None,
-    save_path: typing.Optional[typing.Union[str, PathLike]] = None,
-):
-    _logger.debug("milling_cycle_plot()")
-    fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(12, 8), tight_layout=True)
-    fig.suptitle(img_name)
-
-    # SEM
-    _ = axs[0, 0].imshow(sem_image, cmap="Greys_r")
-    sem_image_extent = _.get_extent()
-    axs[0, 0].axis("off")
-    axs[0, 0].set_title("SEM")
-
-    # SEM + 1st pass prediction
-    axs[0, 1].imshow(sem_image, cmap="Greys_r")
-    axs[0, 1].imshow(
-        first_prediction,
-        alpha=0.4,
-        cmap=LABEL_CMAP,
-        vmin=0,
-        vmax=len(LABEL_CMAP.colors),
-        extent=sem_image_extent,
-        interpolation="nearest",
-    )
-    axs[0, 1].axis("off")
-    axs[0, 1].set_title("SEM, 1st prediction")
-
-    # SEM + clean prediction
-    axs[0, 2].imshow(sem_image, cmap="Greys_r")
-    axs[0, 2].imshow(
-        clean_prediction,
-        alpha=0.4,
-        cmap=LABEL_CMAP,
-        vmin=0,
-        vmax=len(LABEL_CMAP.colors),
-        extent=sem_image_extent,
-        interpolation="nearest",
-    )
-    if xlims is not None:
-        axs[0, 2].axvline(x=xlims[0], color="C4")
-        axs[0, 2].axvline(x=xlims[1], color="C4")
-    axs[0, 2].axis("off")
-    axs[0, 2].set_title(rf"SEM, clean, crack area $\mu m^2$ = {crack_area_um2:.2f}")
-
-    # FIB image
-    axs[1, 0].imshow(fib_image, cmap="Greys_r")
-    axs[1, 0].axis("off")
-    axs[1, 0].set_title("FIB")
-
-    # FIB + milling box
-    if fib_screenshot is not None:
-        # Doesn't work -> for some reason I can't open a new napari.Viewer()
-        # pattern_viewer = napari.Viewer()
-        # pattern_viewer.add_image(fib_image, name="fib_image")
-        # _draw_patterns_in_napari(
-        #     viewer=pattern_viewer,
-        #     ib_image=FibsemImage(data=fib_image),
-        #     eb_image=None,
-        #     milling_stages=list(adaptive_polish_stage)
-        # )
-        # screenshot = pattern_viewer.screenshot()
-        # axs[1, 1].imshow(screenshot)
-        # pattern_viewer.close()
-        axs[1, 1].imshow(fib_screenshot[:, int(fib_screenshot.shape[1] / 2) :, :])
-    axs[1, 1].axis("off")
-
-    # GIS thickness
-    axs[1, 2].plot(gis_thickness_um, ".-")
-    axs[1, 2].set_xlabel("Distance along x $px$")
-    axs[1, 2].set_ylabel(r"GIS thickness ($\mu m$)")
-    axs[1, 2].set_xlim(0, len(gis_thickness_um))
-    axs[1, 2].set_ylim(
-        0,
-    )
-    axs[1, 2].hlines(
-        y=gis_stop_um,
-        xmin=0,
-        xmax=len(gis_thickness_um),
-        label="Target GIS",
-        linestyles="dashed",
-        colors="C1",
-    )
-
-    if xlims is not None:
-        axs[1, 2].axvline(x=xlims[0], color="C4")
-        axs[1, 2].axvline(x=xlims[1], color="C4")
-
-    axs[1, 2].set_title(rf"GIS thickness, min={min_gis_um:.3f} $\mu m$")
-    axs[1, 2].legend()
-
-    fig.savefig(save_path)
-    plt.close(fig)
-
-
-def summary_gis_plot(results: pd.DataFrame, save_path: typing.Union[str, PathLike]):
-    save_path = Path(save_path)
-    fig, ax = plt.subplots(1, 1)
-    ax.plot(
-        results.milling_time_s,
-        results.min_GIS_um,
-        label=r"Minimum GIS thickness $\mu m$",
-    )
-    ax.set_xlabel(r"Milling Time $s$")
-    ax.set_ylabel(r"GIS Thickness $\mu m$")
-    fig.suptitle(save_path.stem)
-    fig.tight_layout()
-    fig.savefig(save_path)
-    plt.close(fig)

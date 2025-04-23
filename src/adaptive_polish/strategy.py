@@ -3,9 +3,6 @@ import logging
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from matplotlib.patches import Rectangle
-from matplotlib.colors import ListedColormap
-import matplotlib.pyplot as plt
 import numpy as np
 import typing
 
@@ -18,7 +15,7 @@ from fibsem.milling import (
     run_milling,
     finish_milling,
 )
-from fibsem.structures import BeamType, Point
+from fibsem.structures import BeamType
 
 
 # Adaptive polish
@@ -29,11 +26,15 @@ from adaptive_polish.centring import (
     get_bounding_box_scaled_to_image,
     get_centre_points_from_bounding_box,
 )
+from adaptive_polish.plot import (
+    create_centring_plot,
+    create_milling_cycle_plot,
+    create_summary_gis_plot,
+)
 from adaptive_polish.config import AdaptivePolishMillingConfig
 
 
 if typing.TYPE_CHECKING:
-    from numpy.typing import NDArray
     from pandas import DataFrame
     from fibsem.milling import FibsemMillingStage
     from fibsem.microscope import FibsemMicroscope
@@ -184,7 +185,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         finally:
             # Always try to create a summary plot and finish milling
             try:
-                gm.summary_gis_plot(
+                create_summary_gis_plot(
                     results=results,
                     save_path=lamella_ap_folder
                     / f"{lamella_folder.stem}_GIS_thickness.png",
@@ -337,7 +338,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
         try:
             # Create plots
-            gm.milling_cycle_plot(
+            create_milling_cycle_plot(
                 sem_image=sem_image.data,
                 first_prediction=prediction,
                 clean_prediction=gm.masks_to_labels(
@@ -374,7 +375,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             centre_drift_um, config=config
         ):
             # Create centring plot if centring is found to be beyond the threshold
-            AdaptivePolishMillingStrategy._create_centring_plot(
+            create_centring_plot(
                 sem_image=sem_image,
                 mask_lamella_clean=mask_lamella_clean,
                 centre_px=mask_centre_px,
@@ -469,7 +470,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         )
 
         if plot_path is not None:
-            AdaptivePolishMillingStrategy._create_centring_plot(
+            create_centring_plot(
                 sem_image=sem_image,
                 prediction=prediction,
                 mask_lamella_clean=mask_lamella_clean,
@@ -479,84 +480,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 bounding_box=lamella_bbox,
             )
         return beam_shifts
-
-    @staticmethod
-    def _create_centring_plot(
-        sem_image: FibsemImage,
-        mask_lamella_clean: NDArray[np.bool_],
-        centre_px: Point,
-        centre_m: Point,
-        plot_path: Path,
-        prediction: typing.Optional[NDArray[np.integer]] = None,
-        bounding_box: typing.Optional[tuple[float, float, float, float]] = None,
-    ) -> None:
-        # Plot centring stuff
-        if prediction is not None:
-            fig, axs = plt.subplots(1, 2)
-            axs = axs.ravel()[::-1]
-        else:
-            fig, ax = plt.subplots(1, 1)
-            axs = [ax]
-
-        _ = axs[0].imshow(sem_image.data, cmap="gray")
-        extent = _.get_extent()
-        axs[0].imshow(
-            # Overlay the cleaned lamella
-            mask_lamella_clean,
-            cmap=ListedColormap(
-                [(0, 0, 0, 0), gm.LABEL_CMAP(SegmentationLabels.LAMELLA.value)]
-            ),
-            extent=extent,
-            alpha=0.5,
-        )
-        if bounding_box is not None:
-            axs[0].add_patch(
-                Rectangle(
-                    (bounding_box[1], bounding_box[0]),
-                    width=bounding_box[3] - bounding_box[1],
-                    height=bounding_box[2] - bounding_box[0],
-                    edgecolor="red",
-                    facecolor="none",
-                    alpha=0.5,
-                )
-            )
-        if prediction is not None:
-            axs[1].imshow(
-                prediction,
-                cmap=gm.LABEL_CMAP,
-                extent=extent,
-                vmin=0,
-                vmax=len(gm.LABEL_CMAP.colors),
-            )
-
-        for ax in axs:
-            # Add centre markers to both
-            ax.scatter(
-                centre_px.x,
-                centre_px.y,
-                c="r",
-                marker="+",
-                label="Lamella Centre",
-            )
-            ax.scatter(
-                sem_image.data.shape[1] // 2,
-                sem_image.data.shape[0] // 2,
-                c="g",
-                marker="+",
-                label="Image Centre",
-            )
-            ax.set_xticks([])
-            ax.set_yticks([])
-
-        axs[-1].legend()  # No need to have a duplicate legend
-
-        fig.suptitle(
-            rf"Lamella centre (x, y): {centre_m.x * constants.SI_TO_MICRO}, {centre_m.y * constants.SI_TO_MICRO} $\mu m$"
-        )
-        fig.tight_layout()
-
-        fig.savefig(plot_path)
-        plt.close(fig)
 
     @staticmethod
     def _get_drift_too_large(
