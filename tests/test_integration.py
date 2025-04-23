@@ -30,6 +30,9 @@ _AP_MILLING_CONFIG_SETTINGS = {
 }
 
 
+TIMESTAMP = "timestamp"
+
+
 @pytest.fixture
 def microscope_config_path(
     microscope_config_demo2_path: Path,
@@ -82,7 +85,10 @@ def raise_error_after_num_calls(
 
     return raise_error_after_wrapper
 
-
+@patch(
+    "adaptive_polish.strategy.fs_utils.current_timestamp",
+    new=MagicMock(return_value=TIMESTAMP),
+)
 def test_runs(
     microscope_config_path: Path,
     protocol_path: Path,
@@ -108,7 +114,7 @@ def test_runs(
 
     lamella_directory = tmp_path / "lamella"
     lamella_directory.mkdir()
-    adaptive_polish_dir = lamella_directory / "adaptive_polish"
+    adaptive_polish_dir = lamella_directory / f"adaptive_polish_{TIMESTAMP}"
 
     settings.image.path = lamella_directory
 

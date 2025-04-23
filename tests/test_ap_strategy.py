@@ -29,6 +29,8 @@ _AP_PASS_CHECKS_CONFIG = {
     "maximum_drift_um": np.inf,
 }
 
+TIMESTAMP = "timestamp"
+
 
 class ExceptionForMocking(Exception):
     pass
@@ -95,6 +97,9 @@ def test_milling_stage_loads_defaults(
     assert config == strategy.config, "Configs do not match"
 
 
+@patch.object(
+    ap_strategy.fs_utils, "current_timestamp", new=MagicMock(return_value=TIMESTAMP)
+)
 def test_ap_folders_created(
     protocol_template_path: Path,
     microscope_config_path,
@@ -125,7 +130,7 @@ def test_ap_folders_created(
         # This will raise an error but should make directories first
         strategy.run(microscope, stage)
 
-    adaptive_polish_dir = lamella_directory / "adaptive_polish"
+    adaptive_polish_dir = lamella_directory / f"adaptive_polish_{TIMESTAMP}"
     # Check directories were created
     assert adaptive_polish_dir.is_dir(), "adaptive_polish directory wasn't created"
     for name in ("plots", "sem", "fib"):
@@ -175,6 +180,9 @@ def test_loads_sem_model(
     mock_is_file.assert_called_once()
 
 
+@patch.object(
+    ap_strategy.fs_utils, "current_timestamp", new=MagicMock(return_value=TIMESTAMP)
+)
 def test_reference_images_saved_correctly(
     protocol_template_path: Path,
     microscope_config_path: Path,
@@ -215,7 +223,7 @@ def test_reference_images_saved_correctly(
 
         mock_model.predict.assert_called_once()
 
-    adaptive_polish_dir = lamella_directory / "adaptive_polish"
+    adaptive_polish_dir = lamella_directory / f"adaptive_polish_{TIMESTAMP}"
     for image_type in ("sem", "fib"):
         image_path = adaptive_polish_dir / image_type
         image_paths = tuple(image_path.glob("*.tif"))
@@ -291,6 +299,9 @@ def test_milling_stops_when_check_fails(
         mock_draw_patterns.assert_not_called()
 
 
+@patch.object(
+    ap_strategy.fs_utils, "current_timestamp", new=MagicMock(return_value=TIMESTAMP)
+)
 @patch.object(ap_strategy.AdaptivePolishMillingStrategy, "_check_lamella")
 @patch.object(ap_strategy.AdaptivePolishMillingStrategy, "_mill")
 def test_max_milling_cycles_not_exceeded(
@@ -332,6 +343,8 @@ def test_max_milling_cycles_not_exceeded(
     lamella_directory.mkdir()
     settings.image.path = lamella_directory
 
+    lamella_ap_folder = lamella_directory / f"adaptive_polish_{TIMESTAMP}"
+
     # Necessary to set imaging settings path
     acquire.take_reference_images(microscope, settings.image)
 
@@ -348,10 +361,8 @@ def test_max_milling_cycles_not_exceeded(
                     sem_image=ANY,
                     config=strategy.config,
                     model=strategy.model,
-                    lamella_ap_folder=lamella_directory / "adaptive_polish",
-                    lamella_ap_plots_folder=lamella_directory
-                    / "adaptive_polish"
-                    / "plots",
+                    lamella_ap_folder=lamella_ap_folder,
+                    lamella_ap_plots_folder=lamella_ap_folder / "plots",
                     results=ANY,
                     gis_results_detailed=ANY,
                 )
@@ -367,6 +378,9 @@ def test_max_milling_cycles_not_exceeded(
         )
 
 
+@patch.object(
+    ap_strategy.fs_utils, "current_timestamp", new=MagicMock(return_value=TIMESTAMP)
+)
 @patch.object(ap_strategy.gm, "clean_prediction")
 @patch.object(ap_strategy.gm, "filter_gis_thickness")
 @patch.object(ap_strategy.AdaptivePolishMillingStrategy, "_mill")
@@ -409,7 +423,7 @@ def test_results_saved(
     lamella_directory = tmp_path / "lamella"
     lamella_directory.mkdir()
     settings.image.path = lamella_directory
-    adaptive_polish_dir = lamella_directory / "adaptive_polish"
+    adaptive_polish_dir = lamella_directory / f"adaptive_polish_{TIMESTAMP}"
 
     # Necessary to set imaging settings path
     sem_image, _ = acquire.take_reference_images(microscope, settings.image)
