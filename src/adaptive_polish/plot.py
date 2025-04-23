@@ -51,7 +51,7 @@ def create_centring_plot(
         ),
         extent=extent,
         alpha=0.5,
-        interpolation="nearest",
+        interpolation="none",
     )
     if bounding_box is not None:
         axs[0].add_patch(
@@ -71,7 +71,7 @@ def create_centring_plot(
             extent=extent,
             vmin=0,
             vmax=len(LABEL_CMAP.colors),
-            interpolation="nearest",
+            interpolation="none",
         )
 
     for ax in axs:
@@ -137,6 +137,7 @@ def create_milling_cycle_plot(
         vmin=0,
         vmax=len(LABEL_CMAP.colors),
         extent=sem_image_extent,
+        interpolation="none",
     )
     axs[0, 1].axis("off")
     axs[0, 1].set_title("SEM, 1st prediction")
@@ -150,6 +151,7 @@ def create_milling_cycle_plot(
         vmin=0,
         vmax=len(LABEL_CMAP.colors),
         extent=sem_image_extent,
+        interpolation="none",
     )
     if xlims is not None:
         axs[0, 2].axvline(x=xlims[0], color="C4")
