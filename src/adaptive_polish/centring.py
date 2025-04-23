@@ -40,7 +40,9 @@ class AdaptivePolishLamellaCentre(AdaptiveLamellaCentre):
 def get_mask_bounding_box(
     mask: np.typing.NDArray[np.bool_],
     edge_finding: typing.Literal["median", "mean", "min", "max"] = "median",
-) -> typing.Union[tuple[int, int, int, int], tuple[float, float, float, float]]:
+) -> typing.Union[
+    typing.Tuple[int, int, int, int], typing.Tuple[float, float, float, float]
+]:
     if edge_finding == "median":
         edge_fn_min = np.median
         edge_fn_max = np.median
@@ -76,7 +78,9 @@ def get_mask_bounding_box(
 
 
 def get_centre_from_bounding_box(
-    bbox: typing.Union[tuple[int, int, int, int], tuple[float, float, float, float]],
+    bbox: typing.Union[
+        typing.Tuple[int, int, int, int], typing.Tuple[float, float, float, float]
+    ],
     subpixel_accuracy: bool = False,
 ):
     cx = (bbox[1] + bbox[3]) / 2
