@@ -26,7 +26,7 @@ class AdaptivePolishLamellaCentre(AdaptiveLamellaCentre):
         mask_shape = np.asarray(mask.shape)
         if np.any(img_shape != mask_shape):
             # Scale mask to image (in case mask is binned)
-            lamella_centre *= img_shape / mask_shape
+            lamella_centre = mask_lamella_centre * (img_shape / mask_shape)
         else:
             lamella_centre = mask_lamella_centre
 
