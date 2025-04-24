@@ -1,6 +1,7 @@
 from __future__ import annotations
 import pytest
 
+import itertools
 import typing
 from pathlib import Path
 
@@ -24,21 +25,29 @@ class MockGen1Model(sem_lamella_segmentor.Gen1Model):
 
     def __init__(
         self,
-        max_image_size: int,
         device: torch.DeviceLikeType,
+        max_image_size: int,
+        pad: bool = True,
+        rgb: bool = True,
     ) -> None:
+        self._rgb = rgb
+        self._pad = pad
         self._image_size = max_image_size
         self.device = device
 
 
 def old_model1_preprocessing_function(
     image: NDArray[typing.Any],
-    image_size: int,
+    image_size: tuple[int, int],
     pad_size: int,
+    rgb: bool,
     device: torch.DeviceLikeType,
 ) -> torch.Tensor:
     # Convert grayscale to 3-channel
-    image = np.stack([image] * 3, axis=-1).astype(np.float32)
+    if rgb:
+        image = np.stack([image] * 3, axis=-1).astype(np.float32)
+    else:
+        image = image[..., np.newaxis]
 
     # Normalization
     mean, std = image.mean(), image.std()
@@ -53,7 +62,7 @@ def old_model1_preprocessing_function(
     # Apply resize transformation
     transform = alb.Compose(
         [
-            alb.Resize(image_size, image_size),
+            alb.Resize(*image_size),
             albumentations.pytorch.ToTensorV2(),
         ]
     )
@@ -86,22 +95,42 @@ def test_segmentation_model_runs(
     assert prediction.max() == model.num_classes - 1
 
 
-def test_model1_preprocessing_results_match() -> None:
+@pytest.mark.parametrize("rgb,pad", itertools.product([True, False], [True, False]))
+def test_model1_preprocessing_results_match(rgb: bool, pad: bool) -> None:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     max_image_size = 100
-    pad_size = 5
     scale_multiplier = 3
-    image_size = (
-        max_image_size * scale_multiplier,
-        max_image_size * scale_multiplier - pad_size * 2,
+    output_y_edge_diff = 5 if pad else 0
+    pad_size = output_y_edge_diff * scale_multiplier if pad else 0
+    unpadded_output_image_size = np.asarray(
+        (max_image_size, max_image_size - output_y_edge_diff * 2)
     )
-    image = np.arange(500, 500 + np.multiply(*image_size), dtype=np.float32).reshape(
-        image_size
+    input_image_size = unpadded_output_image_size * scale_multiplier
+
+    if pad:
+        target_image_size = (
+            unpadded_output_image_size[0],
+            unpadded_output_image_size[0],
+        )
+    else:
+        target_image_size = unpadded_output_image_size
+
+    input_image = np.arange(
+        500, 500 + np.multiply(*input_image_size), dtype=np.float32
+    ).reshape(input_image_size)
+    mock_gen1_model = MockGen1Model(
+        device=device,
+        max_image_size=max_image_size,
+        pad=pad * scale_multiplier,
+        rgb=rgb,
     )
-    mock_gen1_model = MockGen1Model(max_image_size=max_image_size, device=device)
-    output = mock_gen1_model._preprocess(image)
+    output = mock_gen1_model._preprocess(input_image)
     expected_output = old_model1_preprocessing_function(
-        image, image_size=max_image_size, pad_size=pad_size, device=device
+        input_image,
+        image_size=target_image_size,
+        pad_size=pad_size,
+        device=device,
+        rgb=rgb,
     )
 
     torch.testing.assert_close(

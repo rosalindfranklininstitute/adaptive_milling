@@ -263,7 +263,11 @@ class Gen1Model(AbstractAdaptivePolishingModel):
         device: torch.DeviceLikeType,
         max_image_size: int,
         encoder_name: str,
+        pad: bool = True,
+        rgb: bool = True,
     ) -> None:
+        self._rgb = rgb
+        self._pad = pad
         self._encoder_name = encoder_name
         self._image_size = max_image_size
         super().__init__(model_path=model_path, device=device, num_classes=5)
@@ -301,8 +305,12 @@ class Gen1Model(AbstractAdaptivePolishingModel):
 
             image.clamp_(0, 1)
 
-            # Pad to square
-            image = v2.functional.pad(image, padding, fill=0)
+            if self._pad:
+                # Pad to square
+                image = v2.functional.pad(image, padding, fill=0)
+                target_shape = [self._image_size, self._image_size]
+            else:
+                target_shape = self._get_resize_shape(image)
 
             # Resize to input dimensions. Unfortunately albumentations uses cv2
             # which doesn't match the behaviour of pytorch, so numpy has to be
@@ -310,17 +318,19 @@ class Gen1Model(AbstractAdaptivePolishingModel):
             image = torch.from_numpy(
                 cv2.resize(
                     image.numpy().squeeze(),
-                    [self._image_size, self._image_size],
+                    target_shape,
                     interpolation=cv2.INTER_LINEAR,
                 )[np.newaxis, np.newaxis, ...]
             ).to(self.device)
 
-            return v2.functional.grayscale_to_rgb(
-                image
-            )  # Ensure it's still on the correct device
+            if self._rgb:
+                return v2.functional.grayscale_to_rgb(image)
+            return image
 
-    def _get_resize_shape(self, image: NDArray[typing.Any]) -> tuple[int, int]:
-        image_shape_array = np.asarray(image.shape)
+    def _get_resize_shape(
+        self, image: typing.Union[NDArray[typing.Any], torch.Tensor]
+    ) -> tuple[int, int]:
+        image_shape_array = np.asarray(image.shape[-2:])
         axis_multiplier = np.min(self._image_size / image_shape_array)
         return tuple(np.round(image_shape_array * axis_multiplier).astype(int).tolist())
 
@@ -328,18 +338,25 @@ class Gen1Model(AbstractAdaptivePolishingModel):
         self, prediction: torch.Tensor, image: NDArray[typing.Any]
     ) -> NDArray[np.long]:
         # Trim off padding
-        resized_shape_array = np.asarray(self._get_resize_shape(image))
-        prediction_shape_array = np.asarray(prediction.shape[-2:])
-        padding_array = (prediction_shape_array - resized_shape_array) / 2
-
         labels = super()._postprocess(prediction, image)
 
+        if not self._pad:
+            return labels
+
+        resized_shape_array = np.asarray(self._get_resize_shape(image))
+        labels_shape_array = np.asarray(labels.shape[-2:])
+
+        if np.all(resized_shape_array == labels_shape_array):
+            # If they are already the same shape, no need to slice.
+            return labels
+
+        padding_array = (labels_shape_array - resized_shape_array) / 2
         return labels[
             int(np.floor(padding_array[0])) : int(
-                prediction_shape_array[0] - np.ceil(padding_array[0])
+                labels_shape_array[0] - np.ceil(padding_array[0])
             ),
             int(np.floor(padding_array[1])) : int(
-                prediction_shape_array[1] - np.ceil(padding_array[1])
+                labels_shape_array[1] - np.ceil(padding_array[1])
             ),
         ]
 
