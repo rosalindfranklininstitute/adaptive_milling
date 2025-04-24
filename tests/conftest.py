@@ -14,12 +14,13 @@ _MODELS_PATH = (
     / "sem_models"
 )
 
+# Note: Gen 1 models below v4 apply padding before normalisation, so will not be accurate
 _MODEL_PATHS = {
     "0": [
         _MODELS_PATH / "Gen0" / "2024-02-24_0013_gis_lamela_crack_pytorch_AUnet.ptchkp"
     ],
     "1q": [
-        _MODELS_PATH / "Gen1" / "gen01_quality_1536_v3" / "gen01_quality_1536_v3.pth"
+        _MODELS_PATH / "Gen1" / "gen01_quality_1536_v4" / "gen01_quality_1536_v4.pth"
     ],
     "1p": [
         _MODELS_PATH
