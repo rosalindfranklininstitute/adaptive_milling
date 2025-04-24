@@ -292,7 +292,7 @@ class Gen1Model(AbstractAdaptivePolishingModel):
             # Padding is [left, top, right, bottom]
             # Additional padding due to remainder will be added to the top or right
             padding = [0, pad_size + remainder, 0, pad_size]
-            if small_axis == 0:
+            if large_axis == 0:
                 padding = padding[::-1]
 
             mean = image.mean()
@@ -309,7 +309,7 @@ class Gen1Model(AbstractAdaptivePolishingModel):
             if self._pad:
                 # Pad to square
                 image = v2.functional.pad(image, padding, fill=0)
-                target_shape = [self._image_size, self._image_size]
+                target_shape = (self._image_size, self._image_size)
             else:
                 target_shape = self._get_resize_shape(image)
 

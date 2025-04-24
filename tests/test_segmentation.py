@@ -103,14 +103,14 @@ def test_model1_preprocessing_results_match(rgb: bool, pad: bool) -> None:
     output_y_edge_diff = 5 if pad else 0
     pad_size = output_y_edge_diff * scale_multiplier if pad else 0
     unpadded_output_image_size = np.asarray(
-        (max_image_size, max_image_size - output_y_edge_diff * 2)
+        (max_image_size - output_y_edge_diff * 2, max_image_size)
     )
     input_image_size = unpadded_output_image_size * scale_multiplier
 
     if pad:
         target_image_size = (
-            unpadded_output_image_size[0],
-            unpadded_output_image_size[0],
+            unpadded_output_image_size[1],
+            unpadded_output_image_size[1],
         )
     else:
         target_image_size = unpadded_output_image_size
@@ -131,6 +131,12 @@ def test_model1_preprocessing_results_match(rgb: bool, pad: bool) -> None:
         pad_size=pad_size,
         device=device,
         rgb=rgb,
+    )
+    assert np.all(expected_output.shape[-2:] == target_image_size), (
+        "Expected output isn't the correct shape"
+    )
+    assert np.all(output.shape[-2:] == target_image_size), (
+        "Output isn't the correct shape"
     )
 
     torch.testing.assert_close(
