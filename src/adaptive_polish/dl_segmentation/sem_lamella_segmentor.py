@@ -273,7 +273,8 @@ class Gen1Model(AbstractAdaptivePolishingModel):
         super().__init__(model_path=model_path, device=device, num_classes=5)
 
     def _preprocess(self, image: NDArray[typing.Any]) -> torch.Tensor:
-        # Hopefully this is a more efficient implementation of Casper's preprocessing
+        # Note: Gen 1 models below v4 apply padding before normalisation,
+        # unlike this method, so will get inaccurate results.
 
         # Convert grayscale to 3-channel
         with torch.no_grad():
