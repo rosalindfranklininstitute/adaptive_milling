@@ -365,7 +365,7 @@ class Gen1Model(AbstractAdaptivePolishingModel):
             encoder_name=self._encoder_name,
             encoder_weights=None,
             classes=self.num_classes,
-            in_channels=3,
+            in_channels=3 if self._rgb else 1,
             activation=None,
             decoder_attention_type="scse",
         )
@@ -402,11 +402,28 @@ class Gen1PerformanceModel(Gen1Model):
             encoder_name="efficientnet-b3",
         )
 
+class Gen1QualityGreyscaleModel(Gen1Model):
+    def __init__(
+        self,
+        model_path: typing.Union[str, PathLike],
+        device: torch.DeviceLikeType,
+        max_image_size: int = 1536,
+    ) -> None:
+        super().__init__(
+            model_path=model_path,
+            device=device,
+            max_image_size=max_image_size,
+            encoder_name="efficientnet-b4",
+            pad=False,
+            rgb=False,
+        )
+
 
 # Using str keys allows for semantic versioning
 MODEL_GENERATIONS_DICT: dict[str, AbstractAdaptivePolishingModel] = {
     "0": Gen0Model,
     "1p": Gen1PerformanceModel,
+    "1q_gs": Gen1QualityGreyscaleModel,
     "1q": Gen1QualityModel,
 }
 

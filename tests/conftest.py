@@ -27,6 +27,12 @@ _MODEL_PATHS = {
         / "gen01_performance_768_v3"
         / "gen01_performance_768_v3.pth"
     ],
+    "1q_gs": [
+        _MODELS_PATH
+        / "Gen1"
+        / "gen01_quality_1536_v5_grayscale"
+        / "cryo_sem_epoch_56.pth"
+    ],
 }
 
 assert _MODELS_PATH.is_dir(), "SEM models path does not exist"
