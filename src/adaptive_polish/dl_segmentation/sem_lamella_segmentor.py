@@ -269,70 +269,55 @@ class Gen1Model(AbstractAdaptivePolishingModel):
         super().__init__(model_path=model_path, device=device, num_classes=5)
 
     def _preprocess(self, image: NDArray[typing.Any]) -> torch.Tensor:
+        # Hopefully this is a more efficient implementation of Casper's preprocessing
+
         # Convert grayscale to 3-channel
-        image = np.stack([image] * 3, axis=-1).astype(np.float32)
+        with torch.no_grad():
+            # the following functions expect channel and batch axes
+            image = torch.from_numpy(
+                image[np.newaxis, np.newaxis, ...].astype(np.float32)
+            )
 
-        # Crop to (3072x3072)
-        image = cv2.copyMakeBorder(image, 512, 512, 0, 0, cv2.BORDER_CONSTANT, value=0)
+            # Calculate padding
+            image_shape = image.shape[-2:]
+            large_axis = np.argmax(image_shape)
+            small_axis = 1 - large_axis
+            axes_diff = image_shape[large_axis] - image_shape[small_axis]
+            pad_size, remainder = divmod(axes_diff, 2)
+            # Padding is [left, top, right, bottom]
+            # Additional padding due to remainder will be added to the top or right
+            padding = [0, pad_size + remainder, 0, pad_size]
+            if small_axis == 0:
+                padding = padding[::-1]
 
-        # Normalization
-        mean, std = image.mean(), image.std()
-        image = (image - mean) / (3 * std)
-        image = np.clip(image, 0, 1)
+            mean = image.mean()
+            # correction=0 matches numpy's behaviour (without Bessel's
+            # correction)
+            std = image.std(correction=0)
 
-        # Apply resize transformation
-        transform = alb.Compose(
-            [
-                alb.Resize(self._image_size, self._image_size),
-                albumentations.pytorch.ToTensorV2(),
-            ]
-        )
-        transformed = transform(image=image)
+            # Calculate in place:
+            image -= mean
+            image /= 3 * std
 
-        return transformed["image"].unsqueeze(0).to(self.device)
+            image.clamp_(0, 1)
 
-    # def _preprocess(self, image: NDArray[typing.Any]) -> torch.Tensor:
-    #     # Hopefully this is a more efficient implementation of Casper's preprocessing
+            # Pad to square
+            image = v2.functional.pad(image, padding, fill=0)
 
-    #     # Convert grayscale to 3-channel
-    #     image = np.stack([image] * 3, axis=-1)
-    #     image = image[np.newaxis, :, :, :]
-    #     with torch.no_grad():
-    #         image = torch.from_numpy(image.astype(np.float32)).to(self.device)
-    #         # the following functions expect channel and batch axes
-    #         # image = image.unsqueeze_(0).unsqueeze_(0)
+            # Resize to input dimensions. Unfortunately albumentations uses cv2
+            # which doesn't match the behaviour of pytorch, so numpy has to be
+            # used.
+            image = torch.from_numpy(
+                cv2.resize(
+                    image.numpy().squeeze(),
+                    [self._image_size, self._image_size],
+                    interpolation=cv2.INTER_LINEAR,
+                )[np.newaxis, np.newaxis, ...]
+            ).to(self.device)
 
-    #         # Pad to square
-    #         image_shape = image.shape[-2:]
-    #         large_axis = np.argmax(image_shape)
-    #         small_axis = 1 - large_axis
-    #         axes_diff = image_shape[large_axis] - image_shape[small_axis]
-    #         pad_size, remainder = divmod(axes_diff, 2)
-    #         # Padding is [left, top, right, bottom]
-    #         # Additional padding due to remainder will be added to the top or right
-    #         if small_axis == 0:
-    #             padding = [0, pad_size + remainder, 0, pad_size]
-    #         else:
-    #             padding = [pad_size, 0, pad_size + remainder, 0]
-
-    #         image = v2.functional.pad(image, padding, fill=0)
-
-    #         image = v2.functional.resize(
-    #             image, size=[self._image_size, self._image_size]
-    #         )
-
-    #         mean, std = image.mean(), image.std()
-
-    #         # Calculate in place:
-    #         image -= mean
-    #         image = (image - mean) / (3 * std)
-
-    #         image.clamp_(0, 1)
-    #         return image
-
-    #         # return v2.functional.grayscale_to_rgb(image).to(
-    #         #     self.device
-    #         # )  # Ensure it's still on the correct device
+            return v2.functional.grayscale_to_rgb(
+                image
+            )  # Ensure it's still on the correct device
 
     def _get_resize_shape(self, image: NDArray[typing.Any]) -> tuple[int, int]:
         image_shape_array = np.asarray(image.shape)
