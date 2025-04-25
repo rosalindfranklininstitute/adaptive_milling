@@ -188,6 +188,7 @@ def create_milling_cycle_plot(
     axs[1, 2].set_xlim(0, len(gis_thickness_um))
     axs[1, 2].set_ylim(
         0,
+        gis_stop_um * 1.1
     )
     axs[1, 2].hlines(
         y=gis_stop_um,
