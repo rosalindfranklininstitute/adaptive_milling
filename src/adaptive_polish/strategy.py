@@ -107,6 +107,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         sem_imaging_settings.dwell_time = constants.MICRO_TO_SI * self.config.sem_dwell_time_us
         sem_imaging_settings.hfw = self.config.sem_hfw_um
 
+        _logger.info(f"Adaptive polish SEM settings: {sem_imaging_settings}")
+        _logger.info(f"Adaptive polish FIB settings: {fib_imaging_settings}")
+
         lamella_folder = Path(fib_imaging_settings.path)
         lamella_ap_folder = (
             lamella_folder / f"adaptive_polish_{fs_utils.current_timestamp()}"
