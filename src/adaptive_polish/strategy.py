@@ -101,13 +101,13 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
         # set imaging settings
         fib_imaging_settings.resolution = [self.config.fib_resolution_x, self.config.fib_resolution_y]
-        fib_imaging_settings.dwell_time = constants.MICRO_TO_SI(self.config.fib_dwell_time_us)
+        fib_imaging_settings.dwell_time = self.config.fib_dwell_time_us * constants.MICRO_TO_SI
         fib_imaging_settings.hfw = self.config.fib_hfw_um
         fib_imaging_settings.autocontrast = self.config.fib_autocontrast
         fib_imaging_settings.autogamma = self.config.fib_autogamma
 
         sem_imaging_settings.resolution = [self.config.sem_resolution_x, self.config.sem_resolution_y]
-        sem_imaging_settings.dwell_time =  constants.MICRO_TO_SI(self.config.sem_dwell_time_us)
+        sem_imaging_settings.dwell_time =  self.config.sem_dwell_time_us * constants.MICRO_TO_SI
         sem_imaging_settings.hfw = self.config.sem_hfw_um
         sem_imaging_settings.autocontrast = self.config.sem_autocontrast
         sem_imaging_settings.autogamma = self.config.sem_autogamma
