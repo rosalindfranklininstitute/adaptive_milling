@@ -272,61 +272,85 @@ class Gen1Model(AbstractAdaptivePolishingModel):
         self._image_size = max_image_size
         super().__init__(model_path=model_path, device=device, num_classes=5)
 
+    # def _preprocess(self, image: NDArray[typing.Any]) -> torch.Tensor:
+    #     # Note: Gen 1 models below v4 apply padding before normalisation,
+    #     # unlike this method, so will get inaccurate results.
+
+    #     # Convert grayscale to 3-channel
+    #     with torch.no_grad():
+    #         # the following functions expect channel and batch axes
+    #         image = torch.from_numpy(
+    #             image[np.newaxis, np.newaxis, ...].astype(np.float32)
+    #         )
+
+    #         # Calculate padding
+    #         image_shape = image.shape[-2:]
+    #         large_axis = np.argmax(image_shape)
+    #         small_axis = 1 - large_axis
+    #         axes_diff = image_shape[large_axis] - image_shape[small_axis]
+    #         pad_size, remainder = divmod(axes_diff, 2)
+    #         # Padding is [left, top, right, bottom]
+    #         # Additional padding due to remainder will be added to the top or right
+    #         padding = [0, pad_size + remainder, 0, pad_size]
+    #         if large_axis == 0:
+    #             padding = padding[::-1]
+
+    #         mean = image.mean()
+    #         # correction=0 matches numpy's behaviour (without Bessel's
+    #         # correction)
+    #         std = image.std(correction=0)
+
+    #         # Calculate in place:
+    #         image -= mean
+    #         image /= 3 * std
+
+    #         image.clamp_(0, 1)
+
+    #         if self._pad:
+    #             # Pad to square
+    #             image = v2.functional.pad(image, padding, fill=0)
+    #             target_shape = (self._image_size, self._image_size)
+    #         else:
+    #             target_shape = self._get_resize_shape(image)
+
+    #         # Resize to input dimensions. Unfortunately albumentations uses cv2
+    #         # which doesn't match the behaviour of pytorch, so numpy has to be
+    #         # used.
+    #         image = torch.from_numpy(
+    #             cv2.resize(
+    #                 image.numpy().squeeze(),
+    #                 target_shape,
+    #                 interpolation=cv2.INTER_LINEAR,
+    #             )[np.newaxis, np.newaxis, ...]
+    #         ).to(self.device)
+
+    #         if self._rgb:
+    #             return v2.functional.grayscale_to_rgb(image)
+    #         return image
+
     def _preprocess(self, image: NDArray[typing.Any]) -> torch.Tensor:
-        # Note: Gen 1 models below v4 apply padding before normalisation,
-        # unlike this method, so will get inaccurate results.
-
+        # Reverted to old version used at last microscope session
         # Convert grayscale to 3-channel
-        with torch.no_grad():
-            # the following functions expect channel and batch axes
-            image = torch.from_numpy(
-                image[np.newaxis, np.newaxis, ...].astype(np.float32)
-            )
+        image = np.stack([image] * 3, axis=-1).astype(np.float32)
 
-            # Calculate padding
-            image_shape = image.shape[-2:]
-            large_axis = np.argmax(image_shape)
-            small_axis = 1 - large_axis
-            axes_diff = image_shape[large_axis] - image_shape[small_axis]
-            pad_size, remainder = divmod(axes_diff, 2)
-            # Padding is [left, top, right, bottom]
-            # Additional padding due to remainder will be added to the top or right
-            padding = [0, pad_size + remainder, 0, pad_size]
-            if large_axis == 0:
-                padding = padding[::-1]
+        # Crop to (3072x3072)
+        image = cv2.copyMakeBorder(image, 512, 512, 0, 0, cv2.BORDER_CONSTANT, value=0)
 
-            mean = image.mean()
-            # correction=0 matches numpy's behaviour (without Bessel's
-            # correction)
-            std = image.std(correction=0)
+        # Normalization
+        mean, std = image.mean(), image.std()
+        image = (image - mean) / (3 * std)
+        image = np.clip(image, 0, 1)
 
-            # Calculate in place:
-            image -= mean
-            image /= 3 * std
+        # Apply resize transformation
+        transform = alb.Compose(
+            [
+                alb.Resize(self._image_size, self._image_size),
+                albumentations.pytorch.ToTensorV2(),
+            ]
+        )
+        transformed = transform(image=image)
 
-            image.clamp_(0, 1)
-
-            if self._pad:
-                # Pad to square
-                image = v2.functional.pad(image, padding, fill=0)
-                target_shape = (self._image_size, self._image_size)
-            else:
-                target_shape = self._get_resize_shape(image)
-
-            # Resize to input dimensions. Unfortunately albumentations uses cv2
-            # which doesn't match the behaviour of pytorch, so numpy has to be
-            # used.
-            image = torch.from_numpy(
-                cv2.resize(
-                    image.numpy().squeeze(),
-                    target_shape,
-                    interpolation=cv2.INTER_LINEAR,
-                )[np.newaxis, np.newaxis, ...]
-            ).to(self.device)
-
-            if self._rgb:
-                return v2.functional.grayscale_to_rgb(image)
-            return image
+        return transformed["image"].unsqueeze(0).to(self.device)
 
     def _get_resize_shape(
         self, image: typing.Union[NDArray[typing.Any], torch.Tensor]
