@@ -478,13 +478,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             pixel_size_m=sem_image.metadata.pixel_size.x,
         )
 
-        # shift beam
-        dx, dy = -centre_m.x, -centre_m.y
-        microscope.beam_shift(dx, dy, BeamType.ELECTRON)
-        _logger.info(
-            "Beamshift %s by dx=%.4e, dy=%.4e m", BeamType.ELECTRON.name, dx, dy
-        )
-
         if plot_path is not None:
             create_centring_plot(
                 sem_image=sem_image,
