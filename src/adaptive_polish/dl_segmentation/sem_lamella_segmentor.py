@@ -263,75 +263,79 @@ class Gen1Model(AbstractAdaptivePolishingModel):
         device: torch.DeviceLikeType,
         max_image_size: int,
         encoder_name: str,
-        pad: bool = True,
-        rgb: bool = True,
     ) -> None:
-        self._rgb = rgb
-        self._pad = pad
         self._encoder_name = encoder_name
         self._image_size = max_image_size
         super().__init__(model_path=model_path, device=device, num_classes=5)
 
     def _preprocess(self, image: NDArray[typing.Any]) -> torch.Tensor:
-        # Note: Gen 1 models below v4 apply padding before normalisation,
-        # unlike this method, so will get inaccurate results.
-
         # Convert grayscale to 3-channel
-        with torch.no_grad():
-            # the following functions expect channel and batch axes
-            image = torch.from_numpy(
-                image[np.newaxis, np.newaxis, ...].astype(np.float32)
-            )
+        image = np.stack([image] * 3, axis=-1).astype(np.float32)
 
-            # Calculate padding
-            image_shape = image.shape[-2:]
-            large_axis = np.argmax(image_shape)
-            small_axis = 1 - large_axis
-            axes_diff = image_shape[large_axis] - image_shape[small_axis]
-            pad_size, remainder = divmod(axes_diff, 2)
-            # Padding is [left, top, right, bottom]
-            # Additional padding due to remainder will be added to the top or right
-            padding = [0, pad_size + remainder, 0, pad_size]
-            if large_axis == 0:
-                padding = padding[::-1]
+        # Crop to (3072x3072)
+        image = cv2.copyMakeBorder(image, 512, 512, 0, 0, cv2.BORDER_CONSTANT, value=0)
 
-            mean = image.mean()
-            # correction=0 matches numpy's behaviour (without Bessel's
-            # correction)
-            std = image.std(correction=0)
+        # Normalization
+        mean, std = image.mean(), image.std()
+        image = (image - mean) / (3 * std)
+        image = np.clip(image, 0, 1)
 
-            # Calculate in place:
-            image -= mean
-            image /= 3 * std
+        # Apply resize transformation
+        transform = alb.Compose(
+            [
+                alb.Resize(self._image_size, self._image_size),
+                albumentations.pytorch.ToTensorV2(),
+            ]
+        )
+        transformed = transform(image=image)
 
-            image.clamp_(0, 1)
+        return transformed["image"].unsqueeze(0).to(self.device)
 
-            if self._pad:
-                # Pad to square
-                image = v2.functional.pad(image, padding, fill=0)
-                target_shape = (self._image_size, self._image_size)
-            else:
-                target_shape = self._get_resize_shape(image)
+    # def _preprocess(self, image: NDArray[typing.Any]) -> torch.Tensor:
+    #     # Hopefully this is a more efficient implementation of Casper's preprocessing
 
-            # Resize to input dimensions. Unfortunately albumentations uses cv2
-            # which doesn't match the behaviour of pytorch, so numpy has to be
-            # used.
-            image = torch.from_numpy(
-                cv2.resize(
-                    image.numpy().squeeze(),
-                    target_shape,
-                    interpolation=cv2.INTER_LINEAR,
-                )[np.newaxis, np.newaxis, ...]
-            ).to(self.device)
+    #     # Convert grayscale to 3-channel
+    #     image = np.stack([image] * 3, axis=-1)
+    #     image = image[np.newaxis, :, :, :]
+    #     with torch.no_grad():
+    #         image = torch.from_numpy(image.astype(np.float32)).to(self.device)
+    #         # the following functions expect channel and batch axes
+    #         # image = image.unsqueeze_(0).unsqueeze_(0)
 
-            if self._rgb:
-                return v2.functional.grayscale_to_rgb(image)
-            return image
+    #         # Pad to square
+    #         image_shape = image.shape[-2:]
+    #         large_axis = np.argmax(image_shape)
+    #         small_axis = 1 - large_axis
+    #         axes_diff = image_shape[large_axis] - image_shape[small_axis]
+    #         pad_size, remainder = divmod(axes_diff, 2)
+    #         # Padding is [left, top, right, bottom]
+    #         # Additional padding due to remainder will be added to the top or right
+    #         if small_axis == 0:
+    #             padding = [0, pad_size + remainder, 0, pad_size]
+    #         else:
+    #             padding = [pad_size, 0, pad_size + remainder, 0]
 
-    def _get_resize_shape(
-        self, image: typing.Union[NDArray[typing.Any], torch.Tensor]
-    ) -> tuple[int, int]:
-        image_shape_array = np.asarray(image.shape[-2:])
+    #         image = v2.functional.pad(image, padding, fill=0)
+
+    #         image = v2.functional.resize(
+    #             image, size=[self._image_size, self._image_size]
+    #         )
+
+    #         mean, std = image.mean(), image.std()
+
+    #         # Calculate in place:
+    #         image -= mean
+    #         image = (image - mean) / (3 * std)
+
+    #         image.clamp_(0, 1)
+    #         return image
+
+    #         # return v2.functional.grayscale_to_rgb(image).to(
+    #         #     self.device
+    #         # )  # Ensure it's still on the correct device
+
+    def _get_resize_shape(self, image: NDArray[typing.Any]) -> tuple[int, int]:
+        image_shape_array = np.asarray(image.shape)
         axis_multiplier = np.min(self._image_size / image_shape_array)
         return tuple(np.round(image_shape_array * axis_multiplier).astype(int).tolist())
 
@@ -339,25 +343,18 @@ class Gen1Model(AbstractAdaptivePolishingModel):
         self, prediction: torch.Tensor, image: NDArray[typing.Any]
     ) -> NDArray[np.long]:
         # Trim off padding
+        resized_shape_array = np.asarray(self._get_resize_shape(image))
+        prediction_shape_array = np.asarray(prediction.shape[-2:])
+        padding_array = (prediction_shape_array - resized_shape_array) / 2
+
         labels = super()._postprocess(prediction, image)
 
-        if not self._pad:
-            return labels
-
-        resized_shape_array = np.asarray(self._get_resize_shape(image))
-        labels_shape_array = np.asarray(labels.shape[-2:])
-
-        if np.all(resized_shape_array == labels_shape_array):
-            # If they are already the same shape, no need to slice.
-            return labels
-
-        padding_array = (labels_shape_array - resized_shape_array) / 2
         return labels[
             int(np.floor(padding_array[0])) : int(
-                labels_shape_array[0] - np.ceil(padding_array[0])
+                prediction_shape_array[0] - np.ceil(padding_array[0])
             ),
             int(np.floor(padding_array[1])) : int(
-                labels_shape_array[1] - np.ceil(padding_array[1])
+                prediction_shape_array[1] - np.ceil(padding_array[1])
             ),
         ]
 
@@ -366,7 +363,7 @@ class Gen1Model(AbstractAdaptivePolishingModel):
             encoder_name=self._encoder_name,
             encoder_weights=None,
             classes=self.num_classes,
-            in_channels=3 if self._rgb else 1,
+            in_channels=3,
             activation=None,
             decoder_attention_type="scse",
         )
@@ -403,28 +400,11 @@ class Gen1PerformanceModel(Gen1Model):
             encoder_name="efficientnet-b3",
         )
 
-class Gen1QualityGreyscaleModel(Gen1Model):
-    def __init__(
-        self,
-        model_path: typing.Union[str, PathLike],
-        device: torch.DeviceLikeType,
-        max_image_size: int = 1536,
-    ) -> None:
-        super().__init__(
-            model_path=model_path,
-            device=device,
-            max_image_size=max_image_size,
-            encoder_name="efficientnet-b4",
-            pad=False,
-            rgb=False,
-        )
-
 
 # Using str keys allows for semantic versioning
 MODEL_GENERATIONS_DICT: dict[str, AbstractAdaptivePolishingModel] = {
     "0": Gen0Model,
     "1p": Gen1PerformanceModel,
-    "1q_gs": Gen1QualityGreyscaleModel,
     "1q": Gen1QualityModel,
 }
 
