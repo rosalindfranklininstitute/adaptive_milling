@@ -491,6 +491,12 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
         # shift beam
         dx, dy = -centre_m.x, -centre_m.y
+        # if any of the above fail for some reason, don't shift at all and proceed with the rest
+        if np.isnan(dx) or np.isnan(dy):
+            dx = 0
+            dy = 0
+            _logger.warning("Not shifting anything as dx or dy was invalid")
+
         microscope.beam_shift(dx, dy, BeamType.ELECTRON)
         _logger.info(
             "Beamshift %s by dx=%.4e, dy=%.4e m", BeamType.ELECTRON.name, dx, dy
