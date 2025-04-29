@@ -98,6 +98,15 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         setup_milling(microscope=microscope, milling_stage=stage)
         fib_imaging_settings = microscope.get_imaging_settings(BeamType.ION)
         sem_imaging_settings = microscope.get_imaging_settings(BeamType.ELECTRON)
+
+        # set imaging settings from protocol file
+        fib_imaging_settings.resolution = [self.config.fib_res_x, self.config.fib_res_y]
+        fib_imaging_settings.dwell_time = constants.MICRO_TO_SI * self.config.fib_dwell_time_us
+        fib_imaging_settings.hfw = self.config.fib_hfw_um
+        sem_imaging_settings.resolution = [self.config.sem_res_x, self.config.sem_res_y]
+        sem_imaging_settings.dwell_time = constants.MICRO_TO_SI * self.config.sem_dwell_time_us
+        sem_imaging_settings.hfw = self.config.sem_hfw_um
+
         lamella_folder = Path(fib_imaging_settings.path)
         lamella_ap_folder = (
             lamella_folder / f"adaptive_polish_{fs_utils.current_timestamp()}"
