@@ -21,12 +21,12 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
     maximum_drift_um: float = 0.1
     model_generation: typing.Optional[str] = None  # Uses latest generation
     maximum_side_difference_um: float = 0.05
-    fib_resolution: typing.List[int] = [3072, 2048]
+    fib_resolution: list = [3072, 2048]
     fib_dwell_time_us: float = 2
     fib_hfw_um: float = 50
     fib_autocontrast: bool = False
     fib_autogamma: bool = False
-    sem_resolution: typing.List[int] = [3072, 2048]
+    sem_resolution: list = [3072, 2048]
     sem_dwell_time_us: float = 2
     sem_hfw_um: float = 50
     sem_autocontrast: bool = False
