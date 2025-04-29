@@ -21,6 +21,16 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
     maximum_drift_um: float = 0.1
     model_generation: typing.Optional[str] = None  # Uses latest generation
     maximum_side_difference_um: float = 0.05
+    fib_resolution: typing.List[int] = [3072, 2048]
+    fib_dwell_time_us: float = 2
+    fib_hfw_um: float = 50
+    fib_autocontrast: bool = False
+    fib_autogamma: bool = False
+    sem_resolution: typing.List[int] = [3072, 2048]
+    sem_dwell_time_us: float = 2
+    sem_hfw_um: float = 50
+    sem_autocontrast: bool = False
+    sem_autogamma: bool = False
 
     _advanced_attributes = []
 
@@ -41,4 +51,13 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
             "maximum_drift_um": self.maximum_drift_um,
             "model_generation": self.model_generation,
             "maximum_side_difference_um": self.maximum_side_difference_um,
+            "fib_resolution": self.fib_resolution,
+            "fib_dwell_time_us": self.fib_dwell_time_us,
+            "fib_autocontrast": self.fib_autocontrast,
+            "fib_autogamma": self.fib_autogamma,
+            "sem_resolution": self.sem_resolution,
+            "sem_dwell_time_us": self.sem_dwell_time_us,
+            "sem_hfw_um": self.sem_hfw_um,
+            "sem_autocontrast": self.sem_autocontrast,
+            "sem_autogamma": self.sem_autogamma,
         }
