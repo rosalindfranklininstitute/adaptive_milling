@@ -126,11 +126,13 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
         # align SEM
         if self.config.align_sem:
-            self._align_beam(
+            lamella_centre_m = self._align_beam(
                 microscope=microscope,
                 sem_imaging_settings=sem_imaging_settings,
                 plot_path=lamella_ap_folder / "centring.png",
             )
+        else:
+            lamella_centre_m = None
 
         # Set lamella folders for saving images
         fib_imaging_settings.save = True
@@ -169,6 +171,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                     lamella_ap_plots_folder=lamella_ap_plots_folder,
                     results=results,
                     gis_results_detailed=gis_results_detailed,
+                    expected_lamella_centre_m=lamella_centre_m,
                 )
                 AdaptivePolishMillingStrategy._mill(
                     microscope=microscope, stage=stage, config=self.config
@@ -213,6 +216,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         lamella_ap_plots_folder: Path,
         results: DataFrame,
         gis_results_detailed: DataFrame,
+        expected_lamella_centre_m: typing.Optional[Point] = None,
     ) -> None:
         # Segmentation
         _logger.info("Starting segmentation")
@@ -365,32 +369,46 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 "Exception occurred creating the milling cycle plot", exc_info=True
             )
 
-        centre_m, mask_centre_px = get_centre_points_from_bounding_box(
-            bbox=lamella_bbox,
-            image=sem_image.data,
-            pixel_size_m=sem_image.metadata.pixel_size.x,
-        )
+        if config.align_sem and expected_lamella_centre_m is not None:
+            centre_m: typing.Optional[Point] = None
+            mask_centre_px: typing.Optional[Point] = None
+            centre_drift_um: float = 0
+            try:
+                centre_m, mask_centre_px = get_centre_points_from_bounding_box(
+                    bbox=lamella_bbox,
+                    image=sem_image.data,
+                    pixel_size_m=sem_image.metadata.pixel_size.x,
+                )
 
-        centre_drift_um = (
-            math.sqrt(centre_m.x**2 + centre_m.y**2) * constants.SI_TO_MICRO
-        )
-        # Only a valid check if sem is aligned
-        if config.align_sem and AdaptivePolishMillingStrategy._get_drift_too_large(
-            centre_drift_um, config=config
-        ):
-            # Create centring plot if centring is found to be beyond the threshold
-            create_centring_plot(
-                sem_image=sem_image,
-                mask_lamella_clean=mask_lamella_clean,
-                centre_px=mask_centre_px,
-                centre_m=centre_m,
-                plot_path=lamella_ap_plots_folder
-                / f"{image_name}_centring_problem.png",
-                bounding_box=lamella_bbox,
-            )
-            raise StopEarlyError(
-                f"Total drift (um) {centre_drift_um:.4e} > threshold {config.maximum_drift_um:.4e} (might be a segmentation problem)"
-            )
+                centre_drift_um = (
+                    math.sqrt(
+                        (centre_m.x - expected_lamella_centre_m.x) ** 2
+                        + (centre_m.y - expected_lamella_centre_m.y) ** 2
+                    )
+                    * constants.SI_TO_MICRO
+                )
+            except CentringException as e:
+                _logger.warning(
+                    f"Failed to get lamella centre, drift check will be skipped: {e}"
+                )
+
+            # Only a valid check if sem is aligned
+            if AdaptivePolishMillingStrategy._get_drift_too_large(
+                centre_drift_um, config=config
+            ):
+                # Create centring plot if centring is found to be beyond the threshold
+                create_centring_plot(
+                    sem_image=sem_image,
+                    mask_lamella_clean=mask_lamella_clean,
+                    centre_px=mask_centre_px,
+                    centre_m=centre_m,
+                    plot_path=lamella_ap_plots_folder
+                    / f"{image_name}_centring_problem.png",
+                    bounding_box=lamella_bbox,
+                )
+                raise StopEarlyError(
+                    f"Total drift (um) {centre_drift_um:.4e} > threshold {config.maximum_drift_um:.4e} (might be a segmentation problem)"
+                )
 
         if AdaptivePolishMillingStrategy._get_gis_too_thin(min_gis_um, config=config):
             raise StopMillingException(
@@ -442,9 +460,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         sem_imaging_settings: ImageSettings,
         plot_path: typing.Optional[Path] = None,
     ) -> None:
-        beam_shifts = {
-            _: microscope.get("shift", _) for _ in (BeamType.ELECTRON, BeamType.ION)
-        }
         _logger.info("Using sem beam shift alignment for adaptive polishing")
 
         # Take reference images
@@ -489,15 +504,24 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                     bounding_box=lamella_bbox,
                 )
 
+        initial_beam_shift = microscope.get("shift", BeamType.ELECTRON)
 
         # shift beam
         dx, dy = -centre_m.x, -centre_m.y
         microscope.beam_shift(dx, dy, BeamType.ELECTRON)
+
+        new_beam_shift = microscope.get("shift", BeamType.ELECTRON)
+        actual_relative_shift = new_beam_shift - initial_beam_shift
         _logger.info(
-            "Beamshift %s by dx=%.4e, dy=%.4e m", BeamType.ELECTRON.name, dx, dy
+            "Beamshift %s by dx=%.4e, dy=%.4e m",
+            BeamType.ELECTRON.name,
+            actual_relative_shift.x,
+            actual_relative_shift.y,
         )
 
-        return beam_shifts
+        new_lamella_centre_m = centre_m + actual_relative_shift
+
+        return new_lamella_centre_m
 
     @staticmethod
     def _get_drift_too_large(
