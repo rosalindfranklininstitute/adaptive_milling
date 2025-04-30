@@ -24,11 +24,11 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
     fib_res_x: int = 3072
     fib_res_y: int = 2048
     fib_dwell_time_us: float = 2
-    fib_hfw_um: float = 50
+    fib_hfw_m: float = 50e-6
     sem_res_x: int = 3072
     sem_res_y: int = 2048
     sem_dwell_time_us: float = 2
-    sem_hfw_um: float = 50
+    sem_hfw_m: float = 50e-6
 
     _advanced_attributes = []
 
@@ -52,9 +52,9 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
             "fib_res_x": self.fib_res_x,
             "fib_res_y": self.fib_res_y,
             "fib_dwell_time_us": self.fib_dwell_time_us,
-            "fib_hfw_um": self.fib_hfw_um,
+            "fib_hfw_m": self.fib_hfw_m,
             "sem_res_x": self.sem_res_x,
             "sem_res_y": self.sem_res_y,
             "sem_dwell_time_us": self.sem_dwell_time_us,
-            "sem_hfw_um": self.sem_hfw_um,
+            "sem_hfw_m": self.sem_hfw_m,
         }
