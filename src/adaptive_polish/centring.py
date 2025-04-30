@@ -8,6 +8,10 @@ from fibsem.structures import Point
 from fibsem.detection.detection import AdaptiveLamellaCentre
 
 
+class CentringException(Exception):
+    pass
+
+
 @dataclass
 class AdaptivePolishLamellaCentre(AdaptiveLamellaCentre):
     name: str = "AdaptivePolishLamellaCentre"
@@ -74,7 +78,11 @@ def get_mask_bounding_box(
     xmax = edge_fn_max(valid_xmaxs)
     ymin = edge_fn_min(valid_ymins)
     ymax = edge_fn_max(valid_ymaxs)
-    return (ymin, xmin, ymax, xmax)
+    bbox = (ymin, xmin, ymax, xmax)
+
+    if np.any(np.isnan(bbox)):
+        raise CentringException("Bounding box coordinates contains a NaN")
+    return bbox
 
 
 def get_centre_from_bounding_box(
@@ -127,6 +135,10 @@ def get_centre_points_from_bounding_box(
     pixel_size_m: float,
 ) -> tuple[Point, Point]:
     centre_px = get_centre_from_bounding_box(bbox, subpixel_accuracy=True)
+
+    if np.any(np.isnan(centre_px)):
+        raise CentringException("Centre pixel coordinates contain a NaN")
+
     centre_px_point = Point(x=centre_px[1], y=centre_px[0])
 
     # Convert to microscope image coordinates (0, 0 at centre of image)
