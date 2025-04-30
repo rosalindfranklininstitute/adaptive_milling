@@ -25,6 +25,7 @@ from adaptive_polish.dl_segmentation.sem_lamella_segmentor import SegmentationLa
 from adaptive_polish.centring import (
     get_bounding_box_scaled_to_image,
     get_centre_points_from_bounding_box,
+    CentringException,
 )
 from adaptive_polish.plot import (
     create_centring_plot,
@@ -38,7 +39,7 @@ if typing.TYPE_CHECKING:
     from pandas import DataFrame
     from fibsem.milling import FibsemMillingStage
     from fibsem.microscope import FibsemMicroscope
-    from fibsem.structures import FibsemImage, ImageSettings
+    from fibsem.structures import FibsemImage, ImageSettings, Point
     from adaptive_polish.dl_segmentation.sem_lamella_segmentor import (
         AbstractAdaptivePolishingModel,
     )
@@ -242,10 +243,13 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         if mask_gis_clean is None:
             raise StopEarlyError("No GIS found beneath the lamella")
 
-        # Get lamella position
-        lamella_bbox = get_bounding_box_scaled_to_image(
-            sem_image.data, mask=mask_lamella_clean
-        )
+        try:
+            # Get lamella position
+            lamella_bbox = get_bounding_box_scaled_to_image(
+                sem_image.data, mask=mask_lamella_clean
+            )
+        except CentringException:
+            raise StopEarlyError("Failed to get lamella bounds from the segmentation")
 
         # Measure GIS
         gis_thickness_um = (
@@ -456,26 +460,35 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             additional_labels=(SegmentationLabels.GIS, SegmentationLabels.CRACK),
         )
 
-        lamella_bbox = get_bounding_box_scaled_to_image(
-            sem_image.data,
-            mask=mask_lamella_clean,
-        )
-        centre_m, centre_px = get_centre_points_from_bounding_box(
-            lamella_bbox,
-            image=sem_image.data,
-            pixel_size_m=sem_image.metadata.pixel_size.x,
-        )
-
-        if plot_path is not None:
-            create_centring_plot(
-                sem_image=sem_image,
-                prediction=prediction,
-                mask_lamella_clean=mask_lamella_clean,
-                centre_px=centre_px,
-                centre_m=centre_m,
-                plot_path=plot_path,
-                bounding_box=lamella_bbox,
+        centre_m: typing.Optional[Point] = None
+        centre_px: typing.Optional[Point] = None
+        try:
+            lamella_bbox = get_bounding_box_scaled_to_image(
+                sem_image.data,
+                mask=mask_lamella_clean,
             )
+            centre_m, centre_px = get_centre_points_from_bounding_box(
+                lamella_bbox,
+                image=sem_image.data,
+                pixel_size_m=sem_image.metadata.pixel_size.x,
+            )
+
+        except CentringException as e:
+            # As the milling depends on the segmentation, if this has failed
+            # then so will the milling checks, so just stop now.
+            raise StopEarlyError(f"Failed to align beam due to: {e}")
+        finally:
+            if plot_path is not None:
+                create_centring_plot(
+                    sem_image=sem_image,
+                    prediction=prediction,
+                    mask_lamella_clean=mask_lamella_clean,
+                    centre_px=centre_px,
+                    centre_m=centre_m,
+                    plot_path=plot_path,
+                    bounding_box=lamella_bbox,
+                )
+
 
         # shift beam
         dx, dy = -centre_m.x, -centre_m.y

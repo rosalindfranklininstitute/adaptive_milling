@@ -27,8 +27,8 @@ LABEL_CMAP = plt.get_cmap("tab10")
 def create_centring_plot(
     sem_image: FibsemImage,
     mask_lamella_clean: NDArray[np.bool_],
-    centre_px: Point,
-    centre_m: Point,
+    centre_px: typing.Optional[Point],
+    centre_m: typing.Optional[Point],
     plot_path: typing.Union[str, PathLike],
     prediction: typing.Optional[NDArray[np.integer]] = None,
     bounding_box: typing.Optional[tuple[float, float, float, float]] = None,
@@ -76,13 +76,14 @@ def create_centring_plot(
 
     for ax in axs:
         # Add centre markers to both
-        ax.scatter(
-            centre_px.x,
-            centre_px.y,
-            c="r",
-            marker="+",
-            label="Lamella Centre",
-        )
+        if centre_px is not None:
+            ax.scatter(
+                centre_px.x,
+                centre_px.y,
+                c="r",
+                marker="+",
+                label="Lamella Centre",
+            )
         ax.scatter(
             sem_image.data.shape[1] // 2,
             sem_image.data.shape[0] // 2,
@@ -95,9 +96,12 @@ def create_centring_plot(
 
     axs[-1].legend()  # No need to have a duplicate legend
 
-    fig.suptitle(
-        rf"Lamella centre (x, y): {centre_m.x * constants.SI_TO_MICRO}, {centre_m.y * constants.SI_TO_MICRO} $\mu m$"
-    )
+    if centre_m is None:
+        fig.suptitle("Lamella centre not found")
+    else:
+        fig.suptitle(
+            rf"Lamella centre (x, y): {centre_m.x * constants.SI_TO_MICRO}, {centre_m.y * constants.SI_TO_MICRO} $\mu m$"
+        )
     fig.tight_layout()
 
     fig.savefig(plot_path)
