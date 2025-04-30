@@ -29,9 +29,11 @@ class MockGen1Model(sem_lamella_segmentor.Gen1Model):
         max_image_size: int,
         pad: bool = True,
         rgb: bool = True,
+        normalise_first: bool = True,
     ) -> None:
         self._rgb = rgb
         self._pad = pad
+        self._normalise_first = normalise_first
         self._image_size = max_image_size
         self.device = device
 
@@ -41,6 +43,7 @@ def old_model1_preprocessing_function(
     image_size: tuple[int, int],
     pad_size: int,
     rgb: bool,
+    normalise_first: bool,
     device: torch.DeviceLikeType,
 ) -> torch.Tensor:
     # Convert grayscale to 3-channel
@@ -49,15 +52,22 @@ def old_model1_preprocessing_function(
     else:
         image = image[..., np.newaxis]
 
-    # Normalization
-    mean, std = image.mean(), image.std()
-    image = (image - mean) / (3 * std)
-    image = np.clip(image, 0, 1)
+    if normalise_first:
+        # Normalization
+        mean, std = image.mean(), image.std()
+        image = (image - mean) / (3 * std)
+        image = np.clip(image, 0, 1)
 
     # Crop to (3072x3072)
     image = cv2.copyMakeBorder(
         image, pad_size, pad_size, 0, 0, cv2.BORDER_CONSTANT, value=0
     )
+
+    if not normalise_first:
+        # Normalization
+        mean, std = image.mean(), image.std()
+        image = (image - mean) / (3 * std)
+        image = np.clip(image, 0, 1)
 
     # Apply resize transformation
     transform = alb.Compose(
@@ -95,8 +105,13 @@ def test_segmentation_model_runs(
     assert prediction.max() == model.num_classes - 1
 
 
-@pytest.mark.parametrize("rgb,pad", itertools.product([True, False], [True, False]))
-def test_model1_preprocessing_results_match(rgb: bool, pad: bool) -> None:
+@pytest.mark.parametrize(
+    "rgb,pad,normalise_first",
+    itertools.product([True, False], [True, False], [True, False]),
+)
+def test_model1_preprocessing_results_match(
+    rgb: bool, pad: bool, normalise_first: bool
+) -> None:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     max_image_size = 100
     scale_multiplier = 3
@@ -123,14 +138,16 @@ def test_model1_preprocessing_results_match(rgb: bool, pad: bool) -> None:
         max_image_size=max_image_size,
         pad=pad * scale_multiplier,
         rgb=rgb,
+        normalise_first=normalise_first,
     )
     output = mock_gen1_model._preprocess(input_image)
     expected_output = old_model1_preprocessing_function(
         input_image,
         image_size=target_image_size,
         pad_size=pad_size,
-        device=device,
         rgb=rgb,
+        normalise_first=normalise_first,
+        device=device,
     )
     assert np.all(expected_output.shape[-2:] == target_image_size), (
         "Expected output isn't the correct shape"

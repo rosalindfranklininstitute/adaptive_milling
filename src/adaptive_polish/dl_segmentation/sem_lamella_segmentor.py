@@ -265,12 +265,27 @@ class Gen1Model(AbstractAdaptivePolishingModel):
         encoder_name: str,
         pad: bool = True,
         rgb: bool = True,
+        normalise_first: bool = True,
     ) -> None:
         self._rgb = rgb
         self._pad = pad
+        self._normalise_first = normalise_first
         self._encoder_name = encoder_name
         self._image_size = max_image_size
         super().__init__(model_path=model_path, device=device, num_classes=5)
+
+    def _normalise(self, image: torch.Tensor) -> torch.Tensor:
+        mean = image.mean()
+        # correction=0 matches numpy's behaviour (without Bessel's
+        # correction)
+        std = image.std(correction=0)
+
+        # Calculate in place:
+        image -= mean
+        image /= 3 * std
+
+        image.clamp_(0, 1)
+        return image
 
     def _preprocess(self, image: NDArray[typing.Any]) -> torch.Tensor:
         # Note: Gen 1 models below v4 apply padding before normalisation,
@@ -295,16 +310,8 @@ class Gen1Model(AbstractAdaptivePolishingModel):
             if large_axis == 0:
                 padding = padding[::-1]
 
-            mean = image.mean()
-            # correction=0 matches numpy's behaviour (without Bessel's
-            # correction)
-            std = image.std(correction=0)
-
-            # Calculate in place:
-            image -= mean
-            image /= 3 * std
-
-            image.clamp_(0, 1)
+            if self._normalise_first:
+                image = self._normalise(image)
 
             if self._pad:
                 # Pad to square
@@ -312,6 +319,9 @@ class Gen1Model(AbstractAdaptivePolishingModel):
                 target_shape = (self._image_size, self._image_size)
             else:
                 target_shape = self._get_resize_shape(image)
+
+            if not self._normalise_first:
+                image = self._normalise(image)
 
             # Resize to input dimensions. Unfortunately albumentations uses cv2
             # which doesn't match the behaviour of pytorch, so numpy has to be
@@ -386,6 +396,7 @@ class Gen1QualityModel(Gen1Model):
             device=device,
             max_image_size=max_image_size,
             encoder_name="efficientnet-b4",
+            normalise_first=False,
         )
 
 
@@ -401,9 +412,61 @@ class Gen1PerformanceModel(Gen1Model):
             device=device,
             max_image_size=max_image_size,
             encoder_name="efficientnet-b3",
+            normalise_first=False,
         )
 
-class Gen1QualityGreyscaleModel(Gen1Model):
+
+class Gen1ImprovedPerformanceModel(Gen1Model):
+    def __init__(
+        self,
+        model_path: typing.Union[str, PathLike],
+        device: torch.DeviceLikeType,
+        max_image_size: int = 768,
+    ) -> None:
+        super().__init__(
+            model_path=model_path,
+            device=device,
+            max_image_size=max_image_size,
+            encoder_name="efficientnet-b3",
+            normalise_first=True,
+        )
+
+
+class Gen1ImprovedQualityModel(Gen1Model):
+    def __init__(
+        self,
+        model_path: typing.Union[str, PathLike],
+        device: torch.DeviceLikeType,
+        max_image_size: int = 1536,
+    ) -> None:
+        super().__init__(
+            model_path=model_path,
+            device=device,
+            max_image_size=max_image_size,
+            encoder_name="efficientnet-b4",
+            normalise_first=True,
+        )
+
+
+class Gen1GreyscalePerformanceModel(Gen1Model):
+    def __init__(
+        self,
+        model_path: typing.Union[str, PathLike],
+        device: torch.DeviceLikeType,
+        max_image_size: int = 768,
+    ) -> None:
+        super().__init__(
+            model_path=model_path,
+            device=device,
+            max_image_size=max_image_size,
+            encoder_name="efficientnet-b3",
+            pad=False,
+            rgb=False,
+            normalise_first=True,
+        )
+
+
+class Gen1GreyscaleQualityModel(Gen1Model):
     def __init__(
         self,
         model_path: typing.Union[str, PathLike],
@@ -417,15 +480,19 @@ class Gen1QualityGreyscaleModel(Gen1Model):
             encoder_name="efficientnet-b4",
             pad=False,
             rgb=False,
+            normalise_first=True,
         )
 
 
 # Using str keys allows for semantic versioning
 MODEL_GENERATIONS_DICT: dict[str, AbstractAdaptivePolishingModel] = {
     "0": Gen0Model,
-    "1p": Gen1PerformanceModel,
-    "1q_gs": Gen1QualityGreyscaleModel,
-    "1q": Gen1QualityModel,
+    "1.0p": Gen1PerformanceModel,  # v<=3
+    "1.0q": Gen1QualityModel,  # v<=3
+    "1.1p": Gen1ImprovedPerformanceModel,  # v4
+    "1.1q": Gen1ImprovedQualityModel,  # v4
+    "1.2p": Gen1GreyscalePerformanceModel,  # v5
+    "1.2q": Gen1GreyscaleQualityModel,  # v5
 }
 
 

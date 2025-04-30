@@ -19,16 +19,19 @@ _MODEL_PATHS = {
     "0": [
         _MODELS_PATH / "Gen0" / "2024-02-24_0013_gis_lamela_crack_pytorch_AUnet.ptchkp"
     ],
-    "1q": [
-        _MODELS_PATH / "Gen1" / "gen01_quality_1536_v4" / "gen01_quality_1536_v4.pth"
-    ],
-    "1p": [
+    "1.0p": [
         _MODELS_PATH
         / "Gen1"
         / "gen01_performance_768_v3"
         / "gen01_performance_768_v3.pth"
     ],
-    "1q_gs": [
+    "1.0q": [
+        _MODELS_PATH / "Gen1" / "gen01_quality_1536_v3" / "gen01_quality_1536_v3.pth"
+    ],
+    "1.1q": [
+        _MODELS_PATH / "Gen1" / "gen01_quality_1536_v4" / "gen01_quality_1536_v4.pth"
+    ],
+    "1.2q": [
         _MODELS_PATH
         / "Gen1"
         / "gen01_quality_1536_v5_grayscale"
