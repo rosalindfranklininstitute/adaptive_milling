@@ -387,7 +387,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 )
 
             # Only a valid check if sem is aligned
-            if AdaptivePolishMillingStrategy._get_drift_too_large(centre_drift_um):
+            if self._get_drift_too_large(centre_drift_um):
                 # Create centring plot if centring is found to be beyond the threshold
                 create_centring_plot(
                     sem_image=sem_image,
@@ -402,12 +402,12 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                     f"Total drift (um) {centre_drift_um:.4e} > threshold {self.config.maximum_drift_um:.4e} (might be a segmentation problem)"
                 )
 
-        if AdaptivePolishMillingStrategy._get_gis_too_thin(min_gis_um):
+        if self._get_gis_too_thin(min_gis_um):
             raise StopMillingException(
                 f"Minimum GIS thickness (um) {min_gis_um:.4e} < threshold {self.config.gis_stop_um:.4e} um"
             )
 
-        if AdaptivePolishMillingStrategy._get_crack_too_large(crack_area_um2):
+        if self._get_crack_too_large(crack_area_um2):
             raise StopMillingException(
                 f"Crack area (um2) {crack_area_um2:.4e} > threshold {self.config.max_crack_area_um2:.4e} um2"
             )
@@ -512,8 +512,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
         return new_lamella_centre_m
 
+
     def _get_drift_too_large(self, centre_drift_um: float) -> bool:
-        return centre_drift_um > self.config.maximum_drift_um
+        return centre_drift_um > float(self.config.maximum_drift_um)
 
     def _get_gis_too_thin(self, min_gis_um: float) -> bool:
         # Minumum GIS thickness check
