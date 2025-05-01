@@ -448,7 +448,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         microscope: FibsemMicroscope,
         sem_imaging_settings: ImageSettings,
         plot_path: typing.Optional[Path] = None,
-    ) -> None:
+    ) -> Point:
         _logger.info("Using sem beam shift alignment for adaptive polishing")
 
         # Take reference images
