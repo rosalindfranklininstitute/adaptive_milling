@@ -160,22 +160,18 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 fib_imaging_settings.filename = f"{f_basename}_FIB.tif"
                 fib_image = acquire.new_image(microscope, fib_imaging_settings)
 
-                AdaptivePolishMillingStrategy._check_lamella(
+                self._check_lamella(
                     milling_cycle,
                     image_name=f_basename,
                     fib_image=fib_image,
                     sem_image=sem_image,
-                    config=self.config,
-                    model=self.model,
                     lamella_ap_folder=lamella_ap_folder,
                     lamella_ap_plots_folder=lamella_ap_plots_folder,
                     results=results,
                     gis_results_detailed=gis_results_detailed,
                     expected_lamella_centre_m=lamella_centre_m,
                 )
-                AdaptivePolishMillingStrategy._mill(
-                    microscope=microscope, stage=stage, config=self.config
-                )
+                self._mill(microscope=microscope, stage=stage)
         except StopMillingException as e:
             _logger.info("Stopping milling due to: %s", str(e))
         except StopEarlyError as e:
@@ -204,14 +200,12 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             )
             microscope.reset_beam_shifts()
 
-    @staticmethod
     def _check_lamella(
+        self,
         milling_cycle: int,
         image_name: str,
         fib_image: FibsemImage,
         sem_image: FibsemImage,
-        config: AdaptivePolishMillingConfig,
-        model: AbstractAdaptivePolishingModel,
         lamella_ap_folder: Path,
         lamella_ap_plots_folder: Path,
         results: DataFrame,
@@ -220,7 +214,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
     ) -> None:
         # Segmentation
         _logger.info("Starting segmentation")
-        prediction = model.predict(sem_image.data, full_size=False)
+        prediction = self.model.predict(sem_image.data, full_size=False)
         _logger.info("Segmentation complete")
 
         prediction_pixel_size_um = (
@@ -240,9 +234,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         lamella_area_um2 = gm.get_mask_area_um2(
             mask_lamella_clean, pixel_size_um=prediction_pixel_size_um
         )
-        if lamella_area_um2 < config.minimum_lamella_area_um2:
+        if lamella_area_um2 < self.config.minimum_lamella_area_um2:
             raise StopEarlyError(
-                f"Lamella found was only {lamella_area_um2:.4e} um2, below the threshold of {config.minimum_lamella_area_um2:.4e} um2"
+                f"Lamella found was only {lamella_area_um2:.4e} um2, below the threshold of {self.config.minimum_lamella_area_um2:.4e} um2"
             )
         if mask_gis_clean is None:
             raise StopEarlyError("No GIS found beneath the lamella")
@@ -274,18 +268,18 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
         maximum_side_difference_px = int(
             round(
-                config.maximum_side_difference_um
+                self.config.maximum_side_difference_um
                 / (sem_image.metadata.pixel_size.x * constants.SI_TO_MICRO)
             )
         )
 
         gis_thickness_filtered_um = gm.filter_gis_thickness(
             gis_thickness_um,
-            window_size_m=config.window_size_px * sem_image.metadata.pixel_size.x,
+            window_size_m=self.config.window_size_px * sem_image.metadata.pixel_size.x,
             pixel_size_m=sem_image.metadata.pixel_size.x,
         )
 
-        gis_above_threshold = gis_thickness_filtered_um > config.gis_stop_um
+        gis_above_threshold = gis_thickness_filtered_um > self.config.gis_stop_um
 
         gis_xlims_px = np.asarray(
             (
@@ -323,7 +317,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         )
 
         # Save results
-        total_time = config.milling_interval_s * (milling_cycle + 1)
+        total_time = self.config.milling_interval_s * (milling_cycle + 1)
         results.loc[milling_cycle] = {
             "image": image_name,
             "milling_time_s": total_time,
@@ -356,7 +350,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 ),
                 fib_image=fib_image.data,
                 gis_thickness_um=gis_thickness_filtered_um,
-                gis_stop_um=config.gis_stop_um,
+                gis_stop_um=self.config.gis_stop_um,
                 crack_area_um2=crack_area_um2,
                 min_gis_um=min_gis_um,
                 xlims=xlims_px,
@@ -369,7 +363,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 "Exception occurred creating the milling cycle plot", exc_info=True
             )
 
-        if config.align_sem and expected_lamella_centre_m is not None:
+        if self.config.align_sem and expected_lamella_centre_m is not None:
             centre_m: typing.Optional[Point] = None
             mask_centre_px: typing.Optional[Point] = None
             centre_drift_um: float = 0
@@ -393,9 +387,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 )
 
             # Only a valid check if sem is aligned
-            if AdaptivePolishMillingStrategy._get_drift_too_large(
-                centre_drift_um, config=config
-            ):
+            if AdaptivePolishMillingStrategy._get_drift_too_large(centre_drift_um):
                 # Create centring plot if centring is found to be beyond the threshold
                 create_centring_plot(
                     sem_image=sem_image,
@@ -407,32 +399,29 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                     bounding_box=lamella_bbox,
                 )
                 raise StopEarlyError(
-                    f"Total drift (um) {centre_drift_um:.4e} > threshold {config.maximum_drift_um:.4e} (might be a segmentation problem)"
+                    f"Total drift (um) {centre_drift_um:.4e} > threshold {self.config.maximum_drift_um:.4e} (might be a segmentation problem)"
                 )
 
-        if AdaptivePolishMillingStrategy._get_gis_too_thin(min_gis_um, config=config):
+        if AdaptivePolishMillingStrategy._get_gis_too_thin(min_gis_um):
             raise StopMillingException(
-                f"Minimum GIS thickness (um) {min_gis_um:.4e} < threshold {config.gis_stop_um:.4e} um"
+                f"Minimum GIS thickness (um) {min_gis_um:.4e} < threshold {self.config.gis_stop_um:.4e} um"
             )
 
-        if AdaptivePolishMillingStrategy._get_crack_too_large(
-            crack_area_um2, config=config
-        ):
+        if AdaptivePolishMillingStrategy._get_crack_too_large(crack_area_um2):
             raise StopMillingException(
-                f"Crack area (um2) {crack_area_um2:.4e} > threshold {config.max_crack_area_um2:.4e} um2"
+                f"Crack area (um2) {crack_area_um2:.4e} > threshold {self.config.max_crack_area_um2:.4e} um2"
             )
 
-    @staticmethod
     def _mill(
+        self,
         microscope: FibsemMicroscope,
         stage: FibsemMillingStage,
-        config: AdaptivePolishMillingConfig,
     ) -> None:
         # get pattern - this is where bitmap will come in later
         pattern = stage.pattern.define()
 
         # adjust milling interval TODO
-        next_milling_interval = config.milling_interval_s
+        next_milling_interval = self.config.milling_interval_s
         pattern[0].time = next_milling_interval
 
         # ensure milling settings are still correctly set
@@ -523,22 +512,13 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
         return new_lamella_centre_m
 
-    @staticmethod
-    def _get_drift_too_large(
-        centre_drift_um: float, config: AdaptivePolishMillingConfig
-    ) -> bool:
-        return centre_drift_um > config.maximum_drift_um
+    def _get_drift_too_large(self, centre_drift_um: float) -> bool:
+        return centre_drift_um > self.config.maximum_drift_um
 
-    @staticmethod
-    def _get_gis_too_thin(
-        min_gis_um: float, config: AdaptivePolishMillingConfig
-    ) -> bool:
+    def _get_gis_too_thin(self, min_gis_um: float) -> bool:
         # Minumum GIS thickness check
-        return min_gis_um < float(config.gis_stop_um)
+        return min_gis_um < float(self.config.gis_stop_um)
 
-    @staticmethod
-    def _get_crack_too_large(
-        crack_area_um2: float, config: AdaptivePolishMillingConfig
-    ) -> bool:
+    def _get_crack_too_large(self, crack_area_um2: float) -> bool:
         # Total crack area check
-        return crack_area_um2 > float(config.max_crack_area_um2)
+        return crack_area_um2 > float(self.config.max_crack_area_um2)

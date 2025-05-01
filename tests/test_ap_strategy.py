@@ -235,7 +235,9 @@ def test_reference_images_saved_correctly(
 
 
 @pytest.mark.parametrize("failure_reason", ["gis", "crack", "lamella area", "centring"])
+@patch.object(ap_strategy, "draw_patterns")
 def test_milling_stops_when_check_fails(
+    mock_draw_patterns,
     failure_reason: str,
     protocol_template_path: Path,
     microscope_config_demo2_path: Path,
@@ -246,6 +248,9 @@ def test_milling_stops_when_check_fails(
 ) -> None:
     """Tests that milling stops when either GIS is too thin or crack
     is found"""
+
+    # Ensure test doesn't keep looping:
+    mock_draw_patterns.side_effect = ExceptionForMocking("Unexpected exception")
 
     pass_checks_kwargs = _AP_PASS_CHECKS_CONFIG.copy()
     if failure_reason == "gis":
@@ -283,17 +288,7 @@ def test_milling_stops_when_check_fails(
     # Necessary to set imaging settings path
     acquire.take_reference_images(microscope, settings.image)
 
-    with (
-        patch.object(
-            ap_strategy,
-            "draw_patterns",
-            MagicMock(
-                # Ensure test doesn't keep looping:
-                side_effect=ExceptionForMocking("Unexpected exception")
-            ),
-        ) as mock_draw_patterns,
-        patch.object(strategy, "_align_beam") as mock_align_beam,
-    ):
+    with patch.object(strategy, "_align_beam") as mock_align_beam:
         strategy.run(microscope, stage)
         mock_align_beam.assert_called_once()
         mock_draw_patterns.assert_not_called()
@@ -302,11 +297,7 @@ def test_milling_stops_when_check_fails(
 @patch.object(
     ap_strategy.fs_utils, "current_timestamp", new=MagicMock(return_value=TIMESTAMP)
 )
-@patch.object(ap_strategy.AdaptivePolishMillingStrategy, "_check_lamella")
-@patch.object(ap_strategy.AdaptivePolishMillingStrategy, "_mill")
 def test_max_milling_cycles_not_exceeded(
-    mock_mill,
-    mock_check_lamella,
     protocol_template_path: Path,
     microscope_config_path: Path,
     fib_image_dir: Path,
@@ -349,8 +340,16 @@ def test_max_milling_cycles_not_exceeded(
     acquire.take_reference_images(microscope, settings.image)
 
     # Stop it trying to load a model
-    with patch.object(strategy, "model"):
+    with (
+        patch.object(strategy, "model") as mock_model,
+        patch.object(strategy, "_check_lamella") as mock_check_lamella,
+        patch.object(strategy, "_mill") as mock_mill,
+    ):
         strategy.run(microscope, stage)
+
+        # Mocking the model the strategy from trying to load one but it
+        # shouldn't be called
+        mock_model.predict.assert_not_called()
 
         mock_check_lamella.assert_has_calls(
             [
@@ -359,12 +358,11 @@ def test_max_milling_cycles_not_exceeded(
                     image_name=f"{lamella_directory.stem}_AP_img_{i:03}",
                     fib_image=ANY,
                     sem_image=ANY,
-                    config=strategy.config,
-                    model=strategy.model,
                     lamella_ap_folder=lamella_ap_folder,
                     lamella_ap_plots_folder=lamella_ap_folder / "plots",
                     results=ANY,
                     gis_results_detailed=ANY,
+                    expected_lamella_centre_m=None,  # Due to align_sem=False
                 )
                 for i in range(max_milling_cycles)
             ]
@@ -372,7 +370,7 @@ def test_max_milling_cycles_not_exceeded(
 
         mock_mill.assert_has_calls(
             [
-                call(microscope=microscope, stage=stage, config=strategy.config)
+                call(microscope=microscope, stage=stage)
                 for _ in range(max_milling_cycles)
             ]
         )
@@ -383,9 +381,7 @@ def test_max_milling_cycles_not_exceeded(
 )
 @patch.object(ap_strategy.gm, "clean_prediction")
 @patch.object(ap_strategy.gm, "filter_gis_thickness")
-@patch.object(ap_strategy.AdaptivePolishMillingStrategy, "_mill")
 def test_results_saved(
-    mock_mill,
     mock_filter_gis_thickness,
     mock_clean_prediction,
     protocol_template_path: Path,
@@ -456,7 +452,7 @@ def test_results_saved(
 
     mock_filter_gis_thickness.side_effect = expected_filtered_gis_thicknesses
     # Stop it trying to load a model
-    with patch.object(strategy, "model"):
+    with patch.object(strategy, "model"), patch.object(strategy, "_mill") as mock_mill:
         strategy.run(microscope, stage)
 
         # # The calls for cracks will be skipped as mask_crack_clean is None
@@ -468,7 +464,7 @@ def test_results_saved(
         )
         mock_mill.assert_has_calls(
             [
-                call(microscope=microscope, stage=stage, config=strategy.config)
+                call(microscope=microscope, stage=stage)
                 for _ in range(max_milling_cycles)
             ]
         )
@@ -544,3 +540,10 @@ def test_results_saved(
 # def test_milling_time_adjustment() -> None:
 #     """Tests that milling cycle time cannot be < 10s"""
 #     pass
+
+
+# def test_align_beam(tmp_path: Path) -> None:
+#     ap_strategy.AdaptivePolishMillingStrategy._check_lamella(0, image_name="test_image",fib_image=, sem_image=, config=, model=, lamella_ap_folder=tmp_path,)
+
+# def test_check_lamella(tmp_path: Path) -> None:
+#     ap_strategy.AdaptivePolishMillingStrategy._check_lamella(0, image_name="test_image",fib_image=, sem_image=, config=, model=, lamella_ap_folder=tmp_path,)
