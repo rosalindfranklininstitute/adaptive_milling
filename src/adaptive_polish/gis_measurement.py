@@ -118,7 +118,7 @@ def clean_prediction(
     for key, mask in connected_masks.items():
         if not np.sum(mask):
             # No need to keep an array of 0s
-            connected_masks[key] = None
+            del connected_masks[key]
 
     return (
         mask_connected_lamella,
