@@ -72,10 +72,10 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
     def to_dict(self) -> dict[str, typing.Any]:
         return {"name": self.name, "config": self.config.to_dict()}
 
-    @staticmethod
-    def from_dict(d: dict[str, typing.Any]) -> typing.Self:
+    @classmethod
+    def from_dict(cls, d: dict[str, typing.Any]) -> typing.Self:
         config = AdaptivePolishMillingConfig.from_dict(d["config"])
-        return AdaptivePolishMillingStrategy(config=config)
+        return cls(config=config)
 
     def run(
         self,
