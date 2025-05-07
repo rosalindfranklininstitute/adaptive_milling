@@ -115,7 +115,7 @@ def clean_prediction(
 
     mask_connected_lamella = connected_masks.pop(sgm.SegmentationLabels.LAMELLA)
 
-    for key, mask in connected_masks.items():
+    for key, mask in tuple(connected_masks.items()):
         if not np.sum(mask):
             # No need to keep an array of 0s
             del connected_masks[key]
