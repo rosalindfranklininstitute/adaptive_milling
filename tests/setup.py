@@ -1,8 +1,11 @@
 import typing
 import yaml
+from dataclasses import dataclass, InitVar, field
 from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 from datetime import datetime
+
+import numpy as np
 
 
 def setup_test_microscope_config(
@@ -72,3 +75,28 @@ def setup_test_experiment(
         f.write(experiment)
 
     return experiment_path
+
+@dataclass(repr=False)
+class SimpleRectangleLamellaMask:
+    shape: InitVar[typing.Union[np.typing.NDArray[np.integer], typing.Tuple[int, int]]]
+    box_proportion: InitVar[int] = 20
+    centre_px: InitVar[typing.Optional[typing.Tuple[int, int]]] = None
+    array: np.typing.NDArray[np.integer] = field(init=False)
+    centre: np.typing.NDArray[np.integer] = field(init=False)
+    bounding_box: np.typing.NDArray[np.integer] = field(init=False)
+
+    def __post_init__(self, shape, box_proportion, centre_px) -> None:
+        array_shape = np.asarray(shape)
+        array = np.zeros(array_shape, dtype=np.bool_)
+        box_centre_to_edge = array_shape // (2 * box_proportion)
+        box_size = box_centre_to_edge * 2 + 1
+        if centre_px is None:
+            centre = np.random.randint(box_size, array_shape - box_size, size=2)
+        else:
+            centre = np.asarray(centre_px[:2], dtype=np.uint32)
+        bbox = np.concat((centre - box_centre_to_edge, centre + box_centre_to_edge))
+        array[bbox[0] : bbox[2] + 1, bbox[1] : bbox[3] + 1] = True
+
+        self.array = array
+        self.centre = centre
+        self.bounding_box = bbox

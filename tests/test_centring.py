@@ -11,27 +11,7 @@ from adaptive_polish.centring import (
     get_lamella_centre,
 )
 
-
-@dataclass(repr=False)
-class SimpleRectangleLamellaMask:
-    shape: InitVar[typing.Union[np.typing.NDArray[np.integer], typing.Tuple[int, int]]]
-    box_proportion: InitVar[int] = 20
-    array: np.typing.NDArray[np.integer] = field(init=False)
-    centre: np.typing.NDArray[np.integer] = field(init=False)
-    bounding_box: np.typing.NDArray[np.integer] = field(init=False)
-
-    def __post_init__(self, shape, box_proportion) -> None:
-        array_shape = np.asarray(shape)
-        array = np.zeros(array_shape, dtype=np.bool_)
-        box_centre_to_edge = array_shape // (2 * box_proportion)
-        box_size = box_centre_to_edge * 2 + 1
-        centre = np.random.randint(box_size, array_shape - box_size, size=2)
-        bbox = np.concat((centre - box_centre_to_edge, centre + box_centre_to_edge))
-        array[bbox[0] : bbox[2] + 1, bbox[1] : bbox[3] + 1] = True
-
-        self.array = array
-        self.centre = centre
-        self.bounding_box = bbox
+from setup import SimpleRectangleLamellaMask
 
 
 @pytest.mark.parametrize("edge_finding", ["median", "mean", "min", "max"])

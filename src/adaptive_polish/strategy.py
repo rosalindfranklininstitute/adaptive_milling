@@ -126,11 +126,16 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
         # align SEM
         if self.config.align_sem:
-            lamella_centre_m = self._align_beam(
-                microscope=microscope,
-                sem_imaging_settings=sem_imaging_settings,
-                plot_path=lamella_ap_folder / "centring.png",
-            )
+            try:
+                lamella_centre_m = self._align_beam(
+                    microscope=microscope,
+                    sem_imaging_settings=sem_imaging_settings,
+                    plot_path=lamella_ap_folder / "centring.png",
+                )
+            except Exception as e:
+                # As the milling depends on the segmentation, if this has
+                # failed then so will the milling checks, so just stop now.
+                raise StopEarlyError(f"Failed to align beam: {e}")
         else:
             lamella_centre_m = None
 
@@ -476,11 +481,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 image=sem_image.data,
                 pixel_size_m=sem_image.metadata.pixel_size.x,
             )
-
-        except CentringException as e:
-            # As the milling depends on the segmentation, if this has failed
-            # then so will the milling checks, so just stop now.
-            raise StopEarlyError(f"Failed to align beam due to: {e}")
         finally:
             if plot_path is not None:
                 create_centring_plot(
@@ -494,21 +494,15 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 )
 
         initial_beam_shift = microscope.get("shift", BeamType.ELECTRON)
+        expected_new_beam_shift = initial_beam_shift - centre_m
 
         # shift beam
         dx, dy = -centre_m.x, -centre_m.y
         microscope.beam_shift(dx, dy, BeamType.ELECTRON)
 
         new_beam_shift = microscope.get("shift", BeamType.ELECTRON)
-        actual_relative_shift = new_beam_shift - initial_beam_shift
-        _logger.info(
-            "Beamshift %s by dx=%.4e, dy=%.4e m",
-            BeamType.ELECTRON.name,
-            actual_relative_shift.x,
-            actual_relative_shift.y,
-        )
 
-        new_lamella_centre_m = centre_m + actual_relative_shift
+        new_lamella_centre_m = new_beam_shift - expected_new_beam_shift
 
         return new_lamella_centre_m
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 import pytest
 from unittest.mock import patch, MagicMock, call, ANY
+from numpy.testing import assert_array_equal
 
 import typing
 from pathlib import Path
@@ -8,12 +9,12 @@ import numpy as np
 import pandas as pd
 
 from fibsem import utils as fibsem_utils, acquire
+from fibsem.structures import BeamType, Point
 from fibsem.milling.base import get_milling_stages
-
 from autolamella.protocol.validation import validate_protocol
 
-
 from adaptive_polish import strategy as ap_strategy
+from adaptive_polish.dl_segmentation.sem_lamella_segmentor import SegmentationLabels
 
 from . import setup
 
@@ -541,9 +542,101 @@ def test_results_saved(
 #     """Tests that milling cycle time cannot be < 10s"""
 #     pass
 
+@pytest.mark.parametrize("hits_limits", [False, True], ids=["normal", "hits_limits"])
+@patch.object(ap_strategy, "get_bounding_box_scaled_to_image")
+def test_align_beam(
+    mock_get_bounding_box_scaled_to_image,
+    hits_limits,
+    microscope_config_demo2_path: Path,
+    sem_image_dir: Path,
+    fib_image_dir: Path,
+    tmp_path: Path,
+) -> None:
+    plot_path = tmp_path / "plot.png"
+    ap_config = ap_strategy.AdaptivePolishMillingConfig(model_path="path/to/model.file")
 
-# def test_align_beam(tmp_path: Path) -> None:
-#     ap_strategy.AdaptivePolishMillingStrategy._check_lamella(0, image_name="test_image",fib_image=, sem_image=, config=, model=, lamella_ap_folder=tmp_path,)
+    microscope_config_path = setup.setup_test_microscope_config(
+        microscope_config_demo2_path,
+        tmp_path,
+        fib_image_dir=str(fib_image_dir),
+        sem_image_dir=str(sem_image_dir),
+        cycle_images=True,
+    )
+
+    # connect to microscope
+    microscope, settings = fibsem_utils.setup_session(
+        config_path=microscope_config_path
+    )
+
+    # Necessary to set imaging settings path
+    sem_image, _ = acquire.take_reference_images(microscope, settings.image)
+
+    sem_imaging_settings = microscope.get_imaging_settings(BeamType.ELECTRON)
+    microscope.electron_system.beam.shift = Point(0, 0)
+
+    # Y,X
+    lamella_centre_px = (60, 40)
+    lamella_centre_m = (
+        lamella_centre_px[0] * sem_image.metadata.pixel_size.y,
+        lamella_centre_px[1] * sem_image.metadata.pixel_size.x,
+    )
+    test_lamella = setup.SimpleRectangleLamellaMask(
+        sem_image.data.shape,
+        20,
+        centre_px=(
+            sem_image.data.shape[0] // 2 - lamella_centre_px[0],
+            sem_image.data.shape[1] // 2 + lamella_centre_px[1],
+        ),
+    )
+
+    if hits_limits:
+        # Points are X, Y
+        new_beam_shift = Point(-30e-6, -20e-6)
+        expected_new_lamella_centre_m = Point(
+            lamella_centre_m[1] + new_beam_shift.x,
+            lamella_centre_m[0] + new_beam_shift.y,
+        )
+    else:
+        new_beam_shift = Point(-lamella_centre_m[1], -lamella_centre_m[0])
+        expected_new_lamella_centre_m = Point(0, 0)
+
+    strategy = ap_strategy.AdaptivePolishMillingStrategy(config=ap_config)
+
+    mock_get_bounding_box_scaled_to_image.return_value = test_lamella.bounding_box
+
+    with (
+        patch.object(strategy, "model") as mock_model,
+        patch.object(microscope, "beam_shift") as mock_beam_shift,
+    ):
+        mock_model.predict.return_value = (
+            test_lamella.array.astype(np.uint8) * SegmentationLabels.LAMELLA
+        )
+
+        def mock_beam_shift_fn(dx, dy, beam_type) -> None:
+            microscope.electron_system.beam.shift = new_beam_shift
+            return
+
+        mock_beam_shift.side_effect = mock_beam_shift_fn
+
+        new_lamella_centre_m = strategy._align_beam(
+            microscope, sem_imaging_settings=sem_imaging_settings, plot_path=plot_path
+        )
+
+        mock_get_bounding_box_scaled_to_image.assert_called_once()
+
+        assert_array_equal(
+            mock_get_bounding_box_scaled_to_image.call_args_list[0].kwargs["mask"],
+            test_lamella.array,
+        )
+
+        mock_beam_shift.assert_called_once_with(
+            -lamella_centre_m[1], -lamella_centre_m[0], BeamType.ELECTRON
+        )
+
+    assert plot_path.is_file(), "Plot was not created"
+
+    assert new_lamella_centre_m == expected_new_lamella_centre_m
+
 
 # def test_check_lamella(tmp_path: Path) -> None:
-#     ap_strategy.AdaptivePolishMillingStrategy._check_lamella(0, image_name="test_image",fib_image=, sem_image=, config=, model=, lamella_ap_folder=tmp_path,)
+#     ap_strategy.AdaptivePolishMillingStrategy._mill(0, image_name="test_image",fib_image=, sem_image=, config=, model=, lamella_ap_folder=tmp_path,)
