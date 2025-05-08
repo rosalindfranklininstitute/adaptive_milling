@@ -226,9 +226,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         expected_lamella_centre_m: typing.Optional[Point] = None,
     ) -> None:
         # Segmentation
-        _logger.info("Starting segmentation")
+        _logger.debug("Starting segmentation")
         prediction = self.model.predict(sem_image.data, full_size=False)
-        _logger.info("Segmentation complete")
+        _logger.debug("Segmentation complete")
 
         mask_lamella_clean, mask_gis_clean, mask_crack_clean = gm.clean_prediction(
             prediction,
@@ -444,6 +444,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         # draw patterns
         draw_patterns(microscope=microscope, patterns=pattern)
         try:
+            _logger.info("Starting milling")
             # mill
             run_milling(
                 microscope=microscope,
@@ -463,7 +464,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         sem_imaging_settings: ImageSettings,
         plot_path: typing.Optional[Path] = None,
     ) -> Point:
-        _logger.info("Using sem beam shift alignment for adaptive polishing")
+        _logger.info("Aligning SEM beam in order to centre the lamella")
 
         # Take reference images
         sem_image = acquire.new_image(microscope, sem_imaging_settings)
@@ -518,8 +519,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
         new_lamella_centre_m = new_beam_shift - expected_new_beam_shift
 
-        return new_lamella_centre_m
+        _logger.info("Completed SEM beam alignment")
 
+        return new_lamella_centre_m
 
     def _get_drift_too_large(self, centre_drift_um: float) -> bool:
         return centre_drift_um > float(self.config.maximum_drift_um)
