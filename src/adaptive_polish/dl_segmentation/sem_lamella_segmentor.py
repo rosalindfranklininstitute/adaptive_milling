@@ -266,18 +266,50 @@ class Gen1Model(AbstractAdaptivePolishingModel):
         pad: bool = True,
         rgb: bool = True,
         normalise_first: bool = True,
+        normalise_version: typing.Literal[1, 2] = 2,
+        resize_version: typing.Literal["cv2", "pytorch"] = "pytorch",
+        model_type: typing.Literal["unet", "fpn"] = "unet",
     ) -> None:
         self._rgb = rgb
         self._pad = pad
         self._normalise_first = normalise_first
+        self._model_type = model_type
         self._encoder_name = encoder_name
         self._image_size = max_image_size
+        self._normalise_function = self._set_normalisation_function(normalise_version)
+        self._resize_function = self._resize_function(resize_version)
+
         super().__init__(model_path=model_path, device=device, num_classes=5)
 
-    def _normalise(self, image: torch.Tensor) -> torch.Tensor:
+    def _set_normalisation_function(
+        self, normalise_version: int
+    ) -> typing.Callable[[torch.Tensor], torch.Tensor]:
+        normalise_functions = {1: self._normalise_1, 2: self._normalise_2}
+
+        normalise_function = normalise_functions.get(normalise_version)
+        if normalise_function is None:
+            raise ValueError(
+                f"Invalid normalise_version '{normalise_version}', available: {normalise_functions.keys()}"
+            )
+        _logger.debug(f"Using version {normalise_version} normalisation")
+        return normalise_function
+
+    def _set_resize_function(
+        self, resize_version: str
+    ) -> typing.Callable[[torch.Tensor, typing.Tuple[int, int]], torch.Tensor]:
+        resize_functions = {"cv2": self._resize_cv2, "pytorch": self._resize_pytorch}
+
+        resize_function = resize_functions.get(resize_version)
+        if resize_function is None:
+            raise ValueError(
+                f"Invalid resize_version '{resize_version.lower()}', available: {resize_functions.keys()}"
+            )
+        _logger.debug(f"Using {resize_version} resizing")
+        return resize_function
+
+    def _normalise_1(self, image: torch.Tensor) -> torch.Tensor:
         mean = image.mean()
-        # correction=0 matches numpy's behaviour (without Bessel's
-        # correction)
+        # correction=0 matches numpy's behaviour (without Bessel's correction)
         std = image.std(correction=0)
 
         # Calculate in place:
@@ -287,19 +319,46 @@ class Gen1Model(AbstractAdaptivePolishingModel):
         image.clamp_(0, 1)
         return image
 
-    def _preprocess(self, image: NDArray[typing.Any]) -> torch.Tensor:
-        # Note: Gen 1 models below v4 apply padding before normalisation,
-        # unlike this method, so will get inaccurate results.
+    def _normalise_2(self, image: torch.Tensor) -> torch.Tensor:
+        mean = image.mean()
+        # correction=0 matches numpy's behaviour (without Bessel's correction)
+        std = image.std(correction=1)
 
-        # Convert grayscale to 3-channel
+        # Calculate in place:
+        image -= mean
+        image /= 3 * std
+
+        image.clamp_(-1, 1)
+        return image
+
+    def _resize_cv2(self, image: torch.Tensor, target_shape: typing.Tuple[int, int]):
+        image = torch.from_numpy(
+            cv2.resize(
+                image.numpy().squeeze(),
+                target_shape,
+                interpolation=cv2.INTER_LINEAR_EXACT,
+            )[np.newaxis, np.newaxis, ...]
+        ).to(self.device)
+
+    def _resize_pytorch(
+        self, image: torch.Tensor, target_shape: typing.Tuple[int, int]
+    ) -> torch.Tensor:
+        return v2.functional.resize(
+            image,
+            size=target_shape,
+            interpolation=v2.InterpolationMode.BICUBIC,
+            antialias=True,
+        )
+
+    def _preprocess(self, image: NDArray[typing.Any]) -> torch.Tensor:
         with torch.no_grad():
             # the following functions expect channel and batch axes
-            image = torch.from_numpy(
+            image_tensor = torch.from_numpy(
                 image[np.newaxis, np.newaxis, ...].astype(np.float32)
             )
 
             # Calculate padding
-            image_shape = image.shape[-2:]
+            image_shape = (image_tensor.shape[-2], image_tensor.shape[-1])
             large_axis = np.argmax(image_shape)
             small_axis = 1 - large_axis
             axes_diff = image_shape[large_axis] - image_shape[small_axis]
@@ -311,39 +370,39 @@ class Gen1Model(AbstractAdaptivePolishingModel):
                 padding = padding[::-1]
 
             if self._normalise_first:
-                image = self._normalise(image)
+                image_tensor = self._normalise_function(image_tensor)
 
             if self._pad:
                 # Pad to square
-                image = v2.functional.pad(image, padding, fill=0)
+                image_tensor = v2.functional.pad(image_tensor, padding, fill=0)
                 target_shape = (self._image_size, self._image_size)
             else:
-                target_shape = self._get_resize_shape(image)
+                target_shape = self._get_resize_shape(image_tensor)
 
             if not self._normalise_first:
-                image = self._normalise(image)
+                image_tensor = self._normalise_function(image_tensor)
 
             # Resize to input dimensions. Unfortunately albumentations uses cv2
             # which doesn't match the behaviour of pytorch, so numpy has to be
             # used.
-            image = torch.from_numpy(
-                cv2.resize(
-                    image.numpy().squeeze(),
-                    target_shape,
-                    interpolation=cv2.INTER_LINEAR,
-                )[np.newaxis, np.newaxis, ...]
-            ).to(self.device)
+            image_tensor = self._resize_function(
+                image=image_tensor, target_shape=target_shape
+            )
 
             if self._rgb:
-                return v2.functional.grayscale_to_rgb(image)
-            return image
+                # Convert grayscale to 3-channel
+                image_tensor = v2.functional.grayscale_to_rgb(image_tensor)
+            return image_tensor.to(self.device)
 
     def _get_resize_shape(
         self, image: typing.Union[NDArray[typing.Any], torch.Tensor]
     ) -> tuple[int, int]:
         image_shape_array = np.asarray(image.shape[-2:])
         axis_multiplier = np.min(self._image_size / image_shape_array)
-        return tuple(np.round(image_shape_array * axis_multiplier).astype(int).tolist())
+        new_shape_array = np.round(image_shape_array * axis_multiplier).astype(
+            np.uint32
+        )
+        return (new_shape_array[0], new_shape_array[1])
 
     def _postprocess(
         self, prediction: torch.Tensor, image: NDArray[typing.Any]
@@ -372,14 +431,24 @@ class Gen1Model(AbstractAdaptivePolishingModel):
         ]
 
     def load(self, model_path: typing.Union[str, PathLike]) -> torch.nn.Module:
-        model = smp.Unet(
+        models_dict: typing.Dict[str, type[torch.nn.Module]] = {
+            "unet": smp.Unet,
+            "fpn": smp.FPN,
+        }
+        model_class = models_dict.get(self._model_type.lower())
+        if model_class is None:
+            raise ValueError(
+                f"Invalid model type '{self._model_type.lower()}', available: {models_dict.keys()}"
+            )
+        model = model_class(
             encoder_name=self._encoder_name,
             encoder_weights=None,
             classes=self.num_classes,
             in_channels=3 if self._rgb else 1,
             activation=None,
             decoder_attention_type="scse",
-        )
+        ).to(self.device)
+
         model.load_state_dict(torch.load(model_path, map_location=self.device))
         return model
 
@@ -397,6 +466,8 @@ class Gen1QualityModel(Gen1Model):
             max_image_size=max_image_size,
             encoder_name="efficientnet-b4",
             normalise_first=False,
+            normalise_version=1,
+            resize_version="cv2",
         )
 
 
@@ -413,6 +484,8 @@ class Gen1PerformanceModel(Gen1Model):
             max_image_size=max_image_size,
             encoder_name="efficientnet-b3",
             normalise_first=False,
+            normalise_version=1,
+            resize_version="cv2",
         )
 
 
@@ -429,6 +502,8 @@ class Gen1ImprovedPerformanceModel(Gen1Model):
             max_image_size=max_image_size,
             encoder_name="efficientnet-b3",
             normalise_first=True,
+            normalise_version=1,
+            resize_version="cv2",
         )
 
 
@@ -445,6 +520,8 @@ class Gen1ImprovedQualityModel(Gen1Model):
             max_image_size=max_image_size,
             encoder_name="efficientnet-b4",
             normalise_first=True,
+            normalise_version=1,
+            resize_version="cv2",
         )
 
 
@@ -463,10 +540,52 @@ class Gen1GreyscalePerformanceModel(Gen1Model):
             pad=False,
             rgb=False,
             normalise_first=True,
+            normalise_version=1,
+            resize_version="cv2",
         )
 
 
 class Gen1GreyscaleQualityModel(Gen1Model):
+    def __init__(
+        self,
+        model_path: typing.Union[str, PathLike],
+        device: torch.DeviceLikeType,
+        max_image_size: int = 768,
+    ) -> None:
+        super().__init__(
+            model_path=model_path,
+            device=device,
+            max_image_size=max_image_size,
+            encoder_name="efficientnet-b3",
+            pad=False,
+            rgb=False,
+            normalise_first=True,
+            normalise_version=1,
+            resize_version="cv2",
+        )
+
+
+class Gen1ImprovedPreprocessingPerformanceModel(Gen1Model):
+    def __init__(
+        self,
+        model_path: typing.Union[str, PathLike],
+        device: torch.DeviceLikeType,
+        max_image_size: int = 768,
+    ) -> None:
+        super().__init__(
+            model_path=model_path,
+            device=device,
+            max_image_size=max_image_size,
+            encoder_name="efficientnet-b4",
+            pad=False,
+            rgb=False,
+            normalise_first=True,
+            normalise_version=2,
+            resize_version="pytorch",
+        )
+
+
+class Gen1ImprovedPreprocessingQualityModel(Gen1Model):
     def __init__(
         self,
         model_path: typing.Union[str, PathLike],
@@ -481,6 +600,29 @@ class Gen1GreyscaleQualityModel(Gen1Model):
             pad=False,
             rgb=False,
             normalise_first=True,
+            normalise_version=2,
+            resize_version="pytorch",
+        )
+
+
+class Gen1ImprovedPreprocessingFPNModel(Gen1Model):
+    def __init__(
+        self,
+        model_path: typing.Union[str, PathLike],
+        device: torch.DeviceLikeType,
+        max_image_size: int = 1536,
+    ) -> None:
+        super().__init__(
+            model_path=model_path,
+            device=device,
+            max_image_size=max_image_size,
+            encoder_name="efficientnet-b6",
+            pad=False,
+            rgb=False,
+            normalise_first=True,
+            normalise_version=2,
+            resize_version="pytorch",
+            model_type="fpn",
         )
 
 
@@ -493,6 +635,10 @@ MODEL_GENERATIONS_DICT: dict[str, AbstractAdaptivePolishingModel] = {
     "1.1q": Gen1ImprovedQualityModel,  # v4
     "1.2p": Gen1GreyscalePerformanceModel,  # v5
     "1.2q": Gen1GreyscaleQualityModel,  # v5
+    # Updated preprocessing:
+    "1.3p": Gen1ImprovedPreprocessingPerformanceModel,
+    "1.3q": Gen1ImprovedPreprocessingQualityModel,
+    "1.3fpn": Gen1ImprovedPreprocessingFPNModel,
 }
 
 
