@@ -24,6 +24,7 @@ import adaptive_polish.utils as ap_utils
 from adaptive_polish.exceptions import (
     StopEarlyError,
     StopMillingException,
+    SegmentationException,
 )
 from adaptive_polish.dl_segmentation.sem_lamella_segmentor import SegmentationLabels
 from adaptive_polish.centring import (
@@ -111,6 +112,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             self._load_model()
 
         # align SEM
+        lamella_centre_m = None
         if self.config.align_sem:
             try:
                 lamella_centre_m = self._align_beam(
@@ -118,12 +120,24 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                     sem_imaging_settings=sem_imaging_settings,
                     plot_path=lamella_ap_folder / "centring.png",
                 )
-            except Exception as e:
-                # As the milling depends on the segmentation, if this has
-                # failed then so will the milling checks, so just stop now.
-                raise StopEarlyError(f"Failed to align beam: {e}")
-        else:
-            lamella_centre_m = None
+            except SegmentationException:
+                _logger.error(
+                    "Exception occurred during segmentation for SEM beam alignment",
+                    exc_info=True,
+                )
+            except CentringException:
+                _logger.error(
+                    "Error occurred calculating the lamella centre",
+                    exc_info=True,
+                )
+            except Exception:
+                _logger.error(
+                    "Unexpected error occurred aligning SEM.",
+                    exc_info=True,
+                )
+            finally:
+                if lamella_centre_m is None:
+                    _logger.info("Failed to align SEM. Attempting to continue...")
 
         # Set lamella folders for saving images
         fib_imaging_settings.save = True
@@ -453,15 +467,20 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         # Take reference images
         sem_image = acquire.new_image(microscope, sem_imaging_settings)
 
-        # Find centre
-        _logger.info("Starting segmentation")
-        prediction = self.model.predict(sem_image.data, full_size=False)
-        _logger.info("Segmentation complete")
+        try:
+            # Find centre
+            _logger.debug("Starting segmentation")
+            prediction = self.model.predict(sem_image.data, full_size=False)
+            _logger.debug("Segmentation complete")
 
-        mask_lamella_clean, _, _ = gm.clean_prediction(
-            prediction,
-            additional_labels=(SegmentationLabels.GIS, SegmentationLabels.CRACK),
-        )
+            mask_lamella_clean, _, _ = gm.clean_prediction(
+                prediction,
+                additional_labels=(SegmentationLabels.GIS, SegmentationLabels.CRACK),
+            )
+        except Exception as e:
+            raise SegmentationException(
+                f"Failed to get clean lamella mask required for SEM alignment: {e}"
+            )
 
         centre_m: typing.Optional[Point] = None
         centre_px: typing.Optional[Point] = None
