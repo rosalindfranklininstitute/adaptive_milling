@@ -21,6 +21,10 @@ from fibsem.structures import BeamType
 # Adaptive polish
 import adaptive_polish.gis_measurement as gm
 import adaptive_polish.utils as ap_utils
+from adaptive_polish.exceptions import (
+    StopEarlyError,
+    StopMillingException,
+)
 from adaptive_polish.dl_segmentation.sem_lamella_segmentor import SegmentationLabels
 from adaptive_polish.centring import (
     get_bounding_box_scaled_to_image,
@@ -45,19 +49,6 @@ if typing.TYPE_CHECKING:
     )
 
 _logger = logging.getLogger(__name__)
-
-
-class _AdaptivePolishMillingException(Exception):
-    # Base class to make it easy to catch all
-    pass
-
-
-class StopMillingException(_AdaptivePolishMillingException):
-    pass
-
-
-class StopEarlyError(_AdaptivePolishMillingException):
-    pass
 
 
 @dataclass

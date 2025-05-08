@@ -7,10 +7,7 @@ from fibsem import conversions
 from fibsem.structures import Point
 from fibsem.detection.detection import AdaptiveLamellaCentre
 
-
-class CentringException(Exception):
-    pass
-
+from adaptive_polish.exceptions import CentringException
 
 @dataclass
 class AdaptivePolishLamellaCentre(AdaptiveLamellaCentre):
