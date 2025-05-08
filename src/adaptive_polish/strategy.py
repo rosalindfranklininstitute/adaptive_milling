@@ -108,12 +108,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
         # load model
         if self.model is None:
-            model_path = Path(self.config.model_path)
-            if not model_path.is_file():
-                raise FileNotFoundError(f"Failed to find '{model_path}'")
-            self.model = gm.load_sem_model(
-                model_path=model_path, generation=self.config.model_generation
-            )
+            self._load_model()
 
         # align SEM
         if self.config.align_sem:
@@ -195,6 +190,14 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 imaging_voltage=microscope.system.ion.beam.voltage,
             )
             microscope.reset_beam_shifts()
+
+    def _load_model(self):
+        model_path = Path(self.config.model_path)
+        if not model_path.is_file():
+            raise FileNotFoundError(f"Failed to find '{model_path}'")
+        self.model = gm.load_sem_model(
+            model_path=model_path, generation=self.config.model_generation
+        )
 
     def _check_lamella(
         self,
