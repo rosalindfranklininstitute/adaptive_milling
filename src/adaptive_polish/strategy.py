@@ -230,13 +230,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         prediction = self.model.predict(sem_image.data, full_size=False)
         _logger.info("Segmentation complete")
 
-        prediction_pixel_size_um = (
-            sem_image.metadata.pixel_size.x
-            * constants.SI_TO_MICRO
-            * sem_image.data.shape[1]
-            / prediction.shape[1]
-        )
-
         mask_lamella_clean, mask_gis_clean, mask_crack_clean = gm.clean_prediction(
             prediction,
             additional_labels=(
@@ -244,6 +237,14 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 SegmentationLabels.CRACK,
             ),
         )
+
+        prediction_pixel_size_um = (
+            sem_image.metadata.pixel_size.x
+            * constants.SI_TO_MICRO
+            * sem_image.data.shape[1]
+            / prediction.shape[1]
+        )
+
         lamella_area_um2 = gm.get_mask_area_um2(
             mask_lamella_clean, pixel_size_um=prediction_pixel_size_um
         )
