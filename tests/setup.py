@@ -8,6 +8,7 @@ from datetime import datetime
 import numpy as np
 
 
+
 def setup_test_microscope_config(
     microscope_template_path: Path,
     temporary_directory: Path,

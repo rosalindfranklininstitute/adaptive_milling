@@ -13,10 +13,10 @@ from fibsem.structures import BeamType, Point
 from fibsem.milling.base import get_milling_stages
 from autolamella.protocol.validation import validate_protocol
 
-from adaptive_polish import strategy as ap_strategy
+from adaptive_polish import strategy as ap_strategy, utils as ap_utils
 from adaptive_polish.dl_segmentation.sem_lamella_segmentor import SegmentationLabels
 
-from . import setup
+from . import setup, utils
 
 if typing.TYPE_CHECKING:
     from fibsem.microscope import FibsemMicroscope
@@ -31,10 +31,6 @@ _AP_PASS_CHECKS_CONFIG = {
 }
 
 TIMESTAMP = "timestamp"
-
-
-class ExceptionForMocking(Exception):
-    pass
 
 
 def setup_microscope_and_settings(
@@ -140,19 +136,15 @@ def test_ap_folders_created(
         )
 
 
-@patch("pathlib.Path.is_file", mew=MagicMock(return_value=True))
-@patch("adaptive_polish.strategy.gm.load_sem_model")
-def test_loads_sem_model(
-    mock_load_sem_model: MagicMock,
-    mock_is_file: MagicMock,
+@patch.object(ap_strategy.ap_utils, "setup_results_df")
+def test_loads_sem_model_on_first_run(
+    mock_setup_results_df,
     protocol_template_path: Path,
     microscope_config_path: Path,
     tmp_path: Path,
 ) -> None:
     """Tests that the sem model loading is called correctly"""
-
-    model_path = "path/to/model.file"
-    ap_config = ap_strategy.AdaptivePolishMillingConfig(model_path=model_path)
+    ap_config = ap_strategy.AdaptivePolishMillingConfig(align_sem=False)
     _, stages = setup_protocol_and_milling_stages(
         ap_config.to_dict(), protocol_template_path, tmp_path
     )
@@ -171,14 +163,22 @@ def test_loads_sem_model(
     # Necessary to set imaging settings path
     acquire.take_reference_images(microscope, settings.image)
 
-    mock_load_sem_model.side_effect = ExceptionForMocking("Expected exception")
-    with pytest.raises(ExceptionForMocking):
-        strategy.run(microscope, stage)
+    with patch.object(strategy, "_load_model") as mock_load_model:
+        mock_setup_results_df.side_effect = utils.ExceptionForMocking
+        with pytest.raises(utils.ExceptionForMocking):
+            strategy.run(microscope, stage)
 
-    mock_load_sem_model.assert_called_once_with(
-        model_path=Path(model_path), generation=None
-    )
-    mock_is_file.assert_called_once()
+        mock_load_model.assert_called_once()
+        assert mock_setup_results_df.call_count == 1, "Should have been called once"
+
+        strategy.model = "model"
+
+        with pytest.raises(utils.ExceptionForMocking):
+            strategy.run(microscope, stage)
+
+        # Check it wasn't called again after model is set
+        mock_load_model.assert_called_once()
+        assert mock_setup_results_df.call_count == 2, "Should have been called twice"
 
 
 @patch.object(
@@ -217,9 +217,9 @@ def test_reference_images_saved_correctly(
 
     with patch.object(strategy, "model") as mock_model:
         # Exit test at prediction step
-        mock_model.predict.side_effect = ExceptionForMocking("Expected exception")
+        mock_model.predict.side_effect = utils.ExceptionForMocking("Expected exception")
 
-        with pytest.raises(ExceptionForMocking):
+        with pytest.raises(utils.ExceptionForMocking):
             strategy.run(microscope, stage)
 
         mock_model.predict.assert_called_once()
@@ -233,66 +233,6 @@ def test_reference_images_saved_correctly(
         assert image_paths[0] == expected_plot_path, (
             f"Expected {image_type} image paths do not match found .tif paths"
         )
-
-
-@pytest.mark.parametrize("failure_reason", ["gis", "crack", "lamella area", "centring"])
-@patch.object(ap_strategy, "draw_patterns")
-def test_milling_stops_when_check_fails(
-    mock_draw_patterns,
-    failure_reason: str,
-    protocol_template_path: Path,
-    microscope_config_demo2_path: Path,
-    sem_segmentation_model: tuple[str, Path],
-    fib_image_dir: Path,
-    sem_image_dir: Path,
-    tmp_path: Path,
-) -> None:
-    """Tests that milling stops when either GIS is too thin or crack
-    is found"""
-
-    # Ensure test doesn't keep looping:
-    mock_draw_patterns.side_effect = ExceptionForMocking("Unexpected exception")
-
-    pass_checks_kwargs = _AP_PASS_CHECKS_CONFIG.copy()
-    if failure_reason == "gis":
-        pass_checks_kwargs["gis_stop_um"] = 500
-    elif failure_reason == "crack":
-        pass_checks_kwargs["max_crack_area_um2"] = 0
-    elif failure_reason == "lamella area":
-        pass_checks_kwargs["minimum_lamella_area_um2"] = 1e5
-    elif failure_reason == "centring":
-        pass_checks_kwargs["maximum_drift_um"] = 0
-
-    ap_config = ap_strategy.AdaptivePolishMillingConfig(
-        model_generation=sem_segmentation_model[0],
-        model_path=sem_segmentation_model[1],
-        **pass_checks_kwargs,
-    )
-    _, stages = setup_protocol_and_milling_stages(
-        ap_config.to_dict(), protocol_template_path, tmp_path
-    )
-    stage = stages[0]
-
-    microscope, settings = setup_microscope_and_settings(
-        microscope_config_demo2_path,
-        tmp_path,
-        fib_image_dir=str(fib_image_dir),
-        sem_image_dir=str(sem_image_dir),
-    )
-
-    strategy = ap_strategy.AdaptivePolishMillingStrategy(config=ap_config)
-
-    lamella_directory = tmp_path / "lamella"
-    lamella_directory.mkdir()
-    settings.image.path = lamella_directory
-
-    # Necessary to set imaging settings path
-    acquire.take_reference_images(microscope, settings.image)
-
-    with patch.object(strategy, "_align_beam") as mock_align_beam:
-        strategy.run(microscope, stage)
-        mock_align_beam.assert_called_once()
-        mock_draw_patterns.assert_not_called()
 
 
 @patch.object(
@@ -342,15 +282,13 @@ def test_max_milling_cycles_not_exceeded(
 
     # Stop it trying to load a model
     with (
-        patch.object(strategy, "model") as mock_model,
+        patch.object(strategy, "_load_model") as mock_load_model,
         patch.object(strategy, "_check_lamella") as mock_check_lamella,
         patch.object(strategy, "_mill") as mock_mill,
     ):
         strategy.run(microscope, stage)
 
-        # Mocking the model the strategy from trying to load one but it
-        # shouldn't be called
-        mock_model.predict.assert_not_called()
+        mock_load_model.assert_called_once()
 
         mock_check_lamella.assert_has_calls(
             [
@@ -542,6 +480,7 @@ def test_results_saved(
 #     """Tests that milling cycle time cannot be < 10s"""
 #     pass
 
+
 @pytest.mark.parametrize("hits_limits", [False, True], ids=["normal", "hits_limits"])
 @patch.object(ap_strategy, "get_bounding_box_scaled_to_image")
 def test_align_beam(
@@ -638,5 +577,132 @@ def test_align_beam(
     assert new_lamella_centre_m == expected_new_lamella_centre_m
 
 
-# def test_check_lamella(tmp_path: Path) -> None:
-#     ap_strategy.AdaptivePolishMillingStrategy._mill(0, image_name="test_image",fib_image=, sem_image=, config=, model=, lamella_ap_folder=tmp_path,)
+@pytest.mark.parametrize(
+    "failure_reason", ["gis", "crack", "lamella area", "centring", "none"]
+)
+def test_check_lamella(
+    failure_reason: str,
+    microscope_config_demo2_path: Path,
+    sem_segmentation_model: tuple[str, Path],
+    fib_image_dir: Path,
+    sem_image_dir: Path,
+    tmp_path: Path,
+) -> None:
+    """Tests that milling stops when either GIS is too thin or crack
+    is found"""
+    milling_cycle = 0
+    image_name = "test_image"
+    lamella_ap_folder = tmp_path / "lamella"
+    lamella_ap_plots_folder = lamella_ap_folder / "plots"
+    lamella_ap_folder.mkdir()
+    lamella_ap_plots_folder.mkdir()
+    results, gis_results_detailed = ap_utils.setup_results_df()
+    ap_config = ap_strategy.AdaptivePolishMillingConfig(model_path="path/to/model.file")
+
+    expected_plot_path = lamella_ap_plots_folder / f"{image_name}_plot.png"
+    expected_results_path = lamella_ap_folder / "GIS_thickness.json"
+    expected_detailed_results_path = lamella_ap_folder / "GIS_thickness_detailed.json"
+
+    pass_checks_kwargs = _AP_PASS_CHECKS_CONFIG.copy()
+    if failure_reason == "gis":
+        saves_results = True
+        exception = ap_strategy.StopMillingException
+        pass_checks_kwargs["gis_stop_um"] = 500
+    elif failure_reason == "crack":
+        saves_results = True
+        exception = ap_strategy.StopMillingException
+        pass_checks_kwargs["max_crack_area_um2"] = 0
+    elif failure_reason == "lamella area":
+        saves_results = False
+        exception = ap_strategy.StopEarlyError
+        pass_checks_kwargs["minimum_lamella_area_um2"] = 1e5
+    elif failure_reason == "centring":
+        saves_results = True
+        exception = ap_strategy.StopEarlyError
+        pass_checks_kwargs["maximum_drift_um"] = 0
+    elif failure_reason == "none":
+        saves_results = True
+        exception = None
+
+    ap_config = ap_strategy.AdaptivePolishMillingConfig(
+        model_generation=sem_segmentation_model[0],
+        model_path=sem_segmentation_model[1],
+        **pass_checks_kwargs,
+    )
+
+    microscope, settings = setup_microscope_and_settings(
+        microscope_config_demo2_path,
+        tmp_path,
+        fib_image_dir=str(fib_image_dir),
+        sem_image_dir=str(sem_image_dir),
+    )
+
+    strategy = ap_strategy.AdaptivePolishMillingStrategy(config=ap_config)
+    strategy._load_model()
+
+    settings.image.path = lamella_ap_folder
+
+    # Necessary to set imaging settings path
+    sem_image, fib_image = acquire.take_reference_images(microscope, settings.image)
+
+    with utils.assert_raises(exception):
+        strategy._check_lamella(
+            milling_cycle=milling_cycle,
+            image_name=image_name,
+            fib_image=fib_image,
+            sem_image=sem_image,
+            lamella_ap_folder=lamella_ap_folder,
+            lamella_ap_plots_folder=lamella_ap_plots_folder,
+            results=results,
+            gis_results_detailed=gis_results_detailed,
+            expected_lamella_centre_m=Point(0, 0),
+        )
+
+    results_empty = results.apply(lambda x: x.empty).all()
+    detailed_results_empty = gis_results_detailed.apply(lambda x: x.empty).all()
+
+    if saves_results:
+        assert not results_empty, "Results should have been added"
+        assert not detailed_results_empty, "Detailed results should have been added"
+        assert expected_results_path.is_file(), "Results file not found"
+        assert expected_detailed_results_path.is_file(), (
+            "Detailed results file not found"
+        )
+        assert expected_plot_path.is_file(), "Plot not found"
+    else:
+        assert results_empty, "Results should be empty"
+        assert detailed_results_empty, "Detailed results should be empty"
+        assert not expected_results_path.is_file(), "Results file should not exist"
+        assert not expected_detailed_results_path.is_file(), (
+            "Detailed results file should not exist"
+        )
+        assert not expected_plot_path.is_file(), "Plot should not exist"
+
+
+@pytest.mark.parametrize("file_exists", [True, False], ids=["file", "no file"])
+@patch("pathlib.Path.is_file")
+@patch("adaptive_polish.strategy.gm.load_sem_model")
+def test_load_model(mock_load_sem_model, mock_is_file, file_exists: bool) -> None:
+    model_generation = "model_generation"
+    model_path = "model_path"
+
+    mock_is_file.return_value = file_exists
+
+    ap_config = ap_strategy.AdaptivePolishMillingConfig(
+        model_generation=model_generation,
+        model_path=model_path,
+    )
+
+    strategy = ap_strategy.AdaptivePolishMillingStrategy(config=ap_config)
+
+    with utils.assert_raises(None if file_exists else FileNotFoundError):
+        strategy._load_model()
+
+    if file_exists:
+        mock_load_sem_model.assert_called_once_with(
+            model_path=Path(model_path), generation=model_generation
+        )
+        assert strategy.model == mock_load_sem_model.return_value
+    else:
+        mock_load_sem_model.assert_not_called()
+        assert strategy.model is None
