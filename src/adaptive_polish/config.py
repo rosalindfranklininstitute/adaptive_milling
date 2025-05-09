@@ -4,9 +4,9 @@ from os import PathLike
 from pydantic import ConfigDict
 from pydantic.dataclasses import dataclass
 
-
 from fibsem.milling.base import MillingStrategyConfig
 
+from adaptive_polish.gis_measurement import DEFAULT_SEM_MODEL_GENERATION
 
 @dataclass(config=ConfigDict(validate_assignment=True))
 class AdaptivePolishMillingConfig(MillingStrategyConfig):
@@ -19,7 +19,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
     window_size_px: int = 10
     minimum_lamella_area_um2: float = 30.0  # 30μm²
     maximum_drift_um: float = 0.1
-    model_generation: typing.Optional[str] = None  # Uses latest generation
+    model_generation: str = DEFAULT_SEM_MODEL_GENERATION
     maximum_side_difference_um: float = 0.05
     fib_res_x: int = 3072
     fib_res_y: int = 2048

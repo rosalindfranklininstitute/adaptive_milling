@@ -29,8 +29,9 @@ if typing.TYPE_CHECKING:
 
 _logger = logging.getLogger(__name__)
 
-load_sem_model = sgm.load_model
+DEFAULT_SEM_MODEL_GENERATION = sgm._get_newest_generation_key()
 
+load_sem_model = sgm.load_model
 
 def get_pixel_width(img):
     """Gets the pixel width of an AdornedImage, or if not possible, returns None
