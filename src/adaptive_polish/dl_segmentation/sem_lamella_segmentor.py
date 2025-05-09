@@ -276,12 +276,12 @@ class Gen1Model(AbstractAdaptivePolishingModel):
         self._model_type = model_type
         self._encoder_name = encoder_name
         self._image_size = max_image_size
-        self._normalise_function = self._set_normalisation_function(normalise_version)
-        self._resize_function = self._resize_function(resize_version)
+        self._normalise_function = self._get_normalisation_function(normalise_version)
+        self._resize_function = self._get_resize_function(resize_version)
 
         super().__init__(model_path=model_path, device=device, num_classes=5)
 
-    def _set_normalisation_function(
+    def _get_normalisation_function(
         self, normalise_version: int
     ) -> typing.Callable[[torch.Tensor], torch.Tensor]:
         normalise_functions = {1: self._normalise_1, 2: self._normalise_2}
@@ -294,7 +294,7 @@ class Gen1Model(AbstractAdaptivePolishingModel):
         _logger.debug(f"Using version {normalise_version} normalisation")
         return normalise_function
 
-    def _set_resize_function(
+    def _get_resize_function(
         self, resize_version: str
     ) -> typing.Callable[[torch.Tensor, typing.Tuple[int, int]], torch.Tensor]:
         resize_functions = {"cv2": self._resize_cv2, "pytorch": self._resize_pytorch}
@@ -332,7 +332,7 @@ class Gen1Model(AbstractAdaptivePolishingModel):
         return image
 
     def _resize_cv2(self, image: torch.Tensor, target_shape: typing.Tuple[int, int]):
-        image = torch.from_numpy(
+        return torch.from_numpy(
             cv2.resize(
                 image.numpy().squeeze(),
                 target_shape,
@@ -550,13 +550,13 @@ class Gen1GreyscaleQualityModel(Gen1Model):
         self,
         model_path: typing.Union[str, PathLike],
         device: torch.DeviceLikeType,
-        max_image_size: int = 768,
+        max_image_size: int = 1536,
     ) -> None:
         super().__init__(
             model_path=model_path,
             device=device,
             max_image_size=max_image_size,
-            encoder_name="efficientnet-b3",
+            encoder_name="efficientnet-b4",
             pad=False,
             rgb=False,
             normalise_first=True,
