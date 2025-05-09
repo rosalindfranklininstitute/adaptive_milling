@@ -111,6 +111,21 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         if self.model is None:
             self._load_model()
 
+        # set imaging settings from protocol file
+        fib_imaging_settings.resolution = [self.config.fib_res_x, self.config.fib_res_y]
+        fib_imaging_settings.dwell_time = (
+            self.config.fib_dwell_time_us * constants.MICRO_TO_SI
+        )
+        fib_imaging_settings.hfw = self.config.fib_hfw_um * constants.MICRO_TO_SI
+        sem_imaging_settings.resolution = [self.config.sem_res_x, self.config.sem_res_y]
+        sem_imaging_settings.dwell_time = (
+            self.config.sem_dwell_time_us * constants.MICRO_TO_SI
+        )
+        sem_imaging_settings.hfw = self.config.sem_hfw_um * constants.MICRO_TO_SI
+
+        _logger.info(f"Adaptive polish SEM settings: {sem_imaging_settings}")
+        _logger.info(f"Adaptive polish FIB settings: {fib_imaging_settings}")
+
         # align SEM
         lamella_centre_m = None
         if self.config.align_sem:
