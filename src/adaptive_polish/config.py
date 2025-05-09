@@ -8,9 +8,10 @@ from fibsem.milling.base import MillingStrategyConfig
 
 from adaptive_polish.gis_measurement import DEFAULT_SEM_MODEL_GENERATION
 
+
 @dataclass(config=ConfigDict(validate_assignment=True))
 class AdaptivePolishMillingConfig(MillingStrategyConfig):
-    model_path: typing.Union[str, PathLike] = "none"
+    model_path: typing.Union[str, PathLike] = "Undefined"
     align_sem: bool = True
     milling_interval_s: int = 10
     gis_stop_um: float = 0.2
