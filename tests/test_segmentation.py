@@ -30,12 +30,16 @@ class MockGen1Model(sem_lamella_segmentor.Gen1Model):
         pad: bool = True,
         rgb: bool = True,
         normalise_first: bool = True,
+        normalise_version: int = 1,
+        resize_version: str = "cv2",
     ) -> None:
         self._rgb = rgb
         self._pad = pad
         self._normalise_first = normalise_first
         self._image_size = max_image_size
         self.device = device
+        self._normalise_function = self._get_normalisation_function(normalise_version)
+        self._resize_function = self._get_resize_function(resize_version)
 
 
 def old_model1_preprocessing_function(
