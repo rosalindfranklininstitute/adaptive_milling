@@ -89,8 +89,10 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
         # setup milling
         setup_milling(microscope=microscope, milling_stage=stage)
-        fib_imaging_settings = microscope.get_imaging_settings(BeamType.ION)
-        sem_imaging_settings = microscope.get_imaging_settings(BeamType.ELECTRON)
+        fib_imaging_settings, sem_imaging_settings = self._update_imaging_settings(
+            microscope
+        )
+
         lamella_folder = Path(fib_imaging_settings.path)
         lamella_ap_folder = (
             lamella_folder / f"adaptive_polish_{fs_utils.current_timestamp()}"
@@ -110,21 +112,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         # load model
         if self.model is None:
             self._load_model()
-
-        # set imaging settings from protocol file
-        fib_imaging_settings.resolution = [self.config.fib_res_x, self.config.fib_res_y]
-        fib_imaging_settings.dwell_time = (
-            self.config.fib_dwell_time_us * constants.MICRO_TO_SI
-        )
-        fib_imaging_settings.hfw = self.config.fib_hfw_um * constants.MICRO_TO_SI
-        sem_imaging_settings.resolution = [self.config.sem_res_x, self.config.sem_res_y]
-        sem_imaging_settings.dwell_time = (
-            self.config.sem_dwell_time_us * constants.MICRO_TO_SI
-        )
-        sem_imaging_settings.hfw = self.config.sem_hfw_um * constants.MICRO_TO_SI
-
-        _logger.info(f"Adaptive polish SEM settings: {sem_imaging_settings}")
-        _logger.info(f"Adaptive polish FIB settings: {fib_imaging_settings}")
 
         # align SEM
         lamella_centre_m = None
@@ -219,6 +206,32 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 imaging_voltage=microscope.system.ion.beam.voltage,
             )
             microscope.reset_beam_shifts()
+
+    def _update_imaging_settings(
+        self, microscope: FibsemMicroscope
+    ) -> typing.Tuple[ImageSettings, ImageSettings]:
+        # Get current imaging settings
+        fib_imaging_settings = microscope.get_imaging_settings(BeamType.ION)
+        sem_imaging_settings = microscope.get_imaging_settings(BeamType.ELECTRON)
+
+        # Update imaging settings from config
+        # FIB
+        fib_imaging_settings.resolution = [self.config.fib_res_x, self.config.fib_res_y]
+        fib_imaging_settings.dwell_time = (
+            self.config.fib_dwell_time_us * constants.MICRO_TO_SI
+        )
+        fib_imaging_settings.hfw = self.config.fib_hfw_um * constants.MICRO_TO_SI
+        # SEM
+        sem_imaging_settings.resolution = [self.config.sem_res_x, self.config.sem_res_y]
+        sem_imaging_settings.dwell_time = (
+            self.config.sem_dwell_time_us * constants.MICRO_TO_SI
+        )
+        sem_imaging_settings.hfw = self.config.sem_hfw_um * constants.MICRO_TO_SI
+
+        _logger.debug("Adaptive polish FIB settings: %s", str(fib_imaging_settings))
+        _logger.debug("Adaptive polish SEM settings: %s", str(sem_imaging_settings))
+
+        return fib_imaging_settings, sem_imaging_settings
 
     def _load_model(self):
         model_path = Path(self.config.model_path)
