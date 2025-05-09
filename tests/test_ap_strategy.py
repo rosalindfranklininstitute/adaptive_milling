@@ -336,9 +336,13 @@ def test_results_saved(
     pass_checks_kwargs = _AP_PASS_CHECKS_CONFIG.copy()
     pass_checks_kwargs["max_milling_cycles"] = max_milling_cycles
 
+    sem_res = (1536, 1024)
+
     ap_config = ap_strategy.AdaptivePolishMillingConfig(
         model_path=model_path,
         align_sem=False,
+        sem_res_x=sem_res[0],
+        sem_res_y=sem_res[1],
         **pass_checks_kwargs,
     )
     _, stages = setup_protocol_and_milling_stages(
@@ -346,7 +350,7 @@ def test_results_saved(
     )
     stage = stages[0]
 
-    microscope, settings = setup_microscope_and_settings(
+    microscope, _ = setup_microscope_and_settings(
         microscope_config_path,
         tmp_path,
         fib_image_dir=str(fib_image_dir),
@@ -355,16 +359,18 @@ def test_results_saved(
 
     strategy = ap_strategy.AdaptivePolishMillingStrategy(config=ap_config)
 
+    _, sem_imaging_settings = strategy._update_imaging_settings(microscope)
+
     lamella_directory = tmp_path / "lamella"
     lamella_directory.mkdir()
-    settings.image.path = lamella_directory
+    sem_imaging_settings.path = lamella_directory
     adaptive_polish_dir = lamella_directory / f"adaptive_polish_{TIMESTAMP}"
 
     # Necessary to set imaging settings path
-    sem_image, _ = acquire.take_reference_images(microscope, settings.image)
+    sem_image, _ = acquire.take_reference_images(microscope, sem_imaging_settings)
 
     # Use this resolution to avoid any scaling so know the exact output
-    mask_shape = microscope.electron_system.beam.resolution[::-1]
+    mask_shape = sem_res[::-1]
     lamella_bottom = mask_shape[0] // 3
     gis_bottom = mask_shape[0] * 2 // 3
 
@@ -465,7 +471,7 @@ def test_results_saved(
     detailed_results_df = pd.read_csv(detailed_results_path, index_col=0)
     detailed_results_df = pd.read_json(detailed_results_path)
     first_gis_thicknesses = detailed_results_df.loc[0, "gis_thickness_um"]
-    assert len(first_gis_thicknesses) == mask_shape[1], (
+    assert len(first_gis_thicknesses) == sem_res[0], (
         "Unexpected length of gis_thickness_um"
     )
     pd.testing.assert_frame_equal(
