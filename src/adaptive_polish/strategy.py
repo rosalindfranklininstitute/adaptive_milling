@@ -225,7 +225,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         if not model_path.is_file():
             raise FileNotFoundError(f"Failed to find '{model_path}'")
         self.model = gm.load_sem_model(
-            model_path=model_path, generation=self.config.model_generation
+            model_path=model_path,
+            generation=self.config.get_model_generation(),
         )
 
     def _check_lamella(

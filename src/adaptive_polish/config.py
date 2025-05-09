@@ -58,3 +58,10 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
             "sem_dwell_time_us": self.sem_dwell_time_us,
             "sem_hfw_um": self.sem_hfw_um,
         }
+
+    def get_model_generation(self) -> typing.Optional[str]:
+        model_generation = self.model_generation.strip()
+        if not model_generation:
+            # Interpret empty strings as None
+            return None
+        return model_generation
