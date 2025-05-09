@@ -4,13 +4,14 @@ from os import PathLike
 from pydantic import ConfigDict
 from pydantic.dataclasses import dataclass
 
-
 from fibsem.milling.base import MillingStrategyConfig
+
+from adaptive_polish.gis_measurement import DEFAULT_SEM_MODEL_GENERATION
 
 
 @dataclass(config=ConfigDict(validate_assignment=True))
 class AdaptivePolishMillingConfig(MillingStrategyConfig):
-    model_path: typing.Union[str, PathLike] = "none"
+    model_path: typing.Union[str, PathLike] = "Undefined"
     align_sem: bool = True
     milling_interval_s: int = 10
     gis_stop_um: float = 0.2
@@ -19,7 +20,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
     window_size_px: int = 10
     minimum_lamella_area_um2: float = 30.0  # 30μm²
     maximum_drift_um: float = 0.1
-    model_generation: typing.Optional[str] = None  # Uses latest generation
+    model_generation: str = DEFAULT_SEM_MODEL_GENERATION
     maximum_side_difference_um: float = 0.05
     fib_res_x: int = 3072
     fib_res_y: int = 2048
@@ -58,3 +59,10 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
             "sem_dwell_time_us": self.sem_dwell_time_us,
             "sem_hfw_um": self.sem_hfw_um,
         }
+
+    def get_model_generation(self) -> typing.Optional[str]:
+        model_generation = self.model_generation.strip()
+        if not model_generation:
+            # Interpret empty strings as None
+            return None
+        return model_generation
