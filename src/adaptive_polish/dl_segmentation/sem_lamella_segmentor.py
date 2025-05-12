@@ -468,6 +468,7 @@ class Gen1QualityModel(Gen1Model):
             normalise_first=False,
             normalise_version=1,
             resize_version="cv2",
+            model_type="unet",
         )
 
 
@@ -486,6 +487,7 @@ class Gen1PerformanceModel(Gen1Model):
             normalise_first=False,
             normalise_version=1,
             resize_version="cv2",
+            model_type="unet",
         )
 
 
@@ -504,6 +506,7 @@ class Gen1ImprovedPerformanceModel(Gen1Model):
             normalise_first=True,
             normalise_version=1,
             resize_version="cv2",
+            model_type="unet",
         )
 
 
@@ -522,6 +525,7 @@ class Gen1ImprovedQualityModel(Gen1Model):
             normalise_first=True,
             normalise_version=1,
             resize_version="cv2",
+            model_type="unet",
         )
 
 
@@ -542,6 +546,7 @@ class Gen1GreyscalePerformanceModel(Gen1Model):
             normalise_first=True,
             normalise_version=1,
             resize_version="cv2",
+            model_type="unet",
         )
 
 
@@ -562,6 +567,7 @@ class Gen1GreyscaleQualityModel(Gen1Model):
             normalise_first=True,
             normalise_version=1,
             resize_version="cv2",
+            model_type="unet",
         )
 
 
@@ -582,6 +588,7 @@ class Gen1ImprovedPreprocessingPerformanceModel(Gen1Model):
             normalise_first=True,
             normalise_version=2,
             resize_version="pytorch",
+            model_type="unet",
         )
 
 
@@ -602,6 +609,7 @@ class Gen1ImprovedPreprocessingQualityModel(Gen1Model):
             normalise_first=True,
             normalise_version=2,
             resize_version="pytorch",
+            model_type="unet",
         )
 
 
