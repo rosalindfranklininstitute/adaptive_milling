@@ -22,12 +22,8 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
     maximum_drift_um: float = 0.1
     model_generation: str = DEFAULT_SEM_MODEL_GENERATION
     maximum_side_difference_um: float = 0.05
-    fib_res_x: int = 3072
-    fib_res_y: int = 2048
     fib_dwell_time_us: float = 2
     fib_hfw_um: float = 50
-    sem_res_x: int = 3072
-    sem_res_y: int = 2048
     sem_dwell_time_us: float = 2
     sem_hfw_um: float = 50
 
@@ -50,12 +46,8 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
             "maximum_drift_um": self.maximum_drift_um,
             "model_generation": self.model_generation,
             "maximum_side_difference_um": self.maximum_side_difference_um,
-            "fib_res_x": self.fib_res_x,
-            "fib_res_y": self.fib_res_y,
             "fib_dwell_time_us": self.fib_dwell_time_us,
             "fib_hfw_um": self.fib_hfw_um,
-            "sem_res_x": self.sem_res_x,
-            "sem_res_y": self.sem_res_y,
             "sem_dwell_time_us": self.sem_dwell_time_us,
             "sem_hfw_um": self.sem_hfw_um,
         }
