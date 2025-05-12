@@ -52,6 +52,15 @@ if typing.TYPE_CHECKING:
 _logger = logging.getLogger(__name__)
 
 
+def results_entry_helper(
+    *dfs: DataFrame, milling_cycle: int, results: typing.Dict[str, typing.Any]
+) -> None:
+    for df in dfs:
+        df.loc[milling_cycle] = {
+            key: results.get(key, None) for key in df.columns.values
+        }
+
+
 @dataclass
 class AdaptivePolishMillingStrategy(MillingStrategy):
     name: str = "AdaptivePolishing"
@@ -152,20 +161,39 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
         # run adaptive polishing
         try:
-            for milling_cycle in range(int(self.config.max_milling_cycles)):
-                self._run_milling_cycle(
-                    milling_cycle=milling_cycle,
-                    lamella_name=lamella_folder.stem,
-                    fib_imaging_settings=fib_imaging_settings,
-                    sem_imaging_settings=sem_imaging_settings,
-                    lamella_ap_folder=lamella_ap_folder,
-                    lamella_ap_plots_folder=lamella_ap_plots_folder,
-                    results=results,
-                    gis_results_detailed=gis_results_detailed,
-                    microscope=microscope,
-                    stage=stage,
-                    expected_lamella_centre_m=lamella_centre_m,
-                )
+            # Do one extra cycle without milling to run checks and get stats
+            for milling_cycle in range(self.config.max_milling_cycles + 1):
+                image_name = f"{lamella_folder.stem}_AP_img_{milling_cycle:03}"
+                results_dict = {
+                    "image": image_name,
+                    "milling_time_s": self.config.milling_interval_s * milling_cycle,
+                }
+                try:
+                    self._run_milling_cycle(
+                        milling_cycle=milling_cycle,
+                        image_name=image_name,
+                        fib_imaging_settings=fib_imaging_settings,
+                        sem_imaging_settings=sem_imaging_settings,
+                        plots_folder=lamella_ap_plots_folder,
+                        results_dict=results_dict,
+                        microscope=microscope,
+                        stage=stage,
+                        expected_lamella_centre_m=lamella_centre_m,
+                        # Don't mill on the final cycle, just run checks
+                        mill=milling_cycle < self.config.max_milling_cycles,
+                    )
+                finally:
+                    # Ensure results are always added and saved
+                    results_entry_helper(
+                        results,
+                        gis_results_detailed,
+                        milling_cycle=milling_cycle,
+                        results=results_dict,
+                    )
+                    results.to_json(lamella_ap_folder / "GIS_thickness.json")
+                    gis_results_detailed.to_json(
+                        lamella_ap_folder / "GIS_thickness_detailed.json"
+                    )
         except StopMillingException as e:
             _logger.info("Stopping milling due to: %s", str(e))
         except StopEarlyError as e:
@@ -197,19 +225,16 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
     def _run_milling_cycle(
         self,
         milling_cycle: int,
-        lamella_name: str,
+        image_name: str,
         fib_imaging_settings: ImageSettings,
         sem_imaging_settings: ImageSettings,
-        lamella_ap_folder: Path,
-        lamella_ap_plots_folder: Path,
-        results: DataFrame,
-        gis_results_detailed: DataFrame,
+        plots_folder: Path,
+        results_dict: typing.Dict[str, typing.Any],
         microscope: FibsemMicroscope,
         stage: FibsemMillingStage,
         expected_lamella_centre_m: Point,
+        mill: bool = True,
     ) -> None:
-        f_basename = f"{lamella_name}_AP_img_{milling_cycle:03}"
-
         # Acquire images
         _logger.info(
             "Acquiring images for milling cycle %i/%i",
@@ -217,23 +242,21 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             self.config.max_milling_cycles,
         )
 
-        sem_imaging_settings.filename = f"{f_basename}_SEM.tif"
+        sem_imaging_settings.filename = f"{image_name}_SEM.tif"
         sem_image = acquire.new_image(microscope, sem_imaging_settings)
-        fib_imaging_settings.filename = f"{f_basename}_FIB.tif"
+        fib_imaging_settings.filename = f"{image_name}_FIB.tif"
         fib_image = acquire.new_image(microscope, fib_imaging_settings)
-
         self._check_lamella(
             milling_cycle,
-            image_name=f_basename,
+            image_name=image_name,
             fib_image=fib_image,
             sem_image=sem_image,
-            lamella_ap_folder=lamella_ap_folder,
-            lamella_ap_plots_folder=lamella_ap_plots_folder,
-            results=results,
-            gis_results_detailed=gis_results_detailed,
+            plots_folder=plots_folder,
+            results_dict=results_dict,
             expected_lamella_centre_m=expected_lamella_centre_m,
         )
-        self._mill(microscope=microscope, stage=stage)
+        if mill:
+            self._mill(microscope=microscope, stage=stage)
 
     def _update_imaging_settings(
         self, microscope: FibsemMicroscope
@@ -253,7 +276,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         sem_imaging_settings.dwell_time = (
             self.config.sem_dwell_time_us * constants.MICRO_TO_SI
         )
-
 
         _logger.debug("Adaptive polish FIB settings: %s", str(fib_imaging_settings))
         _logger.debug("Adaptive polish SEM settings: %s", str(sem_imaging_settings))
@@ -275,10 +297,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         image_name: str,
         fib_image: FibsemImage,
         sem_image: FibsemImage,
-        lamella_ap_folder: Path,
-        lamella_ap_plots_folder: Path,
-        results: DataFrame,
-        gis_results_detailed: DataFrame,
+        plots_folder: Path,
+        results_dict: typing.Dict[str, typing.Any],
         expected_lamella_centre_m: typing.Optional[Point] = None,
     ) -> None:
         # Segmentation
@@ -328,6 +348,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             * sem_image.metadata.pixel_size.x
             * constants.SI_TO_MICRO
         )
+        results_dict["gis_thickness_um"] = gis_thickness_um.tolist()
 
         lamella_xlims_px = np.round(
             (
@@ -348,6 +369,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             window_size_m=self.config.window_size_px * sem_image.metadata.pixel_size.x,
             pixel_size_m=sem_image.metadata.pixel_size.x,
         )
+        results_dict["gis_thickness_filtered_um"] = gis_thickness_filtered_um.tolist()
 
         gis_above_threshold = gis_thickness_filtered_um > self.config.gis_stop_um
 
@@ -364,6 +386,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             min(gis_xlims_px[0], lamella_xlims_px[0] + maximum_side_difference_px),
             max(gis_xlims_px[1], lamella_xlims_px[1] - maximum_side_difference_px),
         )
+        results_dict["xlims_px"] = xlims_px
 
         min_gis_um = np.nanmin(gis_thickness_filtered_um[xlims_px[0] : xlims_px[1] + 1])
         _logger.info(f"Took {len(gis_thickness_filtered_um)} GIS measurements along x")
@@ -372,6 +395,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             milling_cycle,
             min_gis_um,
         )
+        results_dict["min_GIS_um"] = min_gis_um
 
         if mask_crack_clean is None:
             crack_area_um2 = 0
@@ -385,28 +409,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             milling_cycle,
             crack_area_um2,
         )
-
-        # Save results
-        total_time = self.config.milling_interval_s * (milling_cycle + 1)
-        results.loc[milling_cycle] = {
-            "image": image_name,
-            "milling_time_s": total_time,
-            "min_GIS_um": min_gis_um,
-            "crack_area_um2": crack_area_um2,
-        }
-        results.to_json(lamella_ap_folder / "GIS_thickness.json")
-
-        # Save GIS thickness
-        detailed_results = {
-            "image": image_name,
-            "milling_time_s": total_time,
-            "gis_thickness_um": gis_thickness_um.tolist(),
-            "gis_thickness_filtered_um": gis_thickness_filtered_um.tolist(),
-            "xlims_px": xlims_px,
-        }
-
-        gis_results_detailed.loc[milling_cycle] = detailed_results
-        gis_results_detailed.to_json(lamella_ap_folder / "GIS_thickness_detailed.json")
+        results_dict["crack_area_um2"] = crack_area_um2
 
         try:
             # Create plots
@@ -426,7 +429,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 xlims=xlims_px,
                 img_name=image_name,
                 fib_screenshot=None,
-                save_path=lamella_ap_plots_folder / f"{image_name}_plot.png",
+                save_path=plots_folder / f"{image_name}_plot.png",
             )
         except Exception:
             _logger.error(
@@ -464,8 +467,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                     mask_lamella_clean=mask_lamella_clean,
                     centre_px=mask_centre_px,
                     centre_m=centre_m,
-                    plot_path=lamella_ap_plots_folder
-                    / f"{image_name}_centring_problem.png",
+                    plot_path=plots_folder / f"{image_name}_centring_problem.png",
                     bounding_box=lamella_bbox,
                 )
                 raise StopEarlyError(
