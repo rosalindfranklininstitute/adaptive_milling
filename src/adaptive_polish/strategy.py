@@ -427,6 +427,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 crack_area_um2=crack_area_um2,
                 min_gis_um=min_gis_um,
                 xlims=xlims_px,
+                total_milling_time=self.config.milling_interval_s * milling_cycle,
+                max_crack_area_um2=self.config.max_crack_area_um2,
                 img_name=image_name,
                 fib_screenshot=None,
                 save_path=plots_folder / f"{image_name}_plot.png",

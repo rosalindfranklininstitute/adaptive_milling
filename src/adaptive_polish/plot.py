@@ -117,14 +117,17 @@ def create_milling_cycle_plot(
     gis_stop_um: float,
     crack_area_um2: float,
     min_gis_um: float,
+    total_milling_time: typing.Optional[float] = None,
+    max_crack_area_um2: typing.Optional[float] = None,
     xlims: typing.Optional[typing.Tuple[int, int]] = None,
     fib_screenshot: typing.Optional[NDArray[typing.Any]] = None,
     img_name: typing.Optional[str] = None,
     save_path: typing.Optional[typing.Union[str, PathLike]] = None,
 ):
-    _logger.debug("milling_cycle_plot()")
     fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(12, 8), tight_layout=True)
     fig.suptitle(img_name)
+    if total_milling_time is not None:
+        fig.title(f"Milling time: {total_milling_time:.2g} s")
 
     # SEM
     _ = axs[0, 0].imshow(sem_image, cmap="Greys_r")
@@ -144,7 +147,7 @@ def create_milling_cycle_plot(
         interpolation="none",
     )
     axs[0, 1].axis("off")
-    axs[0, 1].set_title("SEM, 1st prediction")
+    axs[0, 1].set_title("SEM segmentation")
 
     # SEM + clean prediction
     axs[0, 2].imshow(sem_image, cmap="Greys_r")
@@ -161,7 +164,9 @@ def create_milling_cycle_plot(
         axs[0, 2].axvline(x=xlims[0], color="C4")
         axs[0, 2].axvline(x=xlims[1], color="C4")
     axs[0, 2].axis("off")
-    axs[0, 2].set_title(rf"SEM, clean, crack area $\mu m^2$ = {crack_area_um2:.2f}")
+    axs[0, 2].set_title(
+        rf"SEM cleaned segmentation\Crack area threshold = {max_crack_area_um2:.2f}, total = {crack_area_um2:.2f} ($\mu m^2$)"
+    )
 
     # FIB image
     axs[1, 0].imshow(fib_image, cmap="Greys_r")
@@ -204,7 +209,9 @@ def create_milling_cycle_plot(
         axs[1, 2].axvline(x=xlims[0], color="C4")
         axs[1, 2].axvline(x=xlims[1], color="C4")
 
-    axs[1, 2].set_title(rf"GIS thickness, min={min_gis_um:.3f} $\mu m$")
+    axs[1, 2].set_title(
+        rf"GIS thickness\nThreshold = {gis_stop_um:.3f}, minimum = {min_gis_um:.3f} ($\mu m$)"
+    )
     axs[1, 2].legend()
 
     fig.savefig(save_path)
