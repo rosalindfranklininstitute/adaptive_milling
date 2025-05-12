@@ -153,32 +153,19 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         # run adaptive polishing
         try:
             for milling_cycle in range(int(self.config.max_milling_cycles)):
-                f_basename = f"{lamella_folder.stem}_AP_img_{milling_cycle:03}"
-
-                # Acquire images
-                _logger.info(
-                    "Acquiring images for milling cycle %i/%i",
-                    milling_cycle,
-                    self.config.max_milling_cycles,
-                )
-
-                sem_imaging_settings.filename = f"{f_basename}_SEM.tif"
-                sem_image = acquire.new_image(microscope, sem_imaging_settings)
-                fib_imaging_settings.filename = f"{f_basename}_FIB.tif"
-                fib_image = acquire.new_image(microscope, fib_imaging_settings)
-
-                self._check_lamella(
-                    milling_cycle,
-                    image_name=f_basename,
-                    fib_image=fib_image,
-                    sem_image=sem_image,
+                self._run_milling_cycle(
+                    milling_cycle=milling_cycle,
+                    lamella_name=lamella_folder.stem,
+                    fib_imaging_settings=fib_imaging_settings,
+                    sem_imaging_settings=sem_imaging_settings,
                     lamella_ap_folder=lamella_ap_folder,
                     lamella_ap_plots_folder=lamella_ap_plots_folder,
                     results=results,
                     gis_results_detailed=gis_results_detailed,
+                    microscope=microscope,
+                    stage=stage,
                     expected_lamella_centre_m=lamella_centre_m,
                 )
-                self._mill(microscope=microscope, stage=stage)
         except StopMillingException as e:
             _logger.info("Stopping milling due to: %s", str(e))
         except StopEarlyError as e:
@@ -206,6 +193,47 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 imaging_voltage=microscope.system.ion.beam.voltage,
             )
             microscope.reset_beam_shifts()
+
+    def _run_milling_cycle(
+        self,
+        milling_cycle: int,
+        lamella_name: str,
+        fib_imaging_settings: ImageSettings,
+        sem_imaging_settings: ImageSettings,
+        lamella_ap_folder: Path,
+        lamella_ap_plots_folder: Path,
+        results: DataFrame,
+        gis_results_detailed: DataFrame,
+        microscope: FibsemMicroscope,
+        stage: FibsemMillingStage,
+        expected_lamella_centre_m: Point,
+    ) -> None:
+        f_basename = f"{lamella_name}_AP_img_{milling_cycle:03}"
+
+        # Acquire images
+        _logger.info(
+            "Acquiring images for milling cycle %i/%i",
+            milling_cycle,
+            self.config.max_milling_cycles,
+        )
+
+        sem_imaging_settings.filename = f"{f_basename}_SEM.tif"
+        sem_image = acquire.new_image(microscope, sem_imaging_settings)
+        fib_imaging_settings.filename = f"{f_basename}_FIB.tif"
+        fib_image = acquire.new_image(microscope, fib_imaging_settings)
+
+        self._check_lamella(
+            milling_cycle,
+            image_name=f_basename,
+            fib_image=fib_image,
+            sem_image=sem_image,
+            lamella_ap_folder=lamella_ap_folder,
+            lamella_ap_plots_folder=lamella_ap_plots_folder,
+            results=results,
+            gis_results_detailed=gis_results_detailed,
+            expected_lamella_centre_m=expected_lamella_centre_m,
+        )
+        self._mill(microscope=microscope, stage=stage)
 
     def _update_imaging_settings(
         self, microscope: FibsemMicroscope
