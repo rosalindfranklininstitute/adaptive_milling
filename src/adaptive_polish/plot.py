@@ -125,9 +125,11 @@ def create_milling_cycle_plot(
     save_path: typing.Optional[typing.Union[str, PathLike]] = None,
 ):
     fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(12, 8), tight_layout=True)
-    fig.suptitle(img_name)
+    plot_title = img_name
     if total_milling_time is not None:
-        fig.title(f"Milling time: {total_milling_time:.2g} s")
+        plot_title = f"{plot_title}\nMilling time: {total_milling_time:.2g} s"
+
+    fig.suptitle(plot_title)
 
     # SEM
     _ = axs[0, 0].imshow(sem_image, cmap="Greys_r")
