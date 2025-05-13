@@ -1,7 +1,5 @@
 import pytest
 
-import typing
-from dataclasses import dataclass, field, InitVar
 import numpy as np
 
 from adaptive_polish.centring import (
@@ -11,7 +9,7 @@ from adaptive_polish.centring import (
     get_lamella_centre,
 )
 
-from setup import SimpleRectangleLamellaMask
+from .setup import SimpleRectangleLamellaMask
 
 
 @pytest.mark.parametrize("edge_finding", ["median", "mean", "min", "max"])

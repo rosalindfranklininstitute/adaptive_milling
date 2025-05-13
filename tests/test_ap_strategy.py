@@ -13,7 +13,7 @@ from fibsem.structures import BeamType, Point
 from fibsem.milling.base import get_milling_stages
 from autolamella.protocol.validation import validate_protocol
 
-from adaptive_polish import strategy as ap_strategy, utils as ap_utils
+from adaptive_polish import strategy as ap_strategy
 from adaptive_polish.dl_segmentation.sem_lamella_segmentor import SegmentationLabels
 
 from . import setup, utils
@@ -290,6 +290,7 @@ def test_max_milling_cycles_not_exceeded(
 
         mock_load_model.assert_called_once()
 
+        # One extra round of checks should be run
         mock_check_lamella.assert_has_calls(
             [
                 call(
@@ -297,16 +298,18 @@ def test_max_milling_cycles_not_exceeded(
                     image_name=f"{lamella_directory.stem}_AP_img_{i:03}",
                     fib_image=ANY,
                     sem_image=ANY,
-                    lamella_ap_folder=lamella_ap_folder,
-                    lamella_ap_plots_folder=lamella_ap_folder / "plots",
-                    results=ANY,
-                    gis_results_detailed=ANY,
+                    plots_folder=lamella_ap_folder / "plots",
+                    results_dict={
+                        "image": f"{lamella_directory.stem}_AP_img_{i:03}",
+                        "milling_time_s": ap_config.milling_interval_s * i,
+                    },
                     expected_lamella_centre_m=None,  # Due to align_sem=False
                 )
-                for i in range(max_milling_cycles)
+                for i in range(max_milling_cycles + 1)
             ]
         )
 
+        # Ensure no extra rounds of milling are run
         mock_mill.assert_has_calls(
             [
                 call(microscope=microscope, stage=stage)
@@ -335,6 +338,7 @@ def test_results_saved(
     model_path = "path/to/model.file"
     pass_checks_kwargs = _AP_PASS_CHECKS_CONFIG.copy()
     pass_checks_kwargs["max_milling_cycles"] = max_milling_cycles
+    max_checks = max_milling_cycles + 1
 
     sem_res = (1536, 1024)
 
@@ -385,7 +389,7 @@ def test_results_saved(
     expected_gis_thickness = np.asarray(
         [gis_bottom - lamella_bottom] * mask_shape[1], dtype=np.float32
     )
-    expected_min_gis_thicknesses = [5 * i for i in range(1, max_milling_cycles + 1)]
+    expected_min_gis_thicknesses = [5 * i for i in range(1, max_checks + 1)]
     expected_filtered_gis_thicknesses = [
         np.arange(
             i,
@@ -402,10 +406,10 @@ def test_results_saved(
 
         # # The calls for cracks will be skipped as mask_crack_clean is None
         # mock_get_mask_area_um2.assert_has_calls(
-        #     [call(lamella_mask, pixel_size_um=ANY) for _ in range(max_milling_cycles)]
+        #     [call(lamella_mask, pixel_size_um=ANY) for _ in range(max_checks)]
         # )
-        assert mock_filter_gis_thickness.call_count == max_milling_cycles, (
-            f"Milling didn't run the full {max_milling_cycles} times"
+        assert mock_filter_gis_thickness.call_count == max_checks, (
+            f"Checks didn't run the full {max_checks} times"
         )
         mock_mill.assert_has_calls(
             [
@@ -420,18 +424,16 @@ def test_results_saved(
     assert detailed_results_path.is_file(), "Detailed results file does not exist"
 
     images_names = [
-        f"{lamella_directory.stem}_AP_img_{i:03}" for i in range(max_milling_cycles)
+        f"{lamella_directory.stem}_AP_img_{i:03}" for i in range(max_checks)
     ]
-    milling_times = [
-        ap_config.milling_interval_s * (i + 1) for i in range(max_milling_cycles)
-    ]
+    milling_times = [ap_config.milling_interval_s * i for i in range(max_checks)]
 
     expected_results_df = pd.DataFrame(
         {
             "image": images_names,
             "milling_time_s": milling_times,
             "min_GIS_um": expected_min_gis_thicknesses,
-            "crack_area_um2": [0] * max_milling_cycles,
+            "crack_area_um2": [0] * max_checks,
         }
     )
 
@@ -452,7 +454,7 @@ def test_results_saved(
                         for _ in expected_gis_thickness
                     ]
                 ]
-                * max_milling_cycles,
+                * max_checks,
                 dtype=object,
             ),
             "gis_thickness_filtered_um": pd.Series(
@@ -602,12 +604,8 @@ def test_check_lamella(
     lamella_ap_plots_folder = lamella_ap_folder / "plots"
     lamella_ap_folder.mkdir()
     lamella_ap_plots_folder.mkdir()
-    results, gis_results_detailed = ap_utils.setup_results_df()
+    results_dict = {}
     ap_config = ap_strategy.AdaptivePolishMillingConfig(model_path="path/to/model.file")
-
-    expected_plot_path = lamella_ap_plots_folder / f"{image_name}_plot.png"
-    expected_results_path = lamella_ap_folder / "GIS_thickness.json"
-    expected_detailed_results_path = lamella_ap_folder / "GIS_thickness_detailed.json"
 
     pass_checks_kwargs = _AP_PASS_CHECKS_CONFIG.copy()
     if failure_reason == "gis":
@@ -657,32 +655,14 @@ def test_check_lamella(
             image_name=image_name,
             fib_image=fib_image,
             sem_image=sem_image,
-            lamella_ap_folder=lamella_ap_folder,
-            lamella_ap_plots_folder=lamella_ap_plots_folder,
-            results=results,
-            gis_results_detailed=gis_results_detailed,
+            plots_folder=lamella_ap_plots_folder,
+            results_dict=results_dict,
             expected_lamella_centre_m=Point(0, 0),
         )
 
-    results_empty = results.apply(lambda x: x.empty).all()
-    detailed_results_empty = gis_results_detailed.apply(lambda x: x.empty).all()
-
-    if saves_results:
-        assert not results_empty, "Results should have been added"
-        assert not detailed_results_empty, "Detailed results should have been added"
-        assert expected_results_path.is_file(), "Results file not found"
-        assert expected_detailed_results_path.is_file(), (
-            "Detailed results file not found"
+        assert bool(results_dict) is saves_results, "Results should%s be empty" % (
+            "n't" if saves_results else ""
         )
-        assert expected_plot_path.is_file(), "Plot not found"
-    else:
-        assert results_empty, "Results should be empty"
-        assert detailed_results_empty, "Detailed results should be empty"
-        assert not expected_results_path.is_file(), "Results file should not exist"
-        assert not expected_detailed_results_path.is_file(), (
-            "Detailed results file should not exist"
-        )
-        assert not expected_plot_path.is_file(), "Plot should not exist"
 
 
 @pytest.mark.parametrize("file_exists", [True, False], ids=["file", "no file"])
