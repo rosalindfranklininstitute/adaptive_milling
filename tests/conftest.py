@@ -1,5 +1,5 @@
 from __future__ import annotations
-import pkg_resources
+from importlib import resources
 from pathlib import Path
 import pytest
 
@@ -37,9 +37,19 @@ _MODEL_PATHS = {
         / "gen01_quality_1536_v5_grayscale"
         / "cryo_sem_epoch_56.pth"
     ],
+    "1.3fpn": [
+        _MODELS_PATH
+        / "Gen1"
+        / "gen01_quality_1536_v7_FPN"
+        / "gen01_quality_1536_v7_FPN.pth"
+    ],
 }
 
 assert _MODELS_PATH.is_dir(), "SEM models path does not exist"
+
+
+def latest_sem_segmentation_model() -> tuple[str, Path]:
+    return tuple(tuple(_MODEL_PATHS.items())[-1])
 
 
 @pytest.fixture(
@@ -66,19 +76,17 @@ def protocol_template_path() -> Path:
 
 @pytest.fixture(scope="session")
 def microscope_config_path() -> Path:
-    return Path(
-        pkg_resources.resource_filename(
-            "fibsem", "config/microscope-configuration.yaml"
-        )
+    return (
+        Path(resources.files("fibsem")) / "config" / "microscope-configuration.yaml"
     ).resolve()
 
 
 @pytest.fixture(scope="session")
 def microscope_config_demo2_path() -> Path:
-    return Path(
-        pkg_resources.resource_filename(
-            "fibsem", "config/microscope-configuration-demo2.yaml"
-        )
+    return (
+        Path(resources.files("fibsem"))
+        / "config"
+        / "microscope-configuration-demo2.yaml"
     ).resolve()
 
 
