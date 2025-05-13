@@ -21,7 +21,10 @@ if typing.TYPE_CHECKING:
 
 _logger = logging.getLogger(__name__)
 
+plt.rc("axes", titlesize="small")
+plt.rc("figure", titlesize="large")
 LABEL_CMAP = plt.get_cmap("tab10")
+
 
 
 def create_centring_plot(
@@ -33,6 +36,7 @@ def create_centring_plot(
     prediction: typing.Optional[NDArray[np.integer]] = None,
     bounding_box: typing.Optional[tuple[float, float, float, float]] = None,
 ) -> None:
+    _logger.debug("Creating centring plot")
     # Plot centring stuff
     if prediction is not None:
         fig, axs = plt.subplots(1, 2)
@@ -43,6 +47,7 @@ def create_centring_plot(
 
     _ = axs[0].imshow(sem_image.data, cmap="gray")
     extent = _.get_extent()
+    axs[0].set_title("SEM lamella")
     axs[0].imshow(
         # Overlay the cleaned lamella
         mask_lamella_clean,
@@ -65,6 +70,7 @@ def create_centring_plot(
             )
         )
     if prediction is not None:
+        axs[1].set_title("SEM segmentation")
         axs[1].imshow(
             prediction,
             cmap=LABEL_CMAP,
@@ -97,10 +103,11 @@ def create_centring_plot(
     axs[-1].legend()  # No need to have a duplicate legend
 
     if centre_m is None:
-        fig.suptitle("Lamella centre not found")
+        fig.suptitle("Lamella Centre\nNot found")
     else:
         fig.suptitle(
-            rf"Lamella centre (x, y): {centre_m.x * constants.SI_TO_MICRO}, {centre_m.y * constants.SI_TO_MICRO} $\mu m$"
+            "Lamella Centre\n"
+            rf"x, y: {centre_m.x * constants.SI_TO_MICRO:.4f}, {centre_m.y * constants.SI_TO_MICRO:.4f} $\mu m$"
         )
     fig.tight_layout()
 
@@ -124,6 +131,7 @@ def create_milling_cycle_plot(
     img_name: typing.Optional[str] = None,
     save_path: typing.Optional[typing.Union[str, PathLike]] = None,
 ):
+    _logger.debug("Creating milling cycle plot")
     fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(12, 8), tight_layout=True)
     plot_title = img_name
     if total_milling_time is not None:
@@ -167,7 +175,8 @@ def create_milling_cycle_plot(
         axs[0, 2].axvline(x=xlims[1], color="C4")
     axs[0, 2].axis("off")
     axs[0, 2].set_title(
-        rf"SEM cleaned segmentation\Crack area threshold = {max_crack_area_um2:.2f}, total = {crack_area_um2:.2f} ($\mu m^2$)"
+        "SEM cleaned segmentation\n"
+        rf"Crack area {crack_area_um2:.2f} $\mu m^2$ (threshold {max_crack_area_um2:.2f})",
     )
 
     # FIB image
@@ -212,7 +221,8 @@ def create_milling_cycle_plot(
         axs[1, 2].axvline(x=xlims[1], color="C4")
 
     axs[1, 2].set_title(
-        rf"GIS thickness\nThreshold = {gis_stop_um:.3f}, minimum = {min_gis_um:.3f} ($\mu m$)"
+        "GIS thickness\n"
+        rf"Minimum {min_gis_um:.3f} $\mu m$ (threshold {gis_stop_um:.3f})"
     )
     axs[1, 2].legend()
 
@@ -221,6 +231,7 @@ def create_milling_cycle_plot(
 
 
 def create_summary_gis_plot(results: DataFrame, save_path: typing.Union[str, PathLike]):
+    _logger.debug("Creating GIS summary plot")
     save_path = Path(save_path)
     fig, ax = plt.subplots(1, 1)
     ax.plot(
