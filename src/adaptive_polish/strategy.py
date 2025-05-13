@@ -103,6 +103,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         )
 
         lamella_folder = Path(fib_imaging_settings.path)
+        lamella_name = lamella_folder.stem
         lamella_ap_folder = (
             lamella_folder / f"adaptive_polish_{fs_utils.current_timestamp()}"
         )
@@ -150,20 +151,19 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 if lamella_centre_m is None:
                     _logger.info("Failed to align SEM. Attempting to continue...")
 
+        results_dataframes = self._setup_results_dataframes()
+
         # Set lamella folders for saving images
         fib_imaging_settings.save = True
         sem_imaging_settings.save = True
         fib_imaging_settings.path = lamella_ap_fib_folder
         sem_imaging_settings.path = lamella_ap_sem_folder
 
-        # setup results
-        results, gis_results_detailed = ap_utils.setup_results_df()
-
         # run adaptive polishing
         try:
             # Do one extra cycle without milling to run checks and get stats
             for milling_cycle in range(self.config.max_milling_cycles + 1):
-                image_name = f"{lamella_folder.stem}_AP_img_{milling_cycle:03}"
+                image_name = f"{lamella_name}_AP_img_{milling_cycle:03}"
                 results_dict = {
                     "image": image_name,
                     "milling_time_s": self.config.milling_interval_s * milling_cycle,
@@ -183,16 +183,11 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                         mill=milling_cycle < self.config.max_milling_cycles,
                     )
                 finally:
-                    # Ensure results are always added and saved
-                    results_entry_helper(
-                        results,
-                        gis_results_detailed,
-                        milling_cycle=milling_cycle,
-                        results=results_dict,
-                    )
-                    results.to_json(lamella_ap_folder / "GIS_thickness.json")
-                    gis_results_detailed.to_json(
-                        lamella_ap_folder / "GIS_thickness_detailed.json"
+                    self._handle_results(
+                        milling_cycle,
+                        results_dict,
+                        *results_dataframes,
+                        save_directory=lamella_ap_folder,
                     )
         except StopMillingException as e:
             _logger.info("Stopping milling due to: %s", str(e))
@@ -200,20 +195,19 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             # Likely due to something not working correctly (e.g.
             # segmentation issues)
             _logger.warning("Stopping milling early due to: %s", str(e))
-
         except Exception:
             _logger.error("Stopping due to unexpected exception", exc_info=True)
             raise
         finally:
-            # Always try to create a summary plot and finish milling
+            # Always try to create a summary plot(s) and finish milling
             try:
-                create_summary_gis_plot(
-                    results=results,
-                    save_path=lamella_ap_folder
-                    / f"{lamella_folder.stem}_GIS_thickness.png",
+                self._create_summary_plots(
+                    *results_dataframes,
+                    lamella_name=lamella_name,
+                    save_directory=lamella_ap_folder,
                 )
             except Exception:
-                _logger.error("Failed to create summary plot", exc_info=True)
+                _logger.error("Failed to create summary plot(s)", exc_info=True)
             # finish milling (clear patterns, restore imaging current)
             finish_milling(
                 microscope=microscope,
@@ -593,3 +587,35 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
     def _get_crack_too_large(self, crack_area_um2: float) -> bool:
         # Total crack area check
         return crack_area_um2 > float(self.config.max_crack_area_um2)
+
+    def _setup_results_dataframes(self) -> typing.Tuple[DataFrame, DataFrame]:
+        return ap_utils.setup_results_df()
+
+    def _save_results_dataframes(self, *dfs, directory: Path) -> None:
+        results, gis_results_detailed = dfs
+        results.to_json(directory / "GIS_thickness.json")
+        gis_results_detailed.to_json(directory / "GIS_thickness_detailed.json")
+
+    def _handle_results(
+        self,
+        milling_cycle: int,
+        results_dict: typing.Dict[str, typing.Any],
+        *results_dataframes: DataFrame,
+        save_directory: Path,
+    ) -> None:
+        # Ensure results are always added and saved
+        results_entry_helper(
+            *results_dataframes,
+            milling_cycle=milling_cycle,
+            results=results_dict,
+        )
+        self._save_results_dataframes(*results_dataframes, directory=save_directory)
+
+    def _create_summary_plots(
+        self, *results_dataframes: DataFrame, lamella_name: str, save_directory: Path
+    ) -> None:
+        """Creates any summary plots from the results dataframes"""
+        create_summary_gis_plot(
+            results=results_dataframes[0],
+            save_path=save_directory / f"{lamella_name}_GIS_thickness.png",
+        )
