@@ -1,6 +1,7 @@
 from __future__ import annotations
 import logging
 import math
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 import numpy as np
@@ -123,98 +124,99 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         if self.model is None:
             self._load_model()
 
-        # align SEM
-        lamella_centre_m = None
-        if self.config.align_sem:
-            try:
-                lamella_centre_m = self._align_beam(
-                    microscope=microscope,
-                    sem_imaging_settings=sem_imaging_settings,
-                    plot_path=lamella_ap_folder / "centring.png",
-                )
-            except SegmentationException:
-                _logger.error(
-                    "Exception occurred during segmentation for SEM beam alignment",
-                    exc_info=True,
-                )
-            except CentringException:
-                _logger.error(
-                    "Error occurred calculating the lamella centre",
-                    exc_info=True,
-                )
-            except Exception:
-                _logger.error(
-                    "Unexpected error occurred aligning SEM.",
-                    exc_info=True,
-                )
-            finally:
-                if lamella_centre_m is None:
-                    _logger.info("Failed to align SEM. Attempting to continue...")
-
-        results_dataframes = self._setup_results_dataframes()
-
-        # Set lamella folders for saving images
-        fib_imaging_settings.save = True
-        sem_imaging_settings.save = True
-        fib_imaging_settings.path = lamella_ap_fib_folder
-        sem_imaging_settings.path = lamella_ap_sem_folder
-
-        # run adaptive polishing
-        try:
-            # Do one extra cycle without milling to run checks and get stats
-            for milling_cycle in range(self.config.max_milling_cycles + 1):
-                image_name = f"{lamella_name}_AP_img_{milling_cycle:03}"
-                results_dict = {
-                    "image": image_name,
-                    "milling_time_s": self.config.milling_interval_s * milling_cycle,
-                }
+        with self._restore_beam_shifts(microscope):
+            # align SEM
+            lamella_centre_m = None
+            if self.config.align_sem:
                 try:
-                    self._run_milling_cycle(
-                        milling_cycle=milling_cycle,
-                        image_name=image_name,
-                        fib_imaging_settings=fib_imaging_settings,
-                        sem_imaging_settings=sem_imaging_settings,
-                        plots_folder=lamella_ap_plots_folder,
-                        results_dict=results_dict,
+                    lamella_centre_m = self._align_beam(
                         microscope=microscope,
-                        stage=stage,
-                        expected_lamella_centre_m=lamella_centre_m,
-                        # Don't mill on the final cycle, just run checks
-                        mill=milling_cycle < self.config.max_milling_cycles,
+                        sem_imaging_settings=sem_imaging_settings,
+                        plot_path=lamella_ap_folder / "centring.png",
+                    )
+                except SegmentationException:
+                    _logger.error(
+                        "Exception occurred during segmentation for SEM beam alignment",
+                        exc_info=True,
+                    )
+                except CentringException:
+                    _logger.error(
+                        "Error occurred calculating the lamella centre",
+                        exc_info=True,
+                    )
+                except Exception:
+                    _logger.error(
+                        "Unexpected error occurred aligning SEM.",
+                        exc_info=True,
                     )
                 finally:
-                    self._handle_results(
-                        milling_cycle,
-                        results_dict,
+                    if lamella_centre_m is None:
+                        _logger.info("Failed to align SEM. Attempting to continue...")
+
+            results_dataframes = self._setup_results_dataframes()
+
+            # Set lamella folders for saving images
+            fib_imaging_settings.save = True
+            sem_imaging_settings.save = True
+            fib_imaging_settings.path = lamella_ap_fib_folder
+            sem_imaging_settings.path = lamella_ap_sem_folder
+
+            # run adaptive polishing
+            try:
+                # Do one extra cycle without milling to run checks and get stats
+                for milling_cycle in range(self.config.max_milling_cycles + 1):
+                    image_name = f"{lamella_name}_AP_img_{milling_cycle:03}"
+                    results_dict = {
+                        "image": image_name,
+                        "milling_time_s": self.config.milling_interval_s
+                        * milling_cycle,
+                    }
+                    try:
+                        self._run_milling_cycle(
+                            milling_cycle=milling_cycle,
+                            image_name=image_name,
+                            fib_imaging_settings=fib_imaging_settings,
+                            sem_imaging_settings=sem_imaging_settings,
+                            plots_folder=lamella_ap_plots_folder,
+                            results_dict=results_dict,
+                            microscope=microscope,
+                            stage=stage,
+                            expected_lamella_centre_m=lamella_centre_m,
+                            # Don't mill on the final cycle, just run checks
+                            mill=milling_cycle < self.config.max_milling_cycles,
+                        )
+                    finally:
+                        self._handle_results(
+                            milling_cycle,
+                            results_dict,
+                            *results_dataframes,
+                            save_directory=lamella_ap_folder,
+                        )
+            except StopMillingException as e:
+                _logger.info("Stopping milling due to: %s", str(e))
+            except StopEarlyError as e:
+                # Likely due to something not working correctly (e.g.
+                # segmentation issues)
+                _logger.warning("Stopping milling early due to: %s", str(e))
+            except Exception:
+                _logger.error("Stopping due to unexpected exception", exc_info=True)
+                raise
+            finally:
+                # Always try to create a summary plot(s) and finish milling
+                try:
+                    self._create_summary_plots(
                         *results_dataframes,
+                        lamella_name=lamella_name,
                         save_directory=lamella_ap_folder,
                     )
-        except StopMillingException as e:
-            _logger.info("Stopping milling due to: %s", str(e))
-        except StopEarlyError as e:
-            # Likely due to something not working correctly (e.g.
-            # segmentation issues)
-            _logger.warning("Stopping milling early due to: %s", str(e))
-        except Exception:
-            _logger.error("Stopping due to unexpected exception", exc_info=True)
-            raise
-        finally:
-            # Always try to create a summary plot(s) and finish milling
-            try:
-                self._create_summary_plots(
-                    *results_dataframes,
-                    lamella_name=lamella_name,
-                    save_directory=lamella_ap_folder,
+                except Exception:
+                    _logger.error("Failed to create summary plot(s)", exc_info=True)
+                # finish milling (clear patterns, restore imaging current)
+                finish_milling(
+                    microscope=microscope,
+                    imaging_current=microscope.system.ion.beam.beam_current,
+                    imaging_voltage=microscope.system.ion.beam.voltage,
                 )
-            except Exception:
-                _logger.error("Failed to create summary plot(s)", exc_info=True)
-            # finish milling (clear patterns, restore imaging current)
-            finish_milling(
-                microscope=microscope,
-                imaging_current=microscope.system.ion.beam.beam_current,
-                imaging_voltage=microscope.system.ion.beam.voltage,
-            )
-            microscope.reset_beam_shifts()
 
     def _run_milling_cycle(
         self,
@@ -619,3 +621,15 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             results=results_dataframes[0],
             save_path=save_directory / f"{lamella_name}_GIS_thickness.png",
         )
+
+    @contextmanager
+    def _restore_beam_shifts(
+        self, microscope: FibsemMicroscope
+    ) -> typing.Generator[None, None, None]:
+        sem_shift = microscope.get("shift", BeamType.ELECTRON)
+        fib_shift = microscope.get("shift", BeamType.ION)
+        try:
+            yield None
+        finally:
+            microscope.set("shift", sem_shift, BeamType.ELECTRON)
+            microscope.set("shift", fib_shift, BeamType.ION)
