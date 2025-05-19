@@ -8,7 +8,7 @@ class ExceptionForMocking(Exception):
 
 
 def assert_raises(
-    exception: typing.Union[BaseException, None],
+    exception: typing.Union[type[BaseException], None],
 ):  # -> type[DummyClass] | RaisesContext:# -> type[DummyClass] | RaisesContext:# -> type[DummyClass] | RaisesContext:
     @contextmanager
     def dummy_context() -> typing.Generator[None, None, None]:

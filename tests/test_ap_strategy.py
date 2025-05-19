@@ -367,8 +367,9 @@ def test_results_saved(
 
     lamella_directory = tmp_path / "lamella"
     lamella_directory.mkdir()
+    adaptive_polish_dir = lamella_directory / f"adaptive_polish_{TIMESTAMP}"  #
+
     sem_imaging_settings.path = lamella_directory
-    adaptive_polish_dir = lamella_directory / f"adaptive_polish_{TIMESTAMP}"
 
     # Necessary to set imaging settings path
     sem_image, _ = acquire.take_reference_images(microscope, sem_imaging_settings)
@@ -514,6 +515,7 @@ def test_align_beam(
     microscope, settings = fibsem_utils.setup_session(
         config_path=microscope_config_path
     )
+    settings.image.path = tmp_path
 
     # Necessary to set imaging settings path
     sem_image, _ = acquire.take_reference_images(microscope, settings.image)
@@ -627,6 +629,8 @@ def test_check_lamella(
     elif failure_reason == "none":
         saves_results = True
         exception = None
+    else:
+        raise NotImplementedError(f"Invalid failure reason {failure_reason}")
 
     ap_config = ap_strategy.AdaptivePolishMillingConfig(
         model_generation=sem_segmentation_model[0],
@@ -692,6 +696,7 @@ def test_load_model(mock_load_sem_model, mock_is_file, file_exists: bool) -> Non
     else:
         mock_load_sem_model.assert_not_called()
         assert strategy.model is None
+
 
 def test_restore_beam_shifts(
     microscope_config_demo2_path: Path,
