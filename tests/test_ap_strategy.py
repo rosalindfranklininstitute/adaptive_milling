@@ -692,3 +692,49 @@ def test_load_model(mock_load_sem_model, mock_is_file, file_exists: bool) -> Non
     else:
         mock_load_sem_model.assert_not_called()
         assert strategy.model is None
+
+def test_restore_beam_shifts(
+    microscope_config_demo2_path: Path,
+    tmp_path: Path,
+    fib_image_dir: Path,
+    sem_image_dir: Path,
+) -> None:
+    microscope, settings = setup_microscope_and_settings(
+        microscope_config_demo2_path,
+        tmp_path,
+        fib_image_dir=str(fib_image_dir),
+        sem_image_dir=str(sem_image_dir),
+    )
+    initial_electron_shift = Point(-11, 12)
+    initial_ion_shift = Point(50, -20)
+
+    new_electron_shift = Point(20, -80)
+    new_ion_shift = Point(-2, 10)
+
+    microscope.set("shift", initial_electron_shift, BeamType.ELECTRON)
+    microscope.set("shift", initial_ion_shift, BeamType.ION)
+
+    assert microscope.get("shift", BeamType.ELECTRON) == initial_electron_shift, (
+        "Failed to set electron beam shift"
+    )
+    assert microscope.get("shift", BeamType.ION) == initial_ion_shift, (
+        "Failed to set ion beam shift"
+    )
+
+    with ap_strategy._restore_beam_shifts(microscope):
+        microscope.set("shift", new_electron_shift, BeamType.ELECTRON)
+        microscope.set("shift", new_ion_shift, BeamType.ION)
+
+        assert microscope.get("shift", BeamType.ELECTRON) == new_electron_shift, (
+            "Failed to set electron beam shift"
+        )
+        assert microscope.get("shift", BeamType.ION) == new_ion_shift, (
+            "Failed to set ion beam shift"
+        )
+
+    assert microscope.get("shift", BeamType.ELECTRON) == initial_electron_shift, (
+        "Failed to restore electron beam shift"
+    )
+    assert microscope.get("shift", BeamType.ION) == initial_ion_shift, (
+        "Failed to restore ion beam shift"
+    )
