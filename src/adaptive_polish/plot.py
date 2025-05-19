@@ -137,7 +137,8 @@ def create_milling_cycle_plot(
     if total_milling_time is not None:
         plot_title = f"{plot_title}\nMilling time: {total_milling_time:.2f} s"
 
-    fig.suptitle(plot_title)
+    if plot_title is not None:
+        fig.suptitle(plot_title)
 
     # SEM
     _ = axs[0, 0].imshow(sem_image, cmap="Greys_r")
