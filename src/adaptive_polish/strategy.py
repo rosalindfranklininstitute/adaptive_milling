@@ -61,6 +61,18 @@ def results_entry_helper(
             key: results.get(key, None) for key in df.columns.values
         }
 
+@contextmanager
+def _restore_beam_shifts(
+    microscope: FibsemMicroscope,
+) -> typing.Generator[None, None, None]:
+    sem_shift = microscope.get("shift", BeamType.ELECTRON)
+    fib_shift = microscope.get("shift", BeamType.ION)
+    try:
+        yield None
+    finally:
+        microscope.set("shift", sem_shift, BeamType.ELECTRON)
+        microscope.set("shift", fib_shift, BeamType.ION)
+
 
 @dataclass
 class AdaptivePolishMillingStrategy(MillingStrategy):
@@ -124,7 +136,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         if self.model is None:
             self._load_model()
 
-        with self._restore_beam_shifts(microscope):
+        with _restore_beam_shifts(microscope):
             # align SEM
             lamella_centre_m = None
             if self.config.align_sem:
@@ -621,15 +633,3 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             results=results_dataframes[0],
             save_path=save_directory / f"{lamella_name}_GIS_thickness.png",
         )
-
-    @contextmanager
-    def _restore_beam_shifts(
-        self, microscope: FibsemMicroscope
-    ) -> typing.Generator[None, None, None]:
-        sem_shift = microscope.get("shift", BeamType.ELECTRON)
-        fib_shift = microscope.get("shift", BeamType.ION)
-        try:
-            yield None
-        finally:
-            microscope.set("shift", sem_shift, BeamType.ELECTRON)
-            microscope.set("shift", fib_shift, BeamType.ION)
