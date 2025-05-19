@@ -53,7 +53,7 @@ if typing.TYPE_CHECKING:
 _logger = logging.getLogger(__name__)
 
 
-def results_entry_helper(
+def _results_entry_helper(
     *dfs: DataFrame, milling_cycle: int, results: typing.Dict[str, typing.Any]
 ) -> None:
     for df in dfs:
@@ -618,7 +618,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         save_directory: Path,
     ) -> None:
         # Ensure results are always added and saved
-        results_entry_helper(
+        _results_entry_helper(
             *results_dataframes,
             milling_cycle=milling_cycle,
             results=results_dict,
