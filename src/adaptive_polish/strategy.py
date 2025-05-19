@@ -284,6 +284,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         sem_imaging_settings.dwell_time = (
             self.config.sem_dwell_time_us * constants.MICRO_TO_SI
         )
+        sem_imaging_settings.resolution = [3072, 2048]
 
         _logger.debug("Adaptive polish FIB settings: %s", str(fib_imaging_settings))
         _logger.debug("Adaptive polish SEM settings: %s", str(sem_imaging_settings))
