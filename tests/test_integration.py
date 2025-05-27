@@ -130,6 +130,13 @@ def test_runs(
         "The strategy and protocol configs do not match"
     )
 
+    # Set stage imaging settings
+    milling_stages[0].imaging.resolution = [3072, 2048]
+    milling_stages[0].imaging.hfw = 4e-5
+    milling_stages[0].imaging.dwell_time = 2e-7
+    milling_stages[0].imaging.frame_integration = 2
+    milling_stages[0].imaging.path = str(lamella_directory)
+
     # Check milling loop runs but exits at the end of loop calls_before_exception + 1
     with patch.object(
         microscope,
