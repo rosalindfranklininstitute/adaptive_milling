@@ -635,6 +635,26 @@ class Gen1ImprovedPreprocessingFPNModel(Gen1Model):
             model_type="fpn",
         )
 
+class Gen1RGBImprovedPreprocessingFPNModel(Gen1Model):
+    def __init__(
+        self,
+        model_path: typing.Union[str, PathLike],
+        device: torch.DeviceLikeType,
+        max_image_size: int = 1536,
+    ) -> None:
+        super().__init__(
+            model_path=model_path,
+            device=device,
+            max_image_size=max_image_size,
+            encoder_name="efficientnet-b6",
+            pad=False,
+            rgb=True,
+            normalise_first=True,
+            normalise_version=2,
+            resize_version="pytorch",
+            model_type="fpn",
+        )
+
 
 # Using str keys allows for semantic versioning
 MODEL_GENERATIONS_DICT: dict[str, type[AbstractAdaptivePolishingModel]] = {
@@ -649,6 +669,7 @@ MODEL_GENERATIONS_DICT: dict[str, type[AbstractAdaptivePolishingModel]] = {
     "1.3p": Gen1ImprovedPreprocessingPerformanceModel,
     "1.3q": Gen1ImprovedPreprocessingQualityModel,
     "1.3fpn": Gen1ImprovedPreprocessingFPNModel,
+    "1.4fpn": Gen1RGBImprovedPreprocessingFPNModel,
 }
 
 

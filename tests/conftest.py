@@ -43,6 +43,7 @@ _MODEL_PATHS = {
         / "gen01_quality_1536_v7_FPN"
         / "gen01_quality_1536_v7_FPN.pth"
     ],
+    "1.4fpn": [_MODELS_PATH / "Gen1" / "gen01_V8_FPN_RGB" / "cryo_sem_epoch_49.pth"],
 }
 
 assert _MODELS_PATH.is_dir(), "SEM models path does not exist"
