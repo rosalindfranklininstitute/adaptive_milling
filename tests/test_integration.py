@@ -100,7 +100,7 @@ def test_runs(
     expected_loops = calls_before_exception + 1
 
     # connect to microscope
-    microscope, settings = utils.setup_session(config_path=microscope_config_path)
+    microscope, _ = utils.setup_session(config_path=microscope_config_path)
 
     # Check Autolamella loads protocol correctly
     protocol = AutoLamellaProtocol.load(protocol_path)
@@ -117,11 +117,6 @@ def test_runs(
     lamella_directory = tmp_path / "lamella"
     lamella_directory.mkdir()
     adaptive_polish_dir = lamella_directory / f"adaptive_polish_{TIMESTAMP}"
-
-    settings.image.path = lamella_directory
-
-    # Necessary to set imaging settings path
-    acquire.take_reference_images(microscope, settings.image)
 
     # Check fibsem loads protocol and loads strategy correctly
     protocol = validate_protocol(utils.load_protocol(protocol_path=protocol_path))
