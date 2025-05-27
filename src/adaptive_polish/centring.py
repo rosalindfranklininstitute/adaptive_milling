@@ -1,5 +1,6 @@
-import typing
+from __future__ import annotations
 from dataclasses import dataclass
+import typing
 
 import numpy as np
 
@@ -8,6 +9,10 @@ from fibsem.structures import Point
 from fibsem.detection.detection import AdaptiveLamellaCentre
 
 from adaptive_polish.exceptions import CentringException
+
+if typing.TYPE_CHECKING:
+    from numpy.typing import NDArray
+
 
 @dataclass
 class AdaptivePolishLamellaCentre(AdaptiveLamellaCentre):
@@ -39,11 +44,9 @@ class AdaptivePolishLamellaCentre(AdaptiveLamellaCentre):
 
 
 def get_mask_bounding_box(
-    mask: np.typing.NDArray[np.bool_],
+    mask: NDArray[np.bool_],
     edge_finding: typing.Literal["median", "mean", "min", "max"] = "median",
-) -> typing.Union[
-    typing.Tuple[int, int, int, int], typing.Tuple[float, float, float, float]
-]:
+) -> typing.Tuple[float, float, float, float]:
     if edge_finding == "median":
         edge_fn_min = np.median
         edge_fn_max = np.median
@@ -97,7 +100,7 @@ def get_centre_from_bounding_box(
 
 
 def get_lamella_centre(
-    array: np.typing.NDArray[np.bool_],
+    array: NDArray[np.bool_],
     edge_finding: typing.Literal["median", "mean"] = "median",
     subpixel_accuracy: bool = False,
 ) -> typing.Union[typing.Tuple[int, int], typing.Tuple[float, float]]:
@@ -106,12 +109,10 @@ def get_lamella_centre(
 
 
 def get_bounding_box_scaled_to_image(
-    image: np.typing.NDArray[typing.Any],
-    mask: np.typing.NDArray[np.bool_],
+    image: NDArray[typing.Any],
+    mask: NDArray[np.bool_],
     edge_finding: typing.Literal["median", "mean", "min", "max"] = "median",
-) -> typing.Union[
-    typing.Tuple[int, int, int, int], typing.Tuple[float, float, float, float]
-]:
+) -> typing.Tuple[float, float, float, float]:
     # This does assume square pixels
     if image.shape[1] == mask.shape[1]:
         prediction_to_image_scale_multiplier = 1
@@ -120,15 +121,17 @@ def get_bounding_box_scaled_to_image(
 
     bbox_mask = get_mask_bounding_box(mask, edge_finding=edge_finding)
 
-    bbox_image = tuple(_ * prediction_to_image_scale_multiplier for _ in bbox_mask)
-    return bbox_image
+    return (
+        bbox_mask[0] * prediction_to_image_scale_multiplier,
+        bbox_mask[1] * prediction_to_image_scale_multiplier,
+        bbox_mask[2] * prediction_to_image_scale_multiplier,
+        bbox_mask[3] * prediction_to_image_scale_multiplier,
+    )
 
 
 def get_centre_points_from_bounding_box(
-    bbox: typing.Union[
-        typing.Tuple[int, int, int, int], typing.Tuple[float, float, float, float]
-    ],
-    image: np.typing.NDArray[typing.Any],
+    bbox: typing.Tuple[float, float, float, float],
+    image: NDArray[typing.Any],
     pixel_size_m: float,
 ) -> tuple[Point, Point]:
     centre_px = get_centre_from_bounding_box(bbox, subpixel_accuracy=True)
