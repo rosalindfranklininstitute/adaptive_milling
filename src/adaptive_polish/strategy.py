@@ -254,6 +254,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         sem_image = acquire.new_image(microscope, sem_imaging_settings)
         fib_imaging_settings.filename = f"{image_name}_FIB.tif"
         fib_image = acquire.new_image(microscope, fib_imaging_settings)
+
         self._check_lamella(
             milling_cycle,
             image_name=image_name,
