@@ -142,9 +142,15 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             lamella_centre_m = None
             if self.config.align_sem:
                 try:
+                    alignment_sem_imaging_settings = deepcopy(sem_imaging_settings)
+                    # Set path and name in case save is set to True
+                    alignment_sem_imaging_settings.path = lamella_ap_folder
+                    alignment_sem_imaging_settings.filename = (
+                        f"{lamella_name}_centring_SEM.tif"
+                    )
                     lamella_centre_m = self._align_beam(
                         microscope=microscope,
-                        sem_imaging_settings=sem_imaging_settings,
+                        sem_imaging_settings=alignment_sem_imaging_settings,
                         plot_path=lamella_ap_folder / "centring.png",
                     )
                 except SegmentationException:
