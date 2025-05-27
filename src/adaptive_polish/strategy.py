@@ -554,6 +554,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
         centre_m: typing.Optional[Point] = None
         centre_px: typing.Optional[Point] = None
+        lamella_bbox: typing.Optional[tuple[float, float, float, float]] = None
         try:
             lamella_bbox = get_bounding_box_scaled_to_image(
                 sem_image.data,
@@ -564,6 +565,20 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 image=sem_image.data,
                 pixel_size_m=sem_image.metadata.pixel_size.x,
             )
+            initial_beam_shift = microscope.get("shift", BeamType.ELECTRON)
+            expected_new_beam_shift = initial_beam_shift - centre_m
+
+            # shift beam
+            dx, dy = -centre_m.x, -centre_m.y
+            microscope.beam_shift(dx, dy, BeamType.ELECTRON)
+
+            new_beam_shift = microscope.get("shift", BeamType.ELECTRON)
+
+            new_lamella_centre_m = new_beam_shift - expected_new_beam_shift
+
+            _logger.info("Completed SEM beam alignment")
+
+            return new_lamella_centre_m
         finally:
             if plot_path is not None:
                 create_centring_plot(
@@ -575,21 +590,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                     plot_path=plot_path,
                     bounding_box=lamella_bbox,
                 )
-
-        initial_beam_shift = microscope.get("shift", BeamType.ELECTRON)
-        expected_new_beam_shift = initial_beam_shift - centre_m
-
-        # shift beam
-        dx, dy = -centre_m.x, -centre_m.y
-        microscope.beam_shift(dx, dy, BeamType.ELECTRON)
-
-        new_beam_shift = microscope.get("shift", BeamType.ELECTRON)
-
-        new_lamella_centre_m = new_beam_shift - expected_new_beam_shift
-
-        _logger.info("Completed SEM beam alignment")
-
-        return new_lamella_centre_m
 
     def _get_drift_too_large(self, centre_drift_um: float) -> bool:
         return centre_drift_um > float(self.config.maximum_drift_um)
