@@ -110,18 +110,14 @@ def test_ap_folders_created(
     )
     stage = stages[0]
 
-    microscope, settings = setup_microscope_and_settings(
-        microscope_config_path, tmp_path
-    )
+    microscope, _ = setup_microscope_and_settings(microscope_config_path, tmp_path)
 
     strategy = ap_strategy.AdaptivePolishMillingStrategy(config=ap_config)
 
     lamella_directory = tmp_path / "lamella"
     lamella_directory.mkdir()
-    settings.image.path = lamella_directory
 
-    # Necessary to set imaging settings path
-    acquire.take_reference_images(microscope, settings.image)
+    stage.imaging.path = lamella_directory
 
     with pytest.raises(FileNotFoundError):
         # This will raise an error but should make directories first
@@ -150,18 +146,11 @@ def test_loads_sem_model_on_first_run(
     )
     stage = stages[0]
 
-    microscope, settings = setup_microscope_and_settings(
-        microscope_config_path, tmp_path
-    )
+    microscope, _ = setup_microscope_and_settings(microscope_config_path, tmp_path)
 
     strategy = ap_strategy.AdaptivePolishMillingStrategy(config=ap_config)
 
-    lamella_directory = tmp_path / "lamella"
-    lamella_directory.mkdir()
-    settings.image.path = lamella_directory
-
-    # Necessary to set imaging settings path
-    acquire.take_reference_images(microscope, settings.image)
+    stage.imaging.path = tmp_path
 
     with patch.object(strategy, "_load_model") as mock_load_model:
         mock_setup_results_df.side_effect = utils.ExceptionForMocking
@@ -201,19 +190,15 @@ def test_reference_images_saved_correctly(
         ap_config.to_dict(), protocol_template_path, tmp_path
     )
 
-    microscope, settings = setup_microscope_and_settings(
-        microscope_config_path, tmp_path
-    )
+    microscope, _ = setup_microscope_and_settings(microscope_config_path, tmp_path)
     stage = stages[0]
 
     strategy = ap_strategy.AdaptivePolishMillingStrategy(config=ap_config)
 
     lamella_directory = tmp_path / "lamella"
     lamella_directory.mkdir()
-    settings.image.path = lamella_directory
 
-    # Necessary to set imaging settings path
-    acquire.take_reference_images(microscope, settings.image)
+    stage.imaging.path = lamella_directory
 
     with patch.object(strategy, "model") as mock_model:
         # Exit test at prediction step
@@ -262,7 +247,7 @@ def test_max_milling_cycles_not_exceeded(
     )
     stage = stages[0]
 
-    microscope, settings = setup_microscope_and_settings(
+    microscope, _ = setup_microscope_and_settings(
         microscope_config_path,
         tmp_path,
         fib_image_dir=str(fib_image_dir),
@@ -273,12 +258,10 @@ def test_max_milling_cycles_not_exceeded(
 
     lamella_directory = tmp_path / "lamella"
     lamella_directory.mkdir()
-    settings.image.path = lamella_directory
+
+    stage.imaging.path = lamella_directory
 
     lamella_ap_folder = lamella_directory / f"adaptive_polish_{TIMESTAMP}"
-
-    # Necessary to set imaging settings path
-    acquire.take_reference_images(microscope, settings.image)
 
     # Stop it trying to load a model
     with (
@@ -354,6 +337,12 @@ def test_results_saved(
     )
     stage = stages[0]
 
+    lamella_directory = tmp_path / "lamella"
+    lamella_directory.mkdir()
+    adaptive_polish_dir = lamella_directory / f"adaptive_polish_{TIMESTAMP}"  #
+
+    stage.imaging.path = lamella_directory
+
     microscope, _ = setup_microscope_and_settings(
         microscope_config_path,
         tmp_path,
@@ -363,15 +352,8 @@ def test_results_saved(
 
     strategy = ap_strategy.AdaptivePolishMillingStrategy(config=ap_config)
 
-    _, sem_imaging_settings = strategy._update_imaging_settings(microscope)
+    _, sem_imaging_settings = strategy._get_imaging_settings(stage)
 
-    lamella_directory = tmp_path / "lamella"
-    lamella_directory.mkdir()
-    adaptive_polish_dir = lamella_directory / f"adaptive_polish_{TIMESTAMP}"  #
-
-    sem_imaging_settings.path = lamella_directory
-
-    # Necessary to set imaging settings path
     sem_image, _ = acquire.take_reference_images(microscope, sem_imaging_settings)
 
     # Use this resolution to avoid any scaling so know the exact output
