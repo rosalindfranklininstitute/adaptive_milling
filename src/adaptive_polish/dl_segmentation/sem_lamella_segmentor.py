@@ -91,13 +91,13 @@ def normalize_by_mean_std_with_clip(image, **kwargs):
 
 
 class AbstractAdaptivePolishingModel(ABC):
+
     def __init__(
         self,
         model_path: typing.Union[str, PathLike],
         device: torch.DeviceLikeType,
-        num_classes: int,
     ) -> None:
-        self.num_classes = num_classes
+        self.num_classes: int
         self.model_path: Path = Path(model_path)
         self.device: torch.DeviceLikeType = torch.device(device)
         self.model: torch.nn.Module = self.load(model_path).to(self.device)
@@ -172,7 +172,8 @@ class Gen0Model(AbstractAdaptivePolishingModel):
         max_image_size: int = 512,
     ) -> None:
         self._image_size = max_image_size
-        super().__init__(model_path=model_path, device=device, num_classes=4)
+        self.num_classes = 4
+        super().__init__(model_path=model_path, device=device)
 
     def _preprocess(self, image: NDArray[typing.Any]) -> torch.Tensor:
         smallest_dim = min(*image.shape)
@@ -279,7 +280,8 @@ class Gen1Model(AbstractAdaptivePolishingModel):
         self._normalise_function = self._get_normalisation_function(normalise_version)
         self._resize_function = self._get_resize_function(resize_version)
 
-        super().__init__(model_path=model_path, device=device, num_classes=5)
+        self.num_classes = 5
+        super().__init__(model_path=model_path, device=device)
 
     def _get_normalisation_function(
         self, normalise_version: int
@@ -635,7 +637,7 @@ class Gen1ImprovedPreprocessingFPNModel(Gen1Model):
 
 
 # Using str keys allows for semantic versioning
-MODEL_GENERATIONS_DICT: dict[str, AbstractAdaptivePolishingModel] = {
+MODEL_GENERATIONS_DICT: dict[str, type[AbstractAdaptivePolishingModel]] = {
     "0": Gen0Model,
     "1.0p": Gen1PerformanceModel,  # v<=3
     "1.0q": Gen1QualityModel,  # v<=3
@@ -667,14 +669,16 @@ def load_model(
         # If no generation is specified, get the latest generation one
         generation = _get_newest_generation_key()
 
-    elif generation not in MODEL_GENERATIONS_DICT:
+    generation = str(generation)
+    if generation not in MODEL_GENERATIONS_DICT:
         raise ValueError(
             f"Invalid model generation '{generation}' specified, available generations are: {', '.join(MODEL_GENERATIONS_DICT.keys())}"
         )
 
     _logger.info("Loading %s generation model", generation)
-    model_class = MODEL_GENERATIONS_DICT.get(str(generation), None)
-
+    model_class = MODEL_GENERATIONS_DICT[generation]
+    if model_class is None:
+        raise ValueError("%s")
     try:
         return model_class(model_path, device=device)
     except Exception:
