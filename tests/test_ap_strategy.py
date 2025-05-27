@@ -593,7 +593,7 @@ def test_align_beam(
 def test_check_lamella(
     failure_reason: str,
     microscope_config_demo2_path: Path,
-    sem_segmentation_model: tuple[str, Path],
+    latest_sem_segmentation_model: tuple[str, Path],
     fib_image_dir: Path,
     sem_image_dir: Path,
     tmp_path: Path,
@@ -633,8 +633,8 @@ def test_check_lamella(
         raise NotImplementedError(f"Invalid failure reason {failure_reason}")
 
     ap_config = ap_strategy.AdaptivePolishMillingConfig(
-        model_generation=sem_segmentation_model[0],
-        model_path=sem_segmentation_model[1],
+        model_generation=latest_sem_segmentation_model[0],
+        model_path=latest_sem_segmentation_model[1],
         **pass_checks_kwargs,
     )
 

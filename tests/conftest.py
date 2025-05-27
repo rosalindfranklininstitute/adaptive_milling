@@ -47,9 +47,10 @@ _MODEL_PATHS = {
 
 assert _MODELS_PATH.is_dir(), "SEM models path does not exist"
 
-
+@pytest.fixture(scope="session")
 def latest_sem_segmentation_model() -> tuple[str, Path]:
-    return tuple(tuple(_MODEL_PATHS.items())[-1])
+    model_name, model_paths = tuple(_MODEL_PATHS.items())[-1]
+    return model_name, model_paths[-1]
 
 
 @pytest.fixture(
