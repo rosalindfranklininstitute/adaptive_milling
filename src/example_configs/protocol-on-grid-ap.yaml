@@ -103,6 +103,12 @@ milling:
       patterning_mode: Parallel
       application_file: Si
       preset: ''
+    imaging:
+        dwell_time: 2.0e-06
+        hfw: 4e-5
+        resolution:
+          - 3072
+          - 2048
     name: Adaptive Polishing
     pattern:
       width: 1.0e-05
