@@ -273,7 +273,9 @@ def test_max_milling_cycles_not_exceeded(
         # Ensure no extra rounds of milling are run
         mock_mill.assert_has_calls(
             [
-                call(microscope=microscope, stage=stage)
+                call(
+                    _, microscope=microscope, stage=stage, asynch=False, parent_ui=None
+                )
                 for _ in range(max_milling_cycles)
             ]
         )
@@ -369,7 +371,9 @@ def test_results_saved(
         )
         mock_mill.assert_has_calls(
             [
-                call(microscope=microscope, stage=stage)
+                call(
+                    _, microscope=microscope, stage=stage, asynch=False, parent_ui=None
+                )
                 for _ in range(max_milling_cycles)
             ]
         )

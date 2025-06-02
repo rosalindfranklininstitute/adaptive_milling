@@ -92,7 +92,9 @@ def test_methods_equivalent_for_simple_rectangle() -> None:
     # Required to be fairly big due to `detect_centre_point` threshold defaulting to 500
     test_lamella = SimpleRectangleLamellaMask((1000, 2000))
     centre_1 = AdaptiveLamellaCentre().detect(
-        test_lamella.array, mask=test_lamella.array
+        # Expects the lamella to be labelled as 2
+        test_lamella.array,
+        mask=test_lamella.array.astype(np.uint8) * 2,
     )
     centre_2 = AdaptivePolishLamellaCentre().detect(
         test_lamella.array, mask=test_lamella.array
@@ -113,20 +115,19 @@ def test_relative_speed() -> None:
     centre_feature_1 = AdaptiveLamellaCentre()
     centre_feature_2 = AdaptivePolishLamellaCentre()
 
+    # Expects the lamella to be labelled as 2
+    mask = (test_lamella.array.astype(np.uint8) * 2,)
+
     centre_1_time = (
         timeit(
-            lambda: centre_feature_1.detect(
-                test_lamella.array, mask=test_lamella.array
-            ),
+            lambda: centre_feature_1.detect(test_lamella.array, mask=mask),
             number=repeats,
         )
         / repeats
     )
     centre_2_time = (
         timeit(
-            lambda: centre_feature_2.detect(
-                test_lamella.array, mask=test_lamella.array
-            ),
+            lambda: centre_feature_2.detect(test_lamella.array, mask=mask == 2),
             number=repeats,
         )
         / repeats
