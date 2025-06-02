@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "adaptive_polish"
-description = "Adaptive polishing"
+description = "Adaptive polishing strategy for OpenFIBSEM"
 license = { file = "LICENSE" }
 dynamic = [
   "version",
@@ -73,6 +73,10 @@ exclude = [
   "tests",
   "scripts",
 ]
+
+[project.entry-points.'fibsem.strategies']
+# Make the strategy discoverable by fibsem
+adaptive_polish = "adaptive_polish.strategy:AdaptivePolishMillingStrategy"
 
 [tool.pytest.ini_options]
 addopts = "-vvvv --cov=src --cov-report term --cov-report html -p no:faulthandler -p no:napari -p no:napari-plugin-engine -p no:npe2"
