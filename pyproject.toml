@@ -61,6 +61,8 @@ test = [
 ]
 dev = [
   "ruff",
+  "jupyter",
+  "ipywidgets",
 ]
 
 [tool.setuptools.packages.find]
@@ -80,8 +82,3 @@ testpaths = [
 
 [tool.mypy]
 mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
-
-[tool.ruff]
-exclude = [
-  "src/scripts/*",
-]
