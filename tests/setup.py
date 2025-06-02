@@ -11,32 +11,6 @@ import numpy as np
 if typing.TYPE_CHECKING:
     from numpy.typing import NDArray
 
-
-def setup_test_microscope_config(
-    microscope_template_path: Path,
-    temporary_directory: Path,
-    fib_image_dir: typing.Optional[str] = None,
-    sem_image_dir: typing.Optional[str] = None,
-    cycle_images: bool = True,
-) -> Path:
-    """Sets up a demo microscope"""
-    with microscope_template_path.open() as f:
-        microscope_template_dict = yaml.safe_load(f)
-
-    # Update protocol from config
-    microscope_template_dict["demo2"] = {
-        "SEM_folder_path_str": sem_image_dir,
-        "FIB_folder_path_str": fib_image_dir,
-        "cycle": cycle_images,
-    }
-
-    microscope_config_path = temporary_directory / "microscope.yaml"
-    with microscope_config_path.open("w") as f:
-        yaml.safe_dump(microscope_template_dict, f)
-
-    return microscope_config_path
-
-
 def setup_protocol_path(
     protocol_template_path: Path,
     temporary_directory: Path,

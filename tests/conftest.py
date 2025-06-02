@@ -95,15 +95,6 @@ def microscope_config_path() -> Path:
 
 
 @pytest.fixture(scope="session")
-def microscope_config_demo2_path() -> Path:
-    return (
-        Path(str(resources.files("fibsem")))
-        / "config"
-        / "microscope-configuration-demo2.yaml"
-    ).resolve()
-
-
-@pytest.fixture(scope="session")
 def fib_image_dir() -> Path:
     return (Path(__file__).parent / "data" / "images" / "fib").resolve()
 

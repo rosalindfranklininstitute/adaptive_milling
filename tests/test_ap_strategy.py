@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from fibsem import utils as fibsem_utils, acquire
-from fibsem.structures import BeamType, Point
+from fibsem.structures import BeamType, Point, FibsemImage
 from fibsem.milling.base import get_milling_stages
 from autolamella.protocol.validation import validate_protocol
 
@@ -34,16 +34,11 @@ TIMESTAMP = "timestamp"
 
 
 def setup_microscope_and_settings(
-    microscope_config_path: Path,
-    temporary_path: Path,
-    fib_image_dir: typing.Optional[str] = None,
-    sem_image_dir: typing.Optional[str] = None,
+    microscope_config_path: Path, temporary_path: Path
 ) -> tuple[FibsemMicroscope, MicroscopeSettings]:
     microscope_config_path = setup.setup_test_microscope_config(
         microscope_template_path=microscope_config_path,
         temporary_directory=temporary_path,
-        fib_image_dir=fib_image_dir,
-        sem_image_dir=sem_image_dir,
     )
     return fibsem_utils.setup_session(config_path=microscope_config_path)
 
@@ -477,7 +472,7 @@ def test_results_saved(
 def test_align_beam(
     mock_get_bounding_box_scaled_to_image,
     hits_limits,
-    microscope_config_demo2_path: Path,
+    microscope_config_path: Path,
     sem_image_dir: Path,
     fib_image_dir: Path,
     tmp_path: Path,
@@ -486,7 +481,7 @@ def test_align_beam(
     ap_config = ap_strategy.AdaptivePolishMillingConfig(model_path="path/to/model.file")
 
     microscope_config_path = setup.setup_test_microscope_config(
-        microscope_config_demo2_path,
+        microscope_config_path,
         tmp_path,
         fib_image_dir=str(fib_image_dir),
         sem_image_dir=str(sem_image_dir),
@@ -575,7 +570,6 @@ def test_align_beam(
 )
 def test_check_lamella(
     failure_reason: str,
-    microscope_config_demo2_path: Path,
     latest_sem_segmentation_model: tuple[str, Path],
     fib_image_dir: Path,
     sem_image_dir: Path,
@@ -621,20 +615,15 @@ def test_check_lamella(
         **pass_checks_kwargs,
     )
 
-    microscope, settings = setup_microscope_and_settings(
-        microscope_config_demo2_path,
-        tmp_path,
-        fib_image_dir=str(fib_image_dir),
-        sem_image_dir=str(sem_image_dir),
-    )
 
     strategy = ap_strategy.AdaptivePolishMillingStrategy(config=ap_config)
     strategy._load_model()
 
-    settings.image.path = lamella_ap_folder
-
-    # Necessary to set imaging settings path
-    sem_image, fib_image = acquire.take_reference_images(microscope, settings.image)
+    # open images
+    fib_image_path = next(fib_image_dir.glob("*.tif"))
+    sem_image_path = next(sem_image_dir.glob("*.tif"))
+    fib_image = FibsemImage.load(fib_image_path)
+    sem_image = FibsemImage.load(sem_image_path)
 
     with utils.assert_raises(exception):
         strategy._check_lamella(
@@ -681,18 +670,8 @@ def test_load_model(mock_load_sem_model, mock_is_file, file_exists: bool) -> Non
         assert strategy.model is None
 
 
-def test_restore_beam_shifts(
-    microscope_config_demo2_path: Path,
-    tmp_path: Path,
-    fib_image_dir: Path,
-    sem_image_dir: Path,
-) -> None:
-    microscope, settings = setup_microscope_and_settings(
-        microscope_config_demo2_path,
-        tmp_path,
-        fib_image_dir=str(fib_image_dir),
-        sem_image_dir=str(sem_image_dir),
-    )
+def test_restore_beam_shifts(microscope_config_path: Path, tmp_path: Path) -> None:
+    microscope, _ = setup_microscope_and_settings(microscope_config_path, tmp_path)
     initial_electron_shift = Point(-11, 12)
     initial_ion_shift = Point(50, -20)
 

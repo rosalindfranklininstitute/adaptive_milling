@@ -3,10 +3,12 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 import functools
+import itertools
 import typing
 from pathlib import Path
 
-from fibsem import utils, acquire
+from fibsem import utils
+from fibsem.structures import FibsemImage, BeamType
 from fibsem.milling import get_milling_stages, mill_stages
 
 from autolamella.protocol.validation import validate_protocol
@@ -17,6 +19,7 @@ from . import setup
 
 if typing.TYPE_CHECKING:
     from pathlib import Path
+    from fibsem.structures import ImageSettings
 
 _AP_MILLING_CONFIG_SETTINGS = {
     "align_sem": True,
@@ -34,22 +37,6 @@ TIMESTAMP = "timestamp"
 
 
 @pytest.fixture
-def microscope_config_path(
-    microscope_config_demo2_path: Path,
-    fib_image_dir: Path,
-    sem_image_dir: Path,
-    tmp_path: Path,
-) -> Path:
-    return setup.setup_test_microscope_config(
-        microscope_config_demo2_path,
-        tmp_path,
-        fib_image_dir=str(fib_image_dir),
-        sem_image_dir=str(sem_image_dir),
-        cycle_images=True,
-    )
-
-
-@pytest.fixture
 def protocol_path(
     protocol_template_path: Path,
     tmp_path: Path,
@@ -64,6 +51,22 @@ def protocol_path(
     return setup.setup_protocol_path(
         protocol_template_path, tmp_path, ap_config.to_dict(), ap_only=True
     )
+
+
+def create_dummy_acquire_image_function(
+    fib_image_dir: Path, sem_image_dir: Path
+) -> typing.Callable[[ImageSettings], FibsemImage]:
+    fib_image_paths = itertools.cycle(fib_image_dir.glob("*.tif"))
+    sem_image_paths = itertools.cycle(sem_image_dir.glob("*.tif"))
+
+    def dummy_acquire_image(image_settings: ImageSettings) -> FibsemImage:
+        if image_settings.beam_type == BeamType.ELECTRON:
+            return FibsemImage.load(next(sem_image_paths))
+        elif image_settings.beam_type == BeamType.ION:
+            return FibsemImage.load(next(fib_image_paths))
+        raise ValueError(f"Invalid beam time {image_settings.beam_type}")
+
+    return dummy_acquire_image
 
 
 def raise_error_after_num_calls(
@@ -94,6 +97,8 @@ def raise_error_after_num_calls(
 def test_runs(
     microscope_config_path: Path,
     protocol_path: Path,
+    fib_image_dir: Path,
+    sem_image_dir: Path,
     tmp_path: Path,
 ) -> None:
     calls_before_exception = 1
@@ -134,15 +139,25 @@ def test_runs(
     milling_stages[0].imaging.path = str(lamella_directory)
 
     # Check milling loop runs but exits at the end of loop calls_before_exception + 1
-    with patch.object(
-        microscope,
-        "stop_milling",
-        MagicMock(
-            side_effect=raise_error_after_num_calls(
-                microscope.stop_milling, calls_before_exception=calls_before_exception
-            )
+    with (
+        patch.object(
+            microscope,
+            "acquire_image",
+            new=create_dummy_acquire_image_function(
+                fib_image_dir=fib_image_dir, sem_image_dir=sem_image_dir
+            ),
         ),
-    ) as mock_stop_milling:
+        patch.object(
+            microscope,
+            "stop_milling",
+            MagicMock(
+                side_effect=raise_error_after_num_calls(
+                    microscope.stop_milling,
+                    calls_before_exception=calls_before_exception,
+                )
+            ),
+        ) as mock_stop_milling,
+    ):
         # run milling stages
         mill_stages(microscope=microscope, stages=milling_stages)
 
