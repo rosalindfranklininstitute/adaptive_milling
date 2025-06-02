@@ -39,6 +39,8 @@ dependencies = [
   "albumentations",
   "segmentation-models-pytorch >= 0.4.0",
   "jinja2",
+  "fibsem@git+https://github.com/rosalindfranklininstitute/fibsem/archive/refs/heads/fibsem-0.4.0-refactor.tar.gz",
+  "autolamella@git+https://github.com/rosalindfranklininstitute/autolamella/archive/refs/heads/fibsem-0.4.0-refactor-lamella-paths.tar.gz",
 ]
 
 [project.urls]
