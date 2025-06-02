@@ -46,8 +46,6 @@ _MODEL_PATHS: dict[str, list[Path]] = {
     "1.4fpn": [_MODELS_DIR / "Gen1" / "gen01_V8_FPN_RGB" / "cryo_sem_epoch_49.pth"],
 }
 
-assert _MODELS_DIR.is_dir(), "SEM models path does not exist"
-
 
 def models_directory_exists() -> bool:
     return _MODELS_DIR.is_dir()
