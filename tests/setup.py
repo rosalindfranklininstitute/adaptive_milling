@@ -1,3 +1,4 @@
+from __future__ import annotations
 import typing
 import yaml
 from dataclasses import dataclass, InitVar, field
@@ -7,6 +8,8 @@ from datetime import datetime
 
 import numpy as np
 
+if typing.TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 
 def setup_test_microscope_config(
@@ -77,14 +80,15 @@ def setup_test_experiment(
 
     return experiment_path
 
+
 @dataclass(repr=False)
 class SimpleRectangleLamellaMask:
-    shape: InitVar[typing.Union[np.typing.NDArray[np.integer], typing.Tuple[int, int]]]
+    shape: InitVar[typing.Union[NDArray[np.integer], typing.Tuple[int, int]]]
     box_proportion: InitVar[int] = 20
     centre_px: InitVar[typing.Optional[typing.Tuple[int, int]]] = None
-    array: np.typing.NDArray[np.integer] = field(init=False)
-    centre: np.typing.NDArray[np.integer] = field(init=False)
-    bounding_box: np.typing.NDArray[np.integer] = field(init=False)
+    array: NDArray[np.bool_] = field(init=False)
+    centre: NDArray[np.integer] = field(init=False)
+    bounding_box: NDArray[np.integer] = field(init=False)
 
     def __post_init__(self, shape, box_proportion, centre_px) -> None:
         array_shape = np.asarray(shape)
