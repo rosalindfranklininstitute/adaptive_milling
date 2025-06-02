@@ -171,7 +171,7 @@ def test_loads_sem_model_on_first_run(
         mock_load_model.assert_called_once()
         assert mock_setup_results_df.call_count == 1, "Should have been called once"
 
-        strategy.model = "model"
+        strategy.model = "model"  # type: ignore
 
         with pytest.raises(utils.ExceptionForMocking):
             strategy.run(microscope, stage)
