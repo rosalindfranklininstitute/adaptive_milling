@@ -11,15 +11,27 @@
 # "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND,
 # either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-
-
-import xml.etree.ElementTree as ET  # to handle metadata as xml
-from adaptive_polish.dl_segmentation import sem_lamella_segmentor as sgm
-import numpy as np
-from pathlib import Path
-import matplotlib.pyplot as plt
+from __future__ import annotations
 import logging
+import typing
+import xml.etree.ElementTree as ET  # to handle metadata as xml
+
 import skimage
+import numpy as np
+from scipy.signal.windows import gaussian
+
+from adaptive_polish.dl_segmentation import sem_lamella_segmentor as sgm
+
+if typing.TYPE_CHECKING:
+    from collections.abc import Sequence
+    from numpy.typing import NDArray
+
+
+_logger = logging.getLogger(__name__)
+
+DEFAULT_SEM_MODEL_GENERATION = sgm._get_newest_generation_key()
+
+load_sem_model = sgm.load_model
 
 def get_pixel_width(img):
     """Gets the pixel width of an AdornedImage, or if not possible, returns None
@@ -33,252 +45,225 @@ def get_pixel_width(img):
         pixel_size_x = xml_parse.find("BinaryResult/PixelSize/X")
         pixel_width_m = float(pixel_size_x.text)
         return pixel_width_m
-    except:
+    except Exception:
         # if there is no metadata with 'PixelWidth' defaults to the value above
         return None
 
-_segmentor=None
-def init_model_with_path(model_path):
-    #Need to call this before doing segmentation
-    global _segmentor
-    # segmentor = sgm.cSEMLamellaSegmentor(
-    #     model_path=f"{Path(__file__).parent}/dl_segmentation/2024-02-24_0013_gis_lamela_crack_pytorch_AUnet.ptchkp"
-    # )
-    if model_path:
-        _segmentor = sgm.cSEMLamellaSegmentor(model_path=model_path)
 
-def segment(img: np.array) -> np.array:
-    """
-    Segments img using _segmentor instance of cSEMLamellaSegmentor
-    
-    Returns: annotated image, array of ints with the same shape as img. Returns None if _segmentor is None
-    """
-
-    global _segmentor
-    prediction=None
-    if _segmentor:
-        prediction = _segmentor.get_prediction(img)
-    return prediction
-
-
-def keep_only_largest_object(mask: np.array, fill_value: int = 1) -> np.array:
+def keep_only_largest_object(mask: NDArray[np.integer]) -> NDArray[np.bool_]:
     """Find the largest object in a mask and sets everything in that object to
     `fill_value`, background is 0.
 
     Args:
         mask (np.array): Segmentation mask
-        fill_value (int, optional): Everything inside the largest object
-            is set to this value. Defaults to 1.
 
     Returns:
-        np.array: Mask with the largest object only
+        np.array: Boolean mask with all but the largest object set to False
     """
     instances = skimage.measure.label(mask)
-    instance_properties = skimage.measure.regionprops(instances)
-    areas = [i.area for i in instance_properties]
-    largest_area = max(areas)
+    largest_area = max([_.area for _ in skimage.measure.regionprops(instances)])
     mask_largest_only = skimage.morphology.remove_small_objects(
-        instances,
-        min_size = 0.99 * largest_area
+        instances, min_size=largest_area - 1
     )
-    mask_largest_only[mask_largest_only > 0] = fill_value
-    return mask_largest_only
+    return mask_largest_only > 0
+
+
+def check_minimum_area(mask: NDArray[np.bool_], pixel_size, minimum_size) -> bool:
+    # Ensure lamella and GIS object is bigger than minimum size
+    return np.sum(mask) * pixel_size <= minimum_size
 
 
 def clean_prediction(
-    prediction: np.array, pixel_size_m: float,
-) -> np.array:
-    logging.info(f"clean_prediction with prediction.shape:{prediction.shape}, pixel_size_m:{pixel_size_m}")
-    # Generate bool masks for GIS and lamella
-    mask_gis = prediction == 1
-    mask_lamella = prediction == 2
+    prediction: NDArray[np.integer],
+    additional_labels: typing.Optional[
+        Sequence[
+            typing.Literal[
+                sgm.SegmentationLabels.GIS,
+                sgm.SegmentationLabels.CRACK,
+            ]
+        ]
+    ] = None,
+) -> typing.Tuple[
+    NDArray[np.bool_],
+    typing.Optional[NDArray[np.bool_]],
+    typing.Optional[NDArray[np.bool_]],
+]:
+    labels = [sgm.SegmentationLabels.LAMELLA]
+    if additional_labels is not None:
+        labels.extend(additional_labels)
 
-    lamella_area_px = np.sum(mask_lamella)
-    gis_area_px = np.sum(mask_gis)
-
-    # Check if there is any lamella. If not return nothing
-    if lamella_area_px == 0:
-        logging.info("No lamella detected. Returning NaN")
-        return None
-    if gis_area_px == 0:
-        logging.info("No GIS layer detected. Returning NaN")
-        return None
-    
-    # Only keep the largest object in the GIS segmentation
-    mask_gis_largest_only = keep_only_largest_object(mask_gis)
-
-    return mask_gis_largest_only
-
-
-def measure_GIS(
-    mask_gis_clean: np.array, window_size_m: int, pixel_size_m: float
-) -> np.array:
-    # Get window size in px
-    window_size_px = int(window_size_m / pixel_size_m)
-    logging.info(f"window_size_px: {window_size_px}")
-
-    # Calculate average GIS thickness in windows
-
-    #Sum to get thickness along x in pixels
-    GIS_pxbypx = np.sum(mask_gis_clean, axis=0).astype(np.float32)
-
-    # Pad with zeros to fulfil window size criteria
-    GIS_pxbypx_pad = np.pad(
-        GIS_pxbypx,
-        (0, window_size_px - len(GIS_pxbypx) % window_size_px),
-        constant_values=np.nan,
+    _logger.debug(
+        "Cleaning prediction with shape: %s, finding: %s",
+        str(prediction.shape),
+        ", ".join(_.name for _ in labels),
     )
 
-    #Get left and right limits from where the mean should be calculated from
-    GIS_pxbypx_where_above_zero = np.where(GIS_pxbypx_pad > 0)
-    xlim_min = GIS_pxbypx_where_above_zero[0][0]  # first occurrence along x
-    xlim_max = GIS_pxbypx_where_above_zero[0][-1]  # last occurrence along x
+    # Generate bool masks for GIS and lamella
+    masks = {label: prediction == label.value for label in labels}
 
-    # make the L and R limits of the lamella x% smaller
-    lamella_width_px = xlim_max - xlim_min
-    lamella_width_to_cut = int(0.05 * lamella_width_px)  # cut 5% from each end
-    xlim_min = lamella_width_to_cut + xlim_min
-    xlim_max = xlim_max - lamella_width_to_cut    
+    # Doing these all together could be an issue if the model fails too hard
+    # (e.g. layers of gis and crack would mess up the GIS reading) but this
+    # seems unlikely.
+    # TODO: check whether the crack need to be touching lamella to be a crack
+    mask_largest_foreground = keep_only_largest_object(
+        np.sum(list(masks.values()), axis=0, dtype=np.bool_)
+    )
 
-    GIS_pxbypx_NaNed = np.copy(GIS_pxbypx_pad).astype(np.float32)
-    GIS_pxbypx_NaNed[:xlim_min]=np.nan
-    GIS_pxbypx_NaNed[xlim_max:]=np.nan
+    # Gets the label that's connected to the other foreground elements
+    connected_masks = {
+        label: np.logical_and(mask_largest_foreground, masks[label]) for label in labels
+    }
 
-    # This mean will discard nan areas
-    GIS_windowed = np.nanmedian(GIS_pxbypx_NaNed.reshape(-1, window_size_px), axis=1)
+    mask_connected_lamella = connected_masks.pop(sgm.SegmentationLabels.LAMELLA)
 
-    # Convert to m
-    GIS_m = GIS_windowed * pixel_size_m
+    for key, mask in tuple(connected_masks.items()):
+        if not np.sum(mask):
+            # No need to keep an array of 0s
+            del connected_masks[key]
 
-    # Make any value with 0's, i.e. no GIS measured, NaNs
-    GIS_m[np.where(GIS_m == 0)] = np.nan
+    return (
+        mask_connected_lamella,
+        connected_masks.get(sgm.SegmentationLabels.GIS, None),
+        connected_masks.get(sgm.SegmentationLabels.CRACK, None),
+    )
 
-    return GIS_m, (xlim_min, xlim_max)
+
+def apply_binary_opening(
+    array: NDArray[np.bool_], window_size_m: float, pixel_size_m: float
+):
+    # Get window size in px
+    if window_size_m > 0:
+        window_size_px = int(round(window_size_m / pixel_size_m))
+        return skimage.morphology.binary_opening(
+            array,
+            footprint=[
+                (np.ones((window_size_px, 1)), 1),
+                (np.ones((1, window_size_px)), 1),
+            ],
+            mode="ignore",
+        )
 
 
-def get_crack_area_m2(prediction: np.array, pixel_size_m: float) -> float:
-    """Measure the area in the prediction for cracks in m2.
+def get_xlims(
+    mask_1d: NDArray[typing.Union[np.integer, np.floating]],
+) -> NDArray[np.uint32]:
+    mask_1d = mask_1d.squeeze()
+    return np.asarray(
+        (np.argmax(mask_1d), mask_1d.size - 1 - np.argmax(mask_1d[::-1])),
+        dtype=np.uint32,
+    )
+
+
+def filter_gis_thickness(
+    gis_thickness_px: NDArray[typing.Union[np.integer, np.floating]],
+    window_size_m: int,
+    pixel_size_m: float,
+) -> NDArray[np.float64]:
+    # TODO: Change window_size_m to beam FWHM
+    # FWHM is 2 * sqrt(2 * np.log(2)) * sigma, which is approx 2.355 * sigma
+    # The number of points in the gaussian curve should be approx 6 * std for convolution
+    window_size_px = int(window_size_m / pixel_size_m)
+    if window_size_px % 2 == 0:
+        # An even window size means we won't get central point of the curve
+        window_size_px += 1
+    sigma = window_size_px / 6
+    gaussian_curve = gaussian(window_size_px, std=sigma)
+    gaussian_curve /= gaussian_curve.sum()
+    return np.convolve(
+        np.pad(gis_thickness_px, int(gaussian_curve.size / 2)),
+        gaussian_curve,
+        mode="valid",
+    )
+
+
+def filter_gis_thickness_fast(
+    gis_thickness_px: NDArray[typing.Union[np.integer, np.floating]],
+    window_size_m: int,
+    pixel_size_m: float,
+) -> NDArray[np.float64]:
+    # Get window size in px
+    window_size_px = int(window_size_m / pixel_size_m)
+    _logger.info(f"window_size_px: {window_size_px}")
+    cumsum_vec = np.cumsum(np.pad(gis_thickness_px, int(window_size_px / 2)))
+    return (cumsum_vec[window_size_px:] - cumsum_vec[:-window_size_px]) / window_size_px
+
+
+def resize_image(image, new_shape: typing.Tuple[int, int]) -> NDArray[np.float32]:
+    return skimage.transform.resize(
+        # Needs to be floating type if we want interpolation
+        image.astype(np.float32),
+        output_shape=new_shape,
+    )
+
+
+def measure_gis(
+    gis_mask: NDArray[typing.Any],
+    window_size_m: float,
+    pixel_size_m: float,
+) -> NDArray[np.floating]:
+    # Sum to get thickness along x in pixels
+    gis_thickness_px = np.sum(gis_mask, axis=0)
+
+    return filter_gis_thickness(
+        gis_thickness_px=gis_thickness_px,
+        window_size_m=window_size_m,
+        pixel_size_m=pixel_size_m,
+    )
+
+
+def cleanup_crack_segmentation(prediction: np.array) -> float:
+    """Measure the area in the prediction for cracks in um2.
 
     Cracks are only considered if they are within the largest combined lamella+
     GIS+crack object in the prediction.
 
     Args:
-        prediction (np.array): Segmentation mask 
-        pixel_size_m (float): Pixel size in m
+        prediction (np.array): Segmentation mask
 
     Returns:
-        float: Crack area in m2
+        NDArray[np.bool_]: Segmentation of cracks that are connected to the lamella and/or GIS
     """
     # Restrict crack search area to the largest object which is not background
-    mask_anything = prediction > 0
-    mask_anything_largest_only = keep_only_largest_object(mask_anything)
+    mask_gis_lamella = np.isin(
+        prediction,
+        (
+            sgm.SegmentationLabels.LAMELLA.value,
+            sgm.SegmentationLabels.GIS.value,
+        ),
+    )
     mask_crack = prediction == 3
 
-    # Since crack pixel value is 1 and anything outside largest object is 0
-    mask_crack_inside_largest_object = np.multiply(
-        mask_crack, 
-        mask_anything_largest_only
+    mask_foreground_largest_only = keep_only_largest_object(
+        mask_gis_lamella + mask_crack
     )
-    crack_area_px2 = np.sum(mask_crack_inside_largest_object)
-    crack_area_m2 = crack_area_px2 *pixel_size_m*pixel_size_m
 
-    return crack_area_m2
+    return np.logical_and(mask_crack, mask_foreground_largest_only)
 
 
-def milling_cycle_plot(
-    sem_image: np.array,
-    first_prediction: np.array,
-    clean_prediction: np.array,
-    fib_image: np.array,
-    gis_thickness_m: np.array,
-    gis_stop_m: float,
-    crack_area_m2: float,
-    xlims = None,
-    fib_screenshot: np.array = None,
-    img_name: str = None,
-    save_path: Path = None,
-):
-    logging.info("milling_cycle_plot()")
-    fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(12, 8), tight_layout=True)
-    fig.suptitle(img_name)
+def get_mask_area_um2(mask: NDArray[np.bool_], pixel_size_um: float) -> float:
+    return np.sum(mask) * (pixel_size_um**2)
 
-    # SEM
-    axs[0, 0].imshow(sem_image, cmap="Greys_r")
-    axs[0, 0].axis("off")
-    axs[0, 0].set_title("SEM")
 
-    # SEM + 1st pass prediction
-    axs[0, 1].imshow(sem_image, cmap="Greys_r")
-    axs[0, 1].imshow(
-        first_prediction, 
-        alpha=0.4, 
-        cmap="tab10", 
-        vmin=0, 
-        vmax=10, 
-        interpolation="nearest"
-    )
-    axs[0, 1].axis("off")
-    axs[0, 1].set_title("SEM, 1st prediction")
+def masks_to_labels(
+    lamella_mask: typing.Optional[NDArray[np.bool_]] = None,
+    gis_mask: typing.Optional[NDArray[np.bool_]] = None,
+    crack_mask: typing.Optional[NDArray[np.bool_]] = None,
+    background_mask: typing.Optional[NDArray[np.bool_]] = None,
+    vacuum_mask: typing.Optional[NDArray[np.bool]] = None,
+    default_value: typing.Union[int, float] = np.nan,
+) -> NDArray[typing.Any]:
+    mask_label_pairs = [
+        (lamella_mask, sgm.SegmentationLabels.LAMELLA),
+        (gis_mask, sgm.SegmentationLabels.GIS),
+        (crack_mask, sgm.SegmentationLabels.CRACK),
+        (background_mask, sgm.SegmentationLabels.BACKGROUND),
+        (vacuum_mask, sgm.SegmentationLabels.VACUUM),
+    ]
 
-    # SEM + clean prediction
-    axs[0, 2].imshow(sem_image, cmap="Greys_r")
-    axs[0, 2].imshow(
-        clean_prediction, 
-        alpha=0.4, 
-        cmap="tab10", 
-        vmin=0, 
-        vmax=10, 
-        interpolation="nearest"
-    )
-    if xlims is not None:
-        axs[0, 2].axvline(x=xlims[0])
-        axs[0, 2].axvline(x=xlims[1])
-    axs[0, 2].axis("off")
-    axs[0, 2].set_title(f"SEM, clean, crack area $\mu$m2 = {crack_area_m2*1e12:.2f}")
-
-    # FIB image
-    axs[1, 0].imshow(fib_image, cmap="Greys_r")
-    axs[1, 0].axis("off")
-    axs[1, 0].set_title("FIB")
-
-    # FIB + milling box
-    if fib_screenshot is not None:
-        # Doesn't work -> for some reason I can't open a new napari.Viewer()
-        # pattern_viewer = napari.Viewer()
-        # pattern_viewer.add_image(fib_image, name="fib_image")
-        # _draw_patterns_in_napari(
-        #     viewer=pattern_viewer,
-        #     ib_image=FibsemImage(data=fib_image),
-        #     eb_image=None,
-        #     milling_stages=list(adaptive_polish_stage)
-        # )
-        # screenshot = pattern_viewer.screenshot()
-        # axs[1, 1].imshow(screenshot)
-        # pattern_viewer.close()
-        axs[1, 1].imshow(fib_screenshot[:, int(fib_screenshot.shape[1]/2):, :])
-    axs[1, 1].axis("off")
-
-    # GIS thickness
-    axs[1, 2].plot(gis_thickness_m * 1e6, ".-")
-    axs[1, 2].set_xlabel("Distance along x (px)")
-    axs[1, 2].set_ylabel("GIS thickness ($\mu$m)")
-    axs[1, 2].set_xlim(0, len(gis_thickness_m))
-    axs[1, 2].set_ylim(
-        0,
-    )
-    axs[1, 2].hlines(
-        y=gis_stop_m * 1e6,
-        xmin=0,
-        xmax=len(gis_thickness_m),
-        label="Target GIS",
-        linestyles="dashed",
-        colors="C1",
-    )
-    axs[1, 2].set_title(
-        f"GIS thickness, min={np.nanmin(gis_thickness_m)*1e6:.2f} $\mu$m"
-    )
-    axs[1, 2].legend()
-
-    fig.savefig(save_path)
-
-    plt.close(fig)
+    masks = []
+    label_values = []
+    for mask, label in mask_label_pairs:
+        if mask is not None:
+            masks.append(mask)
+            label_values.append(label.value)
+    return np.select(masks, label_values, default=default_value)

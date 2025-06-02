@@ -11,18 +11,6 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
+import os
 
-
-def example(a, b):
-    """
-    This is an example function that add the values of a and b
-
-    Args:
-        a: The first value
-        b: The second value
-
-    Returns:
-        The sum of a and b
-
-    """
-    return a + b
+os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"

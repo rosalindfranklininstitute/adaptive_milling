@@ -5,6 +5,21 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Python Debugger: Debug Tests",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "purpose": [
+                "debug-test"
+            ],
+            "justMyCode": false,
+            "stopOnEntry": false,
+            "env": {
+                // Necessary for debugging tests
+                "PYTEST_ADDOPTS": "--no-cov"
+            }
+        },
+        {
             "name": "Python Debugger: napari",
             "type": "debugpy",
             "request": "launch",

@@ -1,42 +1,31 @@
-#
-# Build system requirements
-#
 [build-system]
-
-requires = ["setuptools", "wheel"]
+requires = [
+  "setuptools>= 77.0.3",
+]
 build-backend = "setuptools.build_meta"
 
-#
-#
-# Basic project metadata
-#
 [project]
-
 name = "adaptive_polish"
-
 description = "Adaptive polishing"
-
-readme = "README.md"
-
-requires-python = ">=3.9"
-
-license = {file = "LICENSE"}
-
-keywords = [
+license = { file = "LICENSE" }
+dynamic = [
+  "version",
+  "readme",
 ]
-
 authors = [
-  {name = "Elaine Ho", email = "elaine.ho@rfi.ac.uk"},
-  {name = "Luis Perdigao", email = "luis.perdigao@rfi.ac.uk"}
+  { name = "Elaine Ho", email = "elaine.ho@rfi.ac.uk" },
+  { name = "Luis Perdigao", email = "luis.perdigao@rfi.ac.uk" },
+  { name = "Thomas Fish", email = "thomas.fish@rfi.ac.uk" },
+  { name = "Thomas Glen", email = "thomas.glen@rfi.ac.uk" },
+  { name = "Casper Berger", email = "casper.berger@rfi.ac.uk" },
 ]
-
 classifiers = [
   "Development Status :: 3 - Alpha",
-    "License :: OSI Approved :: Apache Software License",
+  "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.9",
 ]
-
+requires-python = ">=3.9,<3.11"
 dependencies = [
   "pandas",
   "matplotlib",
@@ -48,64 +37,48 @@ dependencies = [
   "scipy",
   "tifffile",
   "albumentations",
-  "segmentation-models-pytorch",
+  "segmentation-models-pytorch >= 0.4.0",
+  "jinja2",
+  "fibsem@git+https://github.com/rosalindfranklininstitute/fibsem@fibsem-0.4.0-refactor",
+  "autolamella@git+https://github.com/rosalindfranklininstitute/autolamella@fibsem-0.4.0-refactor-lamella-paths",
+  "napari[all]",
 ]
 
-dynamic = [
-  "version"
-]
-
-#
-# Project urls
-#
 [project.urls]
-
 "Source" = "https://github.com/rosalindfranklininstitute/adaptive_polish"
 "Tracker" = "https://github.com/rosalindfranklininstitute/adaptive_polish/issues"
 
-#
-# Project additional optional dependencies
-#
-[project.optional-dependencies]
+[tool.setuptools.dynamic]
+readme = { file = "README.md", content-type = "text/markdown" }
 
+[tool.setuptools_scm]
+version_file = "adaptive_polish/_version.py"
+
+[project.optional-dependencies]
 test = [
   "pytest",
   "pytest-cov",
 ]
+dev = [
+  "ruff",
+  "jupyter",
+  "ipywidgets",
+]
 
-#
-# Project command line scripts
-#
-# [project.scripts]
-
-# python-template = "template.command_line:main"
-
-#
-# Configure setup tools
-#
 [tool.setuptools.packages.find]
+where = [
+  "src",
+]
+exclude = [
+  "tests",
+  "scripts",
+]
 
-where = ["src"]
-
-#
-# Set the package version from git tag
-#
-[tool.setuptools.dynamic]
-
-version = {attr = "adaptive_polish._version.__version__"}
-
-#
-# Configure setuptools-scm to generate version file
-#
-#[tool.setuptools_scm]
-
-#write_to = "src/adaptive_polish/_version.py"
-
-#
-# Configure pytest
-#
 [tool.pytest.ini_options]
+addopts = "-vvvv --cov=src --cov-report term --cov-report html -p no:faulthandler -p no:napari -p no:napari-plugin-engine -p no:npe2"
+testpaths = [
+  "tests",
+]
 
-addopts = "--cov=src --cov-report term --cov-report html"
-
-testpaths = [ "tests" ]
+[tool.mypy]
+mypy_path = "$MYPY_CONFIG_FILE_DIR/src"

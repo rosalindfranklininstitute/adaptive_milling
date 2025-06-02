@@ -1,0 +1,53 @@
+options:
+  name: autolamella-adaptive-polish-only
+  method: autolamella-on-grid # autolamella-waffle or autolamella-on-grid
+  checkpoint: autolamella-mega-20240107.pt
+  alignment_attempts: 3.0
+  alignment_at_milling_current: false
+  take_final_reference_images: true
+  high_quality_image:
+    enabled: false
+    dwell_time: 2.0e-6
+    resolution: [3072, 2048]
+    hfw: 50.e-6
+    frame_integration: 2
+  take_final_overview_image: true
+  lamella_tilt_angle: 18.0
+  use_fiducial: true
+  use_microexpansion: true
+  use_notch: false
+  supervise:
+    trench: false
+    undercut: false
+    setup_lamella: false
+    features: false
+    lamella: false
+    mill_rough: false
+    mill_regular: false
+    mill_polishing: false
+milling:
+  mill_polishing:
+      -   milling:
+              application_file: Si-ccs
+              hfw: 8.0e-05
+              milling_current: 6.0e-11
+              patterning_mode: Serial
+          name: Polishing Mill 01
+          pattern:
+              cross_section: CleaningCrossSection
+              depth: 4.0e-07
+              lower_trench_height: 5.0e-07
+              name: Trench
+              spacing: 6.0e-07
+              upper_trench_height: 5.0e-07
+              width: 6.0e-06
+          strategy: {"name": AdaptivePolishing,
+            config: {
+              align_sem: True,
+              milling_interval_s: 10,
+              gis_stop_um: 0.2,
+              max_milling_cycles: 5,
+              window_size_px: 10,
+              max_crack_area_um2: 2,
+              model_path: C:\Users\dmv31621\OneDrive - The Rosalind Franklin Institute\2025\00_Adaptive-milling\models\2024-02-24_0013_gis_lamela_crack_pytorch_AUnet.ptchkp
+            }}

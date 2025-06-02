@@ -1,0 +1,248 @@
+milling:
+    fiducial:
+    - milling:
+        milling_current: 2.0e-09
+        # spot_size:
+        # rate:
+        # dwell_time:
+        hfw: 8.0e-05
+        # patterning_mode:
+        application_file: Si
+        preset: 30 keV; 20 nA
+        # spacing:
+        # milling_voltage:
+        # milling_channel:
+        # acquire_images:
+      name: Fiducial
+      pattern:
+        width: 1.0e-06
+        height: 1.0e-05
+        depth: 1.0e-06
+        rotation: 45
+        cross_section: Rectangle
+        point: {"x": 2.5e-05, "y": 0.0}
+        shapes: null
+        name: Fiducial
+      strategy: {}
+    mill_rough:
+    - milling:
+        milling_current: 2.0e-09
+        spot_size: 5.0e-08
+        rate: 0.0001
+        dwell_time: 1.0e-06
+        hfw: 4.0e-05
+        patterning_mode: Parallel
+        application_file: Si
+        preset: ''
+        # spacing:
+        # milling_voltage:
+        # milling_channel:
+        # acquire_images:
+      name: Rough Cut
+      pattern:
+        width: 1.1e-05
+        depth: 2.2e-06
+        spacing: 3.0e-06
+        upper_trench_height: 7.5e-06
+        lower_trench_height: 7.5e-06
+        cross_section: Rectangle
+        # time:
+        # point:
+        name: Trench
+        # shapes:
+      strategy: {}
+    - milling:
+        milling_current: 7.4e-10
+        spot_size: 5.0e-08
+        rate: 0.0001
+        dwell_time: 1.0e-06
+        hfw: 4.0e-05
+        patterning_mode: Parallel
+        application_file: Si
+        preset: ''
+        # spacing:
+        # milling_voltage:
+        # milling_channel:
+        # acquire_images:
+      name: Regular Cut 1
+      pattern:
+        width: 1.1e-05
+        depth: 1.3e-06
+        spacing: 1.2e-06
+        upper_trench_height: 1.35e-06
+        lower_trench_height: 1.35e-06
+        cross_section: Rectangle
+        # time:
+        # point:
+        name: Trench
+        # shapes:
+      strategy: {}
+    - milling:
+        milling_current: 6.0e-11
+        spot_size: 5.0e-08
+        rate: 0.0001
+        dwell_time: 1.0e-06
+        hfw: 4.0e-05
+        patterning_mode: Parallel
+        application_file: Si
+        preset: ''
+        # spacing:
+        # milling_voltage:
+        # milling_channel:
+        # acquire_images:
+      name: Regular Cut 2
+      pattern:
+        width: 1.05e-05
+        depth: 1.3e-06
+        spacing: 6.0e-07
+        upper_trench_height: 4.0e-07
+        lower_trench_height: 4.0e-07
+        cross_section: Rectangle
+        # time:
+        # point:
+        name: Trench
+        # shapes:
+      strategy: {}
+    - milling:
+        milling_current: 6.0e-11
+        spot_size: 5.0e-08
+        rate: 0.0001
+        dwell_time: 1.0e-06
+        hfw: 4.0e-05
+        patterning_mode: Parallel
+        application_file: Si
+        preset: ''
+        # spacing:
+        # milling_voltage:
+        # milling_channel:
+        # acquire_images:
+      name: Regular Cut 3
+      pattern:
+        width: 1.0e-05
+        depth: 5.0e-07
+        spacing: 5.5e-07
+        upper_trench_height: 3.5e-07
+        lower_trench_height: 3.5e-07
+        cross_section: Rectangle
+        # time:
+        # point:
+        name: Trench
+        # shapes:
+      strategy: {}
+    mill_polishing:
+    - milling:
+        milling_current: 2.0e-11
+        spot_size: 5.0e-08
+        rate: 0.0001
+        dwell_time: 1.0e-06
+        hfw: 4.0e-05
+        patterning_mode: Parallel
+        application_file: Si
+        preset: ''
+        # spacing:
+        # milling_voltage:
+        # milling_channel:
+        # acquire_images:
+      name: Adaptive Polishing
+      pattern:
+        width: 1.0e-05
+        depth: 5.0e-08
+        spacing: 2.25e-07
+        upper_trench_height: 3.5e-07
+        lower_trench_height: 3.5e-07
+        cross_section: Rectangle
+        # time:
+        # point:
+        name: Trench
+        # shapes:
+      strategy: {"name": AdaptivePolishing,
+          config: {
+            align_sem: True,
+            milling_interval_s: 10,
+            gis_stop_um: 0.2,
+            max_milling_cycles: 5,
+            window_size_px: 10,
+            max_crack_area_um2: 2,
+            model_path: C:\Users\dmv31621\OneDrive - The Rosalind Franklin Institute\2025\00_Adaptive-milling\models\2024-02-24_0013_gis_lamela_crack_pytorch_AUnet.ptchkp
+          }}
+    microexpansion:
+    - milling:
+        milling_current: 2.0e-09
+        # spot_size:
+        # rate:
+        # dwell_time:
+        hfw: 200e-6
+        # patterning_mode:
+        application_file: Si
+        preset: 30 keV; 2.5 nA
+        # spacing:
+        # milling_voltage:
+        # milling_channel:
+        # acquire_images:
+      name: Microexpansion
+      pattern:
+        width: 5.0e-07
+        height: 1.8e-05
+        depth: 1.0e-06
+        distance: 1.0e-05
+        name: Microexpansion
+        # point:
+        # shapes:
+      strategy: {}
+    notch:
+    - milling:
+        milling_current: 2.0e-06
+        # spot_size:
+        # rate:
+        # dwell_time:
+        hfw: 80e-6
+        # patterning_mode:
+        application_file: Si
+        preset: 30 keV; 2.5 nA
+        # spacing:
+        # milling_voltage:
+        # milling_channel:
+        # acquire_images:
+      name: Notch
+      pattern:
+        vheight: 2.0e-06
+        vwidth: 2.0e-07
+        hheight: 2.0e-07
+        hwidth: 4.0e-06
+        depth: 2.5e-06
+        distance: 2.0e-06
+        inverted: False
+        # cross_section:
+        name: WaffleNotch
+        # point:
+        # shapes:
+options:
+    alignment_at_milling_current: false
+    alignment_attempts: 3
+    checkpoint: autolamella-mega-20240107.pt
+    high_quality_image:
+        dwell_time: 2.0e-06
+        enabled: false
+        frame_integration: 2
+        hfw: 5.0e-05
+        resolution:
+        - 3072
+        - 2048
+    lamella_tilt_angle: -23
+    method: autolamella-on-grid
+    name: autolamella-adaptive-polish
+    num_polishing_stages: 2
+    supervise:
+        features: false
+        lamella: false
+        mill_polishing: false
+        mill_regular: false
+        mill_rough: false
+        setup_lamella: false
+        trench: false
+        undercut: false
+    take_final_overview_image: true
+    take_final_reference_images: true
+    use_fiducial: true
+    use_microexpansion: true
+    use_notch: false
