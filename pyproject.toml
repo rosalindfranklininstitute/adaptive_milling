@@ -1,6 +1,6 @@
 [build-system]
 requires = [
-  "setuptools>= 77.0.3"
+  "setuptools>= 77.0.3",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -41,6 +41,7 @@ dependencies = [
   "jinja2",
   "fibsem@git+https://github.com/rosalindfranklininstitute/fibsem@fibsem-0.4.0-refactor",
   "autolamella@git+https://github.com/rosalindfranklininstitute/autolamella@fibsem-0.4.0-refactor-lamella-paths",
+  "napari[all]",
 ]
 
 [project.urls]
@@ -79,3 +80,8 @@ testpaths = [
 
 [tool.mypy]
 mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
+
+[tool.ruff]
+exclude = [
+  "src/scripts/*",
+]
