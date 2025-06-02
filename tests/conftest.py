@@ -5,7 +5,7 @@ import pytest
 
 import typing
 
-_MODELS_PATH = (
+_MODELS_PATH: Path = (
     Path.home()
     / "OneDrive - The Rosalind Franklin Institute"
     / "Documents"
@@ -15,7 +15,7 @@ _MODELS_PATH = (
 )
 
 # Note: Gen 1 models below v4 apply padding before normalisation, so will not be accurate
-_MODEL_PATHS = {
+_MODEL_PATHS: dict[str, list[Path]] = {
     "0": [
         _MODELS_PATH / "Gen0" / "2024-02-24_0013_gis_lamela_crack_pytorch_AUnet.ptchkp"
     ],
