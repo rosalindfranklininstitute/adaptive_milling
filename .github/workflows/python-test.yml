@@ -3,6 +3,11 @@
 
 name: Run tests
 
+permissions:
+  contents: read # access to check out code and install dependencies
+
+
+
 on:
   push:
     branches: [ "main" ]
