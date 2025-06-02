@@ -86,6 +86,7 @@ def raise_error_after_num_calls(
     return raise_error_after_wrapper
 
 
+@pytest.mark.usefixtures("skip_if_no_models")
 @patch(
     "adaptive_polish.strategy.fs_utils.current_timestamp",
     new=MagicMock(return_value=TIMESTAMP),

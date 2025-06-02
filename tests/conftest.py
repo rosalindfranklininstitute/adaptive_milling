@@ -5,7 +5,7 @@ import pytest
 
 import typing
 
-_MODELS_PATH: Path = (
+_MODELS_DIR: Path = (
     Path.home()
     / "OneDrive - The Rosalind Franklin Institute"
     / "Documents"
@@ -17,36 +17,47 @@ _MODELS_PATH: Path = (
 # Note: Gen 1 models below v4 apply padding before normalisation, so will not be accurate
 _MODEL_PATHS: dict[str, list[Path]] = {
     "0": [
-        _MODELS_PATH / "Gen0" / "2024-02-24_0013_gis_lamela_crack_pytorch_AUnet.ptchkp"
+        _MODELS_DIR / "Gen0" / "2024-02-24_0013_gis_lamela_crack_pytorch_AUnet.ptchkp"
     ],
     "1.0p": [
-        _MODELS_PATH
+        _MODELS_DIR
         / "Gen1"
         / "gen01_performance_768_v3"
         / "gen01_performance_768_v3.pth"
     ],
     "1.0q": [
-        _MODELS_PATH / "Gen1" / "gen01_quality_1536_v3" / "gen01_quality_1536_v3.pth"
+        _MODELS_DIR / "Gen1" / "gen01_quality_1536_v3" / "gen01_quality_1536_v3.pth"
     ],
     "1.1q": [
-        _MODELS_PATH / "Gen1" / "gen01_quality_1536_v4" / "gen01_quality_1536_v4.pth"
+        _MODELS_DIR / "Gen1" / "gen01_quality_1536_v4" / "gen01_quality_1536_v4.pth"
     ],
     "1.2q": [
-        _MODELS_PATH
+        _MODELS_DIR
         / "Gen1"
         / "gen01_quality_1536_v5_grayscale"
         / "cryo_sem_epoch_56.pth"
     ],
     "1.3fpn": [
-        _MODELS_PATH
+        _MODELS_DIR
         / "Gen1"
         / "gen01_quality_1536_v7_FPN"
         / "gen01_quality_1536_v7_FPN.pth"
     ],
-    "1.4fpn": [_MODELS_PATH / "Gen1" / "gen01_V8_FPN_RGB" / "cryo_sem_epoch_49.pth"],
+    "1.4fpn": [_MODELS_DIR / "Gen1" / "gen01_V8_FPN_RGB" / "cryo_sem_epoch_49.pth"],
 }
 
-assert _MODELS_PATH.is_dir(), "SEM models path does not exist"
+assert _MODELS_DIR.is_dir(), "SEM models path does not exist"
+
+
+def models_directory_exists() -> bool:
+    return _MODELS_DIR.is_dir()
+
+
+@pytest.fixture(scope="session")
+def skip_if_no_models():
+    if not models_directory_exists():
+        pytest.skip("Unable to find models")
+
 
 @pytest.fixture(scope="session")
 def latest_sem_segmentation_model() -> tuple[str, Path]:
