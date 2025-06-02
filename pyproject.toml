@@ -1,7 +1,6 @@
 [build-system]
 requires = [
-  "setuptools>= 77.0.3",
-  "wheel",
+  "setuptools>= 77.0.3"
 ]
 build-backend = "setuptools.build_meta"
 
@@ -47,8 +46,10 @@ dependencies = [
 "Tracker" = "https://github.com/rosalindfranklininstitute/adaptive_polish/issues"
 
 [tool.setuptools.dynamic]
-version = { attr = "adaptive_polish._version.__version__" }
 readme = { file = "README.md", content-type = "text/markdown" }
+
+[tool.setuptools_scm]
+version_file = "adaptive_polish/_version.py"
 
 [project.optional-dependencies]
 test = [
