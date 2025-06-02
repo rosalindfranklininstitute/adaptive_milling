@@ -19,8 +19,6 @@ from adaptive_polish.dl_segmentation.sem_lamella_segmentor import SegmentationLa
 from . import setup, utils
 
 if typing.TYPE_CHECKING:
-    from fibsem.microscope import FibsemMicroscope
-    from fibsem.structures import MicroscopeSettings
     from fibsem.milling.base import FibsemMillingStage
 
 _AP_PASS_CHECKS_CONFIG = {
@@ -31,16 +29,6 @@ _AP_PASS_CHECKS_CONFIG = {
 }
 
 TIMESTAMP = "timestamp"
-
-
-def setup_microscope_and_settings(
-    microscope_config_path: Path, temporary_path: Path
-) -> tuple[FibsemMicroscope, MicroscopeSettings]:
-    microscope_config_path = setup.setup_test_microscope_config(
-        microscope_template_path=microscope_config_path,
-        temporary_directory=temporary_path,
-    )
-    return fibsem_utils.setup_session(config_path=microscope_config_path)
 
 
 def setup_protocol_and_milling_stages(
@@ -105,7 +93,7 @@ def test_ap_folders_created(
     )
     stage = stages[0]
 
-    microscope, _ = setup_microscope_and_settings(microscope_config_path, tmp_path)
+    microscope, _ = fibsem_utils.setup_session(config_path=microscope_config_path)
 
     strategy = ap_strategy.AdaptivePolishMillingStrategy(config=ap_config)
 
@@ -141,7 +129,7 @@ def test_loads_sem_model_on_first_run(
     )
     stage = stages[0]
 
-    microscope, _ = setup_microscope_and_settings(microscope_config_path, tmp_path)
+    microscope, _ = fibsem_utils.setup_session(config_path=microscope_config_path)
 
     strategy = ap_strategy.AdaptivePolishMillingStrategy(config=ap_config)
 
@@ -185,7 +173,7 @@ def test_reference_images_saved_correctly(
         ap_config.to_dict(), protocol_template_path, tmp_path
     )
 
-    microscope, _ = setup_microscope_and_settings(microscope_config_path, tmp_path)
+    microscope, _ = fibsem_utils.setup_session(config_path=microscope_config_path)
     stage = stages[0]
 
     strategy = ap_strategy.AdaptivePolishMillingStrategy(config=ap_config)
@@ -242,12 +230,7 @@ def test_max_milling_cycles_not_exceeded(
     )
     stage = stages[0]
 
-    microscope, _ = setup_microscope_and_settings(
-        microscope_config_path,
-        tmp_path,
-        fib_image_dir=str(fib_image_dir),
-        sem_image_dir=str(sem_image_dir),
-    )
+    microscope, _ = fibsem_utils.setup_session(config_path=microscope_config_path)
 
     strategy = ap_strategy.AdaptivePolishMillingStrategy(config=ap_config)
 
@@ -338,12 +321,7 @@ def test_results_saved(
 
     stage.imaging.path = lamella_directory
 
-    microscope, _ = setup_microscope_and_settings(
-        microscope_config_path,
-        tmp_path,
-        fib_image_dir=str(fib_image_dir),
-        sem_image_dir=str(sem_image_dir),
-    )
+    microscope, _ = fibsem_utils.setup_session(config_path=microscope_config_path)
 
     strategy = ap_strategy.AdaptivePolishMillingStrategy(config=ap_config)
 
@@ -473,20 +451,10 @@ def test_align_beam(
     mock_get_bounding_box_scaled_to_image,
     hits_limits,
     microscope_config_path: Path,
-    sem_image_dir: Path,
-    fib_image_dir: Path,
     tmp_path: Path,
 ) -> None:
     plot_path = tmp_path / "plot.png"
     ap_config = ap_strategy.AdaptivePolishMillingConfig(model_path="path/to/model.file")
-
-    microscope_config_path = setup.setup_test_microscope_config(
-        microscope_config_path,
-        tmp_path,
-        fib_image_dir=str(fib_image_dir),
-        sem_image_dir=str(sem_image_dir),
-        cycle_images=True,
-    )
 
     # connect to microscope
     microscope, settings = fibsem_utils.setup_session(
@@ -615,7 +583,6 @@ def test_check_lamella(
         **pass_checks_kwargs,
     )
 
-
     strategy = ap_strategy.AdaptivePolishMillingStrategy(config=ap_config)
     strategy._load_model()
 
@@ -671,7 +638,7 @@ def test_load_model(mock_load_sem_model, mock_is_file, file_exists: bool) -> Non
 
 
 def test_restore_beam_shifts(microscope_config_path: Path, tmp_path: Path) -> None:
-    microscope, _ = setup_microscope_and_settings(microscope_config_path, tmp_path)
+    microscope, _ = fibsem_utils.setup_session(config_path=microscope_config_path)
     initial_electron_shift = Point(-11, 12)
     initial_ion_shift = Point(50, -20)
 
