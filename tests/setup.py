@@ -95,7 +95,9 @@ class SimpleRectangleLamellaMask:
             centre = np.random.randint(box_size, array_shape - box_size, size=2)
         else:
             centre = np.asarray(centre_px[:2], dtype=np.uint32)
-        bbox = np.concat((centre - box_centre_to_edge, centre + box_centre_to_edge))
+        bbox = np.concatenate(
+            (centre - box_centre_to_edge, centre + box_centre_to_edge)
+        )
         array[bbox[0] : bbox[2] + 1, bbox[1] : bbox[3] + 1] = True
 
         self.array = array
