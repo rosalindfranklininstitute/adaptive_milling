@@ -33,6 +33,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip' # caching pip dependencies
+          cache-dependency-path: "./src/pyproject.toml"
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
