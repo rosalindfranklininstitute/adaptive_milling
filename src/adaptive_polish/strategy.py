@@ -1,12 +1,14 @@
 from __future__ import annotations
 import logging
 import math
+import time
+import typing
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
+
 import numpy as np
-import typing
 
 # fibsem
 from fibsem import acquire, constants, utils as fs_utils
@@ -44,6 +46,7 @@ from adaptive_polish.config import AdaptivePolishMillingConfig
 
 if typing.TYPE_CHECKING:
     from pandas import DataFrame
+    from numpy.typing import NDArray
     from fibsem.milling import FibsemMillingStage
     from fibsem.microscope import FibsemMicroscope
     from fibsem.structures import FibsemImage, ImageSettings, Point
@@ -203,6 +206,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                             expected_lamella_centre_m=lamella_centre_m,
                             # Don't mill on the final cycle, just run checks
                             mill=milling_cycle < self.config.max_milling_cycles,
+                            asynch=asynch,
+                            parent_ui=parent_ui,
                         )
                     finally:
                         self._handle_results(
@@ -211,6 +216,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                             *results_dataframes,
                             save_directory=lamella_ap_folder,
                         )
+                _logger.info(
+                    "Adaptive milling complete (ended due to maximum milling cycles)"
+                )
             except StopMillingException as e:
                 _logger.info("Stopping milling due to: %s", str(e))
             except StopEarlyError as e:
@@ -249,6 +257,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         stage: FibsemMillingStage,
         expected_lamella_centre_m: Point,
         mill: bool = True,
+        asynch: bool = False,
+        parent_ui=None,
     ) -> None:
         # Acquire images
         _logger.info(
@@ -272,7 +282,13 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             expected_lamella_centre_m=expected_lamella_centre_m,
         )
         if mill:
-            self._mill(microscope=microscope, stage=stage)
+            self._mill(
+                milling_cycle,
+                microscope=microscope,
+                stage=stage,
+                asynch=asynch,
+                parent_ui=parent_ui,
+            )
 
     def _get_imaging_settings(
         self, stage: FibsemMillingStage
@@ -294,7 +310,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
     def _load_model(self):
         model_path = Path(self.config.model_path)
         if not model_path.is_file():
-            raise FileNotFoundError(f"Failed to find '{model_path}'")
+            raise FileNotFoundError(
+                f"Failed to find SEM segmentation model '{model_path}'"
+            )
         self.model = gm.load_sem_model(
             model_path=model_path,
             generation=self.config.get_model_generation(),
@@ -310,10 +328,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         results_dict: typing.Dict[str, typing.Any],
         expected_lamella_centre_m: typing.Optional[Point] = None,
     ) -> None:
-        # Segmentation
-        _logger.debug("Starting segmentation")
-        prediction = self.model.predict(sem_image.data, full_size=False)
-        _logger.debug("Segmentation complete")
+        prediction = self._segment_sem_image(sem_image.data)
 
         mask_lamella_clean, mask_gis_clean, mask_crack_clean = gm.clean_prediction(
             prediction,
@@ -497,8 +512,11 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
     def _mill(
         self,
+        milling_cycle: int,
         microscope: FibsemMicroscope,
         stage: FibsemMillingStage,
+        asynch: bool = False,
+        parent_ui=None,
     ) -> None:
         # get pattern - this is where bitmap will come in later
         pattern = stage.pattern.define()
@@ -513,13 +531,29 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         # draw patterns
         draw_patterns(microscope=microscope, patterns=pattern)
         try:
-            _logger.info("Starting milling")
+            estimated_time = microscope.estimate_milling_time()
+            logging.info(
+                f"Estimated time for {stage.name}: {estimated_time:.2f} seconds"
+            )
+            if parent_ui is not None and hasattr(parent_ui, "milling_progress_signal"):
+                parent_ui.milling_progress_signal.emit(
+                    {
+                        "msg": f"Running {stage.name} cycle {milling_cycle}...",
+                        "progress": {
+                            "started": True,
+                            "start_time": time.time(),
+                            "estimated_time": estimated_time,
+                            "name": stage.name,
+                        },
+                    }
+                )
+
             # mill
             run_milling(
                 microscope=microscope,
                 milling_current=stage.milling.milling_current,
                 milling_voltage=stage.milling.milling_voltage,
-                asynch=False,
+                asynch=asynch,
             )
             _logger.info("Completed milling")
         except Exception:
@@ -539,10 +573,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         sem_image = acquire.new_image(microscope, sem_imaging_settings)
 
         try:
-            # Find centre
-            _logger.debug("Starting segmentation")
-            prediction = self.model.predict(sem_image.data, full_size=False)
-            _logger.debug("Segmentation complete")
+            prediction = self._segment_sem_image(sem_image.data)
 
             mask_lamella_clean, _, _ = gm.clean_prediction(
                 prediction,
@@ -634,3 +665,15 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             results=results_dataframes[0],
             save_path=save_directory / f"{lamella_name}_GIS_thickness.png",
         )
+
+    def _segment_sem_image(
+        self, sem_image: NDArray[np.number], full_size: bool = False
+    ) -> NDArray[typing.Any]:
+        if self.model is None:
+            raise SegmentationException(
+                "Unable to continue as no SEM segmentation model has been loaded"
+            )
+        _logger.debug("Starting SEM segmentation")
+        prediction = self.model.predict(sem_image, full_size=full_size)
+        _logger.debug("SEM segmentation complete")
+        return prediction
