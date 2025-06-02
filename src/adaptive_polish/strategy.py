@@ -2,6 +2,7 @@ from __future__ import annotations
 import logging
 import math
 from contextlib import contextmanager
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 import numpy as np
@@ -61,6 +62,7 @@ def _results_entry_helper(
             key: results.get(key, None) for key in df.columns.values
         }
 
+
 @contextmanager
 def _restore_beam_shifts(
     microscope: FibsemMicroscope,
@@ -111,9 +113,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
         # setup milling
         setup_milling(microscope=microscope, milling_stage=stage)
-        fib_imaging_settings, sem_imaging_settings = self._update_imaging_settings(
-            microscope
-        )
+
+        fib_imaging_settings, sem_imaging_settings = self._get_imaging_settings(stage)
 
         lamella_folder = Path(fib_imaging_settings.path)
         lamella_name = lamella_folder.stem
@@ -141,9 +142,15 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             lamella_centre_m = None
             if self.config.align_sem:
                 try:
+                    alignment_sem_imaging_settings = deepcopy(sem_imaging_settings)
+                    # Set path and name in case save is set to True
+                    alignment_sem_imaging_settings.path = lamella_ap_folder
+                    alignment_sem_imaging_settings.filename = (
+                        f"{lamella_name}_centring_SEM.tif"
+                    )
                     lamella_centre_m = self._align_beam(
                         microscope=microscope,
-                        sem_imaging_settings=sem_imaging_settings,
+                        sem_imaging_settings=alignment_sem_imaging_settings,
                         plot_path=lamella_ap_folder / "centring.png",
                     )
                 except SegmentationException:
@@ -267,26 +274,19 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         if mill:
             self._mill(microscope=microscope, stage=stage)
 
-    def _update_imaging_settings(
-        self, microscope: FibsemMicroscope
+    def _get_imaging_settings(
+        self, stage: FibsemMillingStage
     ) -> typing.Tuple[ImageSettings, ImageSettings]:
-        # Get current imaging settings
-        fib_imaging_settings = microscope.get_imaging_settings(BeamType.ION)
-        sem_imaging_settings = microscope.get_imaging_settings(BeamType.ELECTRON)
+        # TODO: Figure out how to get lamella directory without assuming previous image's path was correct
+        fib_imaging_settings = deepcopy(stage.imaging)
+        sem_imaging_settings = deepcopy(stage.imaging)
 
-        # Update imaging settings from config
         # FIB
-        fib_imaging_settings.hfw = self.config.fib_hfw_um * constants.MICRO_TO_SI
-        fib_imaging_settings.dwell_time = (
-            self.config.fib_dwell_time_us * constants.MICRO_TO_SI
-        )
-        # SEM
-        sem_imaging_settings.hfw = self.config.sem_hfw_um * constants.MICRO_TO_SI
-        sem_imaging_settings.dwell_time = (
-            self.config.sem_dwell_time_us * constants.MICRO_TO_SI
-        )
-
+        fib_imaging_settings.beam_type = BeamType.ION
         _logger.debug("Adaptive polish FIB settings: %s", str(fib_imaging_settings))
+
+        # SEM
+        sem_imaging_settings.beam_type = BeamType.ELECTRON
         _logger.debug("Adaptive polish SEM settings: %s", str(sem_imaging_settings))
 
         return fib_imaging_settings, sem_imaging_settings

@@ -100,7 +100,7 @@ def test_runs(
     expected_loops = calls_before_exception + 1
 
     # connect to microscope
-    microscope, settings = utils.setup_session(config_path=microscope_config_path)
+    microscope, _ = utils.setup_session(config_path=microscope_config_path)
 
     # Check Autolamella loads protocol correctly
     protocol = AutoLamellaProtocol.load(protocol_path)
@@ -118,11 +118,6 @@ def test_runs(
     lamella_directory.mkdir()
     adaptive_polish_dir = lamella_directory / f"adaptive_polish_{TIMESTAMP}"
 
-    settings.image.path = lamella_directory
-
-    # Necessary to set imaging settings path
-    acquire.take_reference_images(microscope, settings.image)
-
     # Check fibsem loads protocol and loads strategy correctly
     protocol = validate_protocol(utils.load_protocol(protocol_path=protocol_path))
 
@@ -130,6 +125,13 @@ def test_runs(
     assert milling_stages[0].strategy.config == protocol_strategy_config, (
         "The strategy and protocol configs do not match"
     )
+
+    # Set stage imaging settings
+    milling_stages[0].imaging.resolution = [3072, 2048]
+    milling_stages[0].imaging.hfw = 4e-5
+    milling_stages[0].imaging.dwell_time = 2e-7
+    milling_stages[0].imaging.frame_integration = 2
+    milling_stages[0].imaging.path = str(lamella_directory)
 
     # Check milling loop runs but exits at the end of loop calls_before_exception + 1
     with patch.object(
