@@ -116,12 +116,12 @@ milling:
       spacing: 2.25e-07
       upper_trench_height: 3.5e-07
       lower_trench_height: 3.5e-07
+      time: 10
       cross_section: Rectangle
       name: Trench
     strategy: {"name": AdaptivePolishing,
         config: {
           align_sem: True,
-          milling_interval_s: 10,
           gis_stop_um: 0.2,
           max_milling_cycles: 5,
           window_size_px: 10,

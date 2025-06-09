@@ -533,10 +533,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         # get pattern - this is where bitmap will come in later
         pattern = stage.pattern.define()
 
-        # adjust milling interval TODO
-        next_milling_interval = self.config.milling_interval_s
-        pattern[0].time = next_milling_interval
-
         # ensure milling settings are still correctly set
         microscope.setup_milling(mill_settings=stage.milling)
 
