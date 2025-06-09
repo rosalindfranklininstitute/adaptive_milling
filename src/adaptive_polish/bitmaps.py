@@ -12,7 +12,13 @@ if typing.TYPE_CHECKING:
 
 
 def create_dwell_and_blanking_arrays(
-    gis_m: NDArray[np.floating],
+    gis_m: typing.Union[
+        NDArray[np.float128],
+        NDArray[np.float96],
+        NDArray[np.float64],
+        NDArray[np.float32],
+        NDArray[np.float16],
+    ],
     gis_minimum_m: float,
     gis_maximum_m: float,
     gis_blanking_m: typing.Union[float, None] = None,
@@ -36,7 +42,7 @@ def create_dwell_and_blanking_arrays(
     else:
         factor = 1
 
-    x = np.linspace(0, n - 1, (n - 1) * factor + 1)
+    x = np.linspace(0, n - 1, int(round((n - 1) * factor)) + 1)
     gis_m = gis_m.copy()
     gis_m[np.isnan(gis_m)] = nan_value
     # Interpolate over to ensure pixel size
@@ -77,7 +83,13 @@ def bitmap_to_points(bitmap_image: NDArray[np.uint8]) -> NDArray[typing.Any]:
 
 @typing.overload
 def create_bitmap_array(
-    gis_thickness_m: float,
+    gis_thickness_m: typing.Union[
+        NDArray[np.float128],
+        NDArray[np.float96],
+        NDArray[np.float64],
+        NDArray[np.float32],
+        NDArray[np.float16],
+    ],
     xlims: tuple[int, int],
     window_size_m: float,
     pixel_size_m: float,
@@ -92,7 +104,13 @@ def create_bitmap_array(
 
 @typing.overload
 def create_bitmap_array(
-    gis_thickness_m: float,
+    gis_thickness_m: typing.Union[
+        NDArray[np.float128],
+        NDArray[np.float96],
+        NDArray[np.float64],
+        NDArray[np.float32],
+        NDArray[np.float16],
+    ],
     xlims: tuple[int, int],
     window_size_m: float,
     pixel_size_m: float,
@@ -106,7 +124,13 @@ def create_bitmap_array(
 
 
 def create_bitmap_array(
-    gis_thickness_m: float,
+    gis_thickness_m: typing.Union[
+        NDArray[np.float128],
+        NDArray[np.float96],
+        NDArray[np.float64],
+        NDArray[np.float32],
+        NDArray[np.float16],
+    ],
     xlims: tuple[int, int],
     window_size_m: float,
     pixel_size_m: float,
