@@ -22,6 +22,7 @@ import numpy as np
 
 
 if typing.TYPE_CHECKING:
+    from collections.abc import Callable
     from os import PathLike
     from numpy.typing import NDArray
 
@@ -37,28 +38,21 @@ class SegmentationLabels(enum.IntEnum):
 
 
 ### Utility functions ###
-def open_image(
-    path: typing.Union[str, PathLike],
-) -> typing.Union[NDArray[typing.Any], None]:
+def open_image(path: typing.Union[str, PathLike]) -> NDArray[typing.Any]:
     path = Path(path)
     suffix = path.suffix.lower()
+    if "tif" in suffix:
+        # Opens as tifffile
+        import tifffile
 
-    try:
-        if "tif" in suffix:
-            # Opens as tifffile
-            import tifffile
+        return tifffile.imread(path)
+    elif "png" in suffix:
+        # opens as png file
+        import cv2
 
-            return tifffile.imread(path)
-        elif "png" in suffix:
-            # opens as png file
-            import cv2
+        return cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
 
-            return cv2.imread(path, cv2.IMREAD_UNCHANGED)
-
-        raise ValueError(f"Not a supported image '{path}'")
-    except Exception:
-        logging.error("Failed to open image", exc_info=True)
-        return None
+    raise ValueError(f"Not a supported image '{path}'")
 
 
 def normalize_by_mean_std_with_clip35(image, **kwargs):
@@ -91,7 +85,6 @@ def normalize_by_mean_std_with_clip(image, **kwargs):
 
 
 class AbstractAdaptivePolishingModel(ABC):
-
     def __init__(
         self,
         model_path: typing.Union[str, PathLike],
@@ -120,9 +113,11 @@ class AbstractAdaptivePolishingModel(ABC):
 
     def _postprocess(
         self, prediction: torch.Tensor, image: NDArray[typing.Any]
-    ) -> NDArray[np.long]:
+    ) -> NDArray[np.uint8]:
         # converts logist to label
-        return torch.argmax(prediction, dim=1).squeeze(0).numpy(force=True)
+        return (
+            torch.argmax(prediction, dim=1).squeeze(0).to(torch.uint8).numpy(force=True)
+        )
 
     def predict(
         self,
@@ -148,11 +143,11 @@ class AbstractAdaptivePolishingModel(ABC):
             preprocessed = self._preprocess(image)  # try shortcut
 
             if not torch.is_tensor(preprocessed):
-                preprocessed = torch.from_numpy(preprocessed)
+                preprocessed_tensor = torch.from_numpy(preprocessed)
 
-            preprocessed = preprocessed.to(self.device)
+            preprocessed_tensor = preprocessed_tensor.to(self.device)
 
-            prediction = self.model(preprocessed)  # gets result in logits form
+            prediction = self.model(preprocessed_tensor)  # gets result in logits form
 
             labels = self._postprocess(prediction, image)
 
@@ -285,7 +280,7 @@ class Gen1Model(AbstractAdaptivePolishingModel):
 
     def _get_normalisation_function(
         self, normalise_version: int
-    ) -> typing.Callable[[torch.Tensor], torch.Tensor]:
+    ) -> Callable[[torch.Tensor], torch.Tensor]:
         normalise_functions = {1: self._normalise_1, 2: self._normalise_2}
 
         normalise_function = normalise_functions.get(normalise_version)
@@ -298,7 +293,7 @@ class Gen1Model(AbstractAdaptivePolishingModel):
 
     def _get_resize_function(
         self, resize_version: str
-    ) -> typing.Callable[[torch.Tensor, typing.Tuple[int, int]], torch.Tensor]:
+    ) -> Callable[[torch.Tensor, typing.Tuple[int, int]], torch.Tensor]:
         resize_functions = {"cv2": self._resize_cv2, "pytorch": self._resize_pytorch}
 
         resize_function = resize_functions.get(resize_version)
@@ -408,7 +403,7 @@ class Gen1Model(AbstractAdaptivePolishingModel):
 
     def _postprocess(
         self, prediction: torch.Tensor, image: NDArray[typing.Any]
-    ) -> NDArray[np.long]:
+    ) -> NDArray[np.uint8]:
         # Trim off padding
         labels = super()._postprocess(prediction, image)
 
@@ -634,6 +629,7 @@ class Gen1ImprovedPreprocessingFPNModel(Gen1Model):
             resize_version="pytorch",
             model_type="fpn",
         )
+
 
 class Gen1RGBImprovedPreprocessingFPNModel(Gen1Model):
     def __init__(

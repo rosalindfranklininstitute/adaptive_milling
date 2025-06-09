@@ -23,9 +23,12 @@ _logger = logging.getLogger(__name__)
 
 plt.rc("axes", titlesize="small")
 plt.rc("figure", titlesize="large")
-LABEL_CMAP = plt.get_cmap("tab10")
 
+def __create_cmap() -> ListedColormap:
+    _tab10 = plt.get_cmap("tab10")
+    return ListedColormap([_tab10(_.value) for _ in SegmentationLabels])
 
+LABEL_CMAP = __create_cmap()
 
 def create_centring_plot(
     sem_image: FibsemImage,
@@ -76,7 +79,7 @@ def create_centring_plot(
             cmap=LABEL_CMAP,
             extent=extent,
             vmin=0,
-            vmax=len(LABEL_CMAP.colors),
+            vmax=LABEL_CMAP.N,
             interpolation="none",
         )
 
@@ -116,6 +119,7 @@ def create_centring_plot(
 
 
 def create_milling_cycle_plot(
+    save_path: typing.Union[str, PathLike],
     sem_image: NDArray[typing.Any],
     first_prediction: NDArray[np.integer],
     clean_prediction: NDArray[typing.Any],
@@ -129,8 +133,9 @@ def create_milling_cycle_plot(
     xlims: typing.Optional[typing.Tuple[int, int]] = None,
     fib_screenshot: typing.Optional[NDArray[typing.Any]] = None,
     img_name: typing.Optional[str] = None,
-    save_path: typing.Optional[typing.Union[str, PathLike]] = None,
 ):
+    gis_thickness_um = np.asarray(gis_thickness_um)
+
     _logger.debug("Creating milling cycle plot")
     fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(12, 8), tight_layout=True)
     plot_title = img_name
@@ -153,7 +158,7 @@ def create_milling_cycle_plot(
         alpha=0.4,
         cmap=LABEL_CMAP,
         vmin=0,
-        vmax=len(LABEL_CMAP.colors),
+        vmax=LABEL_CMAP.N,
         extent=sem_image_extent,
         interpolation="none",
     )
@@ -167,7 +172,7 @@ def create_milling_cycle_plot(
         alpha=0.4,
         cmap=LABEL_CMAP,
         vmin=0,
-        vmax=len(LABEL_CMAP.colors),
+        vmax=LABEL_CMAP.N,
         extent=sem_image_extent,
         interpolation="none",
     )
