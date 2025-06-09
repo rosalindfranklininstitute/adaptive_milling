@@ -619,7 +619,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
             # shift beam
             dx, dy = -centre_m.x, -centre_m.y
-            new_beam_shift = microscope.beam_shift(dx, dy, BeamType.ELECTRON)
+            microscope.beam_shift(dx, dy, BeamType.ELECTRON)
+
+            new_beam_shift = microscope.get_beam_shift(BeamType.ELECTRON)
 
             new_lamella_centre_m = new_beam_shift - expected_new_beam_shift
 
