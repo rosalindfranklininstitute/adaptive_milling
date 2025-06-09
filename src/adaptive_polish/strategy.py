@@ -268,9 +268,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         )
 
         sem_imaging_settings.filename = f"{image_name}_SEM.tif"
-        sem_image = acquire.new_image(microscope, sem_imaging_settings)
+        sem_image = self._acquire_image(microscope, sem_imaging_settings)
         fib_imaging_settings.filename = f"{image_name}_FIB.tif"
-        fib_image = acquire.new_image(microscope, fib_imaging_settings)
+        fib_image = self._acquire_image(microscope, fib_imaging_settings)
 
         self._check_lamella(
             milling_cycle,
@@ -570,7 +570,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         _logger.info("Aligning SEM beam in order to centre the lamella")
 
         # Take reference images
-        sem_image = acquire.new_image(microscope, sem_imaging_settings)
+        sem_image = self._acquire_image(microscope, sem_imaging_settings)
 
         try:
             prediction = self._segment_sem_image(sem_image.data)
@@ -675,3 +675,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         prediction = self.model.predict(sem_image, full_size=full_size)
         _logger.debug("SEM segmentation complete")
         return prediction
+
+    def _acquire_image(
+        self, microscope: FibsemMicroscope, imaging_settings: ImageSettings
+    ) -> FibsemImage:
+        return acquire.new_image(microscope, imaging_settings)
