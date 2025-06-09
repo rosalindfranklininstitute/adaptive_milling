@@ -147,16 +147,6 @@ def apply_binary_opening(
         )
 
 
-def get_xlims(
-    mask_1d: NDArray[typing.Union[np.integer, np.floating]],
-) -> NDArray[np.uint32]:
-    mask_1d = mask_1d.squeeze()
-    return np.asarray(
-        (np.argmax(mask_1d), mask_1d.size - 1 - np.argmax(mask_1d[::-1])),
-        dtype=np.uint32,
-    )
-
-
 def filter_gis_thickness(
     gis_thickness_px: NDArray[typing.Union[np.integer, np.floating]],
     window_size_m: float,

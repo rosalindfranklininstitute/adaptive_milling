@@ -1,46 +1,15 @@
 from __future__ import annotations
-from dataclasses import dataclass
 import typing
 
 import numpy as np
 
 from fibsem import conversions
 from fibsem.structures import Point
-from fibsem.detection.detection import AdaptiveLamellaCentre
 
 from adaptive_polish.exceptions import CentringException
 
 if typing.TYPE_CHECKING:
     from numpy.typing import NDArray
-
-
-@dataclass
-class AdaptivePolishLamellaCentre(AdaptiveLamellaCentre):
-    name: str = "AdaptivePolishLamellaCentre"
-
-    def detect(
-        self, img: np.ndarray, mask: np.ndarray = None, point: Point = None
-    ) -> Point:
-        if not np.issubdtype(mask.dtype, np.bool_):
-            # Only accept boolean arrays as this requires the mask to have been cleaned up beforehand
-            raise TypeError(f"{self.__class__.__name__} only accepts boolean arrays")
-        mask_lamella_centre = np.asarray(
-            get_lamella_centre(mask, subpixel_accuracy=True)
-        )
-
-        img_shape = np.asarray(img.shape)
-        mask_shape = np.asarray(mask.shape)
-        if np.any(img_shape != mask_shape):
-            # Scale mask to image (in case mask is binned)
-            lamella_centre = mask_lamella_centre * (img_shape / mask_shape)
-        else:
-            lamella_centre = mask_lamella_centre
-
-        self.px = Point(
-            x=lamella_centre[1],
-            y=lamella_centre[0],
-        )
-        return self.px
 
 
 def get_mask_bounding_box(
