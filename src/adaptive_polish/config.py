@@ -26,7 +26,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
     _advanced_attributes = []
 
     @staticmethod
-    def from_dict(d: dict[str, typing.Any]) -> typing.Self:
+    def from_dict(d: dict[str, typing.Any]) -> "AdaptivePolishMillingConfig":
         return AdaptivePolishMillingConfig(**d)
 
     def to_dict(self) -> dict[str, typing.Any]:

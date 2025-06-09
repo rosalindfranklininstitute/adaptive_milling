@@ -33,7 +33,7 @@ DEFAULT_SEM_MODEL_GENERATION = sgm._get_newest_generation_key()
 
 load_sem_model = sgm.load_model
 
-def get_pixel_width(img):
+def get_pixel_width(img) -> float | None:
     """Gets the pixel width of an AdornedImage, or if not possible, returns None
 
     Args:
@@ -43,8 +43,9 @@ def get_pixel_width(img):
         xml_sett = img.metadata.metadata_as_xml
         xml_parse = ET.fromstring(xml_sett)
         pixel_size_x = xml_parse.find("BinaryResult/PixelSize/X")
-        pixel_width_m = float(pixel_size_x.text)
-        return pixel_width_m
+        if pixel_size_x is None:
+            raise ValueError("No BinaryResult/PixelSize/X found")
+        return float(pixel_size_x.text)  # type: ignore
     except Exception:
         # if there is no metadata with 'PixelWidth' defaults to the value above
         return None
@@ -68,9 +69,11 @@ def keep_only_largest_object(mask: NDArray[np.integer]) -> NDArray[np.bool_]:
     return mask_largest_only > 0
 
 
-def check_minimum_area(mask: NDArray[np.bool_], pixel_size, minimum_size) -> bool:
+def check_minimum_area(
+    mask: NDArray[np.bool_], pixel_size: float, minimum_size: float
+) -> bool:
     # Ensure lamella and GIS object is bigger than minimum size
-    return np.sum(mask) * pixel_size <= minimum_size
+    return bool(np.sum(mask) * pixel_size <= minimum_size)
 
 
 def clean_prediction(
@@ -156,7 +159,7 @@ def get_xlims(
 
 def filter_gis_thickness(
     gis_thickness_px: NDArray[typing.Union[np.integer, np.floating]],
-    window_size_m: int,
+    window_size_m: float,
     pixel_size_m: float,
 ) -> NDArray[np.float64]:
     # TODO: Change window_size_m to beam FWHM
@@ -188,11 +191,16 @@ def filter_gis_thickness_fast(
     return (cumsum_vec[window_size_px:] - cumsum_vec[:-window_size_px]) / window_size_px
 
 
-def resize_image(image, new_shape: typing.Tuple[int, int]) -> NDArray[np.float32]:
-    return skimage.transform.resize(
+def resize_image(
+    image: NDArray[typing.Any], new_shape: typing.Tuple[int, int]
+) -> NDArray[np.float_]:
+    if not isinstance(image.dtype, np.floating):
         # Needs to be floating type if we want interpolation
-        image.astype(np.float32),
+        image = image.astype(np.float_)
+    return skimage.transform.resize(
+        image,
         output_shape=new_shape,
+        preserve_range=True,
     )
 
 
@@ -211,7 +219,9 @@ def measure_gis(
     )
 
 
-def cleanup_crack_segmentation(prediction: np.array) -> float:
+def cleanup_crack_segmentation(
+    prediction: NDArray[np.integer[typing.Any]],
+) -> NDArray[np.bool_]:
     """Measure the area in the prediction for cracks in um2.
 
     Cracks are only considered if they are within the largest combined lamella+
@@ -241,7 +251,7 @@ def cleanup_crack_segmentation(prediction: np.array) -> float:
 
 
 def get_mask_area_um2(mask: NDArray[np.bool_], pixel_size_um: float) -> float:
-    return np.sum(mask) * (pixel_size_um**2)
+    return float(np.sum(mask) * (pixel_size_um**2))
 
 
 def masks_to_labels(
@@ -249,7 +259,7 @@ def masks_to_labels(
     gis_mask: typing.Optional[NDArray[np.bool_]] = None,
     crack_mask: typing.Optional[NDArray[np.bool_]] = None,
     background_mask: typing.Optional[NDArray[np.bool_]] = None,
-    vacuum_mask: typing.Optional[NDArray[np.bool]] = None,
+    vacuum_mask: typing.Optional[NDArray[np.bool_]] = None,
     default_value: typing.Union[int, float] = np.nan,
 ) -> NDArray[typing.Any]:
     mask_label_pairs = [

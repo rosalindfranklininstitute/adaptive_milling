@@ -61,7 +61,7 @@ def _results_entry_helper(
     *dfs: DataFrame, milling_cycle: int, results: typing.Dict[str, typing.Any]
 ) -> None:
     for df in dfs:
-        df.loc[milling_cycle] = {
+        df.loc[milling_cycle] = {  # type: ignore
             key: results.get(key, None) for key in df.columns.values
         }
 
@@ -92,7 +92,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         return {"name": self.name, "config": self.config.to_dict()}
 
     @classmethod
-    def from_dict(cls, d: dict[str, typing.Any]) -> typing.Self:
+    def from_dict(cls, d: dict[str, typing.Any]) -> "AdaptivePolishMillingStrategy":
         config = AdaptivePolishMillingConfig.from_dict(d["config"])
         return cls(config=config)
 
@@ -255,7 +255,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         results_dict: typing.Dict[str, typing.Any],
         microscope: FibsemMicroscope,
         stage: FibsemMillingStage,
-        expected_lamella_centre_m: Point,
+        expected_lamella_centre_m: typing.Optional[Point],
         mill: bool = True,
         asynch: bool = False,
         parent_ui=None,
@@ -328,6 +328,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         results_dict: typing.Dict[str, typing.Any],
         expected_lamella_centre_m: typing.Optional[Point] = None,
     ) -> None:
+        if sem_image.metadata is None:
+            raise ValueError("Unable to get pixel size from SEM image with no metadata")
+
         prediction = self._segment_sem_image(sem_image.data)
 
         mask_lamella_clean, mask_gis_clean, mask_crack_clean = gm.clean_prediction(
@@ -366,7 +369,10 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         # Measure GIS
         gis_thickness_um = (
             np.sum(
-                gm.resize_image(mask_gis_clean, new_shape=sem_image.data.shape),
+                gm.resize_image(
+                    mask_gis_clean,
+                    new_shape=(sem_image.data.shape[-2], sem_image.data.shape[-1]),
+                ),
                 axis=0,
             )
             * sem_image.metadata.pixel_size.x
@@ -412,7 +418,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         )
         results_dict["xlims_px"] = xlims_px
 
-        min_gis_um = np.nanmin(gis_thickness_filtered_um[xlims_px[0] : xlims_px[1] + 1])
+        min_gis_um = float(
+            np.nanmin(gis_thickness_filtered_um[xlims_px[0] : xlims_px[1] + 1])
+        )
         _logger.info(f"Took {len(gis_thickness_filtered_um)} GIS measurements along x")
         _logger.info(
             "Minimum GIS thickness for milling cycle %i = %.4e um",
@@ -438,6 +446,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         try:
             # Create plots
             create_milling_cycle_plot(
+                save_path=plots_folder / f"{image_name}_plot.png",
                 sem_image=sem_image.data,
                 first_prediction=prediction,
                 clean_prediction=gm.masks_to_labels(
@@ -455,7 +464,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 max_crack_area_um2=self.config.max_crack_area_um2,
                 img_name=image_name,
                 fib_screenshot=None,
-                save_path=plots_folder / f"{image_name}_plot.png",
             )
         except Exception:
             _logger.error(
@@ -463,9 +471,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             )
 
         if self.config.align_sem and expected_lamella_centre_m is not None:
-            centre_m: typing.Optional[Point] = None
-            mask_centre_px: typing.Optional[Point] = None
-            centre_drift_um: float = 0
+            centre_m: typing.Optional[Point]
+            mask_centre_px: typing.Optional[Point]
+            centre_drift_um: float
             try:
                 centre_m, mask_centre_px = get_centre_points_from_bounding_box(
                     bbox=lamella_bbox,
@@ -481,8 +489,12 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                     * constants.SI_TO_MICRO
                 )
             except CentringException as e:
+                centre_m = None
+                mask_centre_px = None
+                centre_drift_um = 0
                 _logger.warning(
-                    f"Failed to get lamella centre, drift check will be skipped: {e}"
+                    "Failed to get lamella centre, drift check will be skipped: %s",
+                    str(e),
                 )
 
             # Only a valid check if sem is aligned
@@ -592,6 +604,11 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 sem_image.data,
                 mask=mask_lamella_clean,
             )
+            if sem_image.metadata is None:
+                raise ValueError(
+                    "Unable to get pixel size from SEM image with no metadata"
+                )
+
             centre_m, centre_px = get_centre_points_from_bounding_box(
                 lamella_bbox,
                 image=sem_image.data,
