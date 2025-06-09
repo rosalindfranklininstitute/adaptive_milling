@@ -144,6 +144,8 @@ class AbstractAdaptivePolishingModel(ABC):
 
             if not torch.is_tensor(preprocessed):
                 preprocessed_tensor = torch.from_numpy(preprocessed)
+            else:
+                preprocessed_tensor = preprocessed
 
             preprocessed_tensor = preprocessed_tensor.to(self.device)
 
