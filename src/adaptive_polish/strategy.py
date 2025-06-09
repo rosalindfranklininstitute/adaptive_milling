@@ -70,13 +70,13 @@ def _results_entry_helper(
 def _restore_beam_shifts(
     microscope: FibsemMicroscope,
 ) -> typing.Generator[None, None, None]:
-    sem_shift = microscope.get("shift", BeamType.ELECTRON)
-    fib_shift = microscope.get("shift", BeamType.ION)
+    sem_shift = microscope.get_beam_shift(BeamType.ELECTRON)
+    fib_shift = microscope.get_beam_shift(BeamType.ION)
     try:
         yield None
     finally:
-        microscope.set("shift", sem_shift, BeamType.ELECTRON)
-        microscope.set("shift", fib_shift, BeamType.ION)
+        microscope.set_beam_shift(sem_shift, BeamType.ELECTRON)
+        microscope.set_beam_shift(fib_shift, BeamType.ION)
 
 
 @dataclass
@@ -597,14 +597,12 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 image=sem_image.data,
                 pixel_size_m=sem_image.metadata.pixel_size.x,
             )
-            initial_beam_shift = microscope.get("shift", BeamType.ELECTRON)
+            initial_beam_shift = microscope.get_beam_shift(BeamType.ELECTRON)
             expected_new_beam_shift = initial_beam_shift - centre_m
 
             # shift beam
             dx, dy = -centre_m.x, -centre_m.y
-            microscope.beam_shift(dx, dy, BeamType.ELECTRON)
-
-            new_beam_shift = microscope.get("shift", BeamType.ELECTRON)
+            new_beam_shift = microscope.beam_shift(dx, dy, BeamType.ELECTRON)
 
             new_lamella_centre_m = new_beam_shift - expected_new_beam_shift
 
