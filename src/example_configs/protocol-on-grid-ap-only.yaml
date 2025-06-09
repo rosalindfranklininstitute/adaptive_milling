@@ -20,10 +20,10 @@ milling:
       spacing: 6.0e-07
       upper_trench_height: 5.0e-07
       width: 6.0e-06
+      time: 10
     strategy: {"name": AdaptivePolishing,
       config: {
         align_sem: True,
-        milling_interval_s: 10,
         gis_stop_um: 0.2,
         max_milling_cycles: 5,
         window_size_px: 10,
