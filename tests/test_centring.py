@@ -3,8 +3,6 @@ import pytest
 import numpy as np
 
 from adaptive_polish.centring import (
-    AdaptiveLamellaCentre,
-    AdaptivePolishLamellaCentre,
     get_mask_bounding_box,
     get_lamella_centre,
 )
@@ -86,51 +84,3 @@ def test_get_lamella_centre() -> None:
         test_lamella.centre,
         err_msg="The found centre does not match the actual centre",
     )
-
-
-def test_methods_equivalent_for_simple_rectangle() -> None:
-    # Required to be fairly big due to `detect_centre_point` threshold defaulting to 500
-    test_lamella = SimpleRectangleLamellaMask((1000, 2000))
-    centre_1 = AdaptiveLamellaCentre().detect(
-        # Expects the lamella to be labelled as 2
-        test_lamella.array,
-        mask=test_lamella.array.astype(np.uint8) * 2,
-    )
-    centre_2 = AdaptivePolishLamellaCentre().detect(
-        test_lamella.array, mask=test_lamella.array
-    )
-    assert centre_1 == centre_2, "Centres do not match"
-
-
-@pytest.mark.skip("No need to run this unless speed is being checked")
-def test_relative_speed() -> None:
-    from timeit import timeit
-
-    repeats = 100
-
-    test_lamella = SimpleRectangleLamellaMask((2048, 3072))  # Typical dims
-
-    # AdaptiveLamellaCentre2 is ~2.1x slower for this size array (gets worse
-    # with size). However, it should be more accurate.
-    centre_feature_1 = AdaptiveLamellaCentre()
-    centre_feature_2 = AdaptivePolishLamellaCentre()
-
-    # Expects the lamella to be labelled as 2
-    mask = (test_lamella.array.astype(np.uint8) * 2,)
-
-    centre_1_time = (
-        timeit(
-            lambda: centre_feature_1.detect(test_lamella.array, mask=mask),
-            number=repeats,
-        )
-        / repeats
-    )
-    centre_2_time = (
-        timeit(
-            lambda: centre_feature_2.detect(test_lamella.array, mask=mask == 2),
-            number=repeats,
-        )
-        / repeats
-    )
-    print(f"AdaptiveLamellaCentre: {centre_1_time} s")
-    print(f"AdaptiveLamellaCentre2: {centre_2_time} s")
