@@ -188,11 +188,12 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 # Do one extra cycle without milling to run checks and get stats
                 for milling_cycle in range(self.config.max_milling_cycles + 1):
                     image_name = f"{lamella_name}_AP_img_{milling_cycle:03}"
-                    results_dict = {
+                    results_dict: dict[str, typing.Any] = {
                         "image": image_name,
-                        "milling_time_s": self.config.milling_interval_s
-                        * milling_cycle,
                     }
+                    pattern_time = getattr(self.stage.pattern, "time")
+                    if pattern_time is not None:
+                       results_dict["milling_time_s"] = pattern_time * milling_cycle,
                     try:
                         self._run_milling_cycle(
                             milling_cycle=milling_cycle,
@@ -460,7 +461,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                 crack_area_um2=crack_area_um2,
                 min_gis_um=min_gis_um,
                 xlims=xlims_px,
-                total_milling_time=self.config.milling_interval_s * milling_cycle,
+                total_milling_time=results_dict.get("milling_time_s"),
                 max_crack_area_um2=self.config.max_crack_area_um2,
                 img_name=image_name,
                 fib_screenshot=None,
