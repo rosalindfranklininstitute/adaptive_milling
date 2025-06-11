@@ -193,7 +193,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
                     }
                     pattern_time = getattr(stage.pattern, "time")
                     if pattern_time is not None:
-                       results_dict["milling_time_s"] = pattern_time * milling_cycle
+                        results_dict["milling_time_s"] = pattern_time * milling_cycle
                     try:
                         self._run_milling_cycle(
                             milling_cycle=milling_cycle,
