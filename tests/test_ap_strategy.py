@@ -435,6 +435,7 @@ def test_results_saved(
     detailed_results_df = pd.read_csv(detailed_results_path, index_col=0)
     detailed_results_df = pd.read_json(detailed_results_path)
     first_gis_thicknesses = detailed_results_df.loc[0, "gis_thickness_um"]
+    assert isinstance(first_gis_thicknesses, list), "gis_thickness_um is not a list"
     assert len(first_gis_thicknesses) == sem_res[0], (
         "Unexpected length of gis_thickness_um"
     )
