@@ -262,7 +262,7 @@ def test_max_milling_cycles_not_exceeded(
                     plots_folder=lamella_ap_folder / "plots",
                     results_dict={
                         "image": f"{lamella_directory.stem}_AP_img_{i:03}",
-                        "milling_time_s": ap_config.milling_interval_s * i,
+                        "milling_time_s": stage.pattern.time * i,
                     },
                     expected_lamella_centre_m=None,  # Due to align_sem=False
                 )
@@ -386,7 +386,7 @@ def test_results_saved(
     images_names = [
         f"{lamella_directory.stem}_AP_img_{i:03}" for i in range(max_checks)
     ]
-    milling_times = [ap_config.milling_interval_s * i for i in range(max_checks)]
+    milling_times = [stage.pattern.time * i for i in range(max_checks)]
 
     expected_results_df = pd.DataFrame(
         {
