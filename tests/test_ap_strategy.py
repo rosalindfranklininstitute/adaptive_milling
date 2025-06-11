@@ -359,7 +359,9 @@ def test_results_saved(
 
     mock_filter_gis_thickness.side_effect = expected_filtered_gis_thicknesses
     # Stop it trying to load a model
-    with patch.object(strategy, "model"), patch.object(strategy, "_mill") as mock_mill:
+    with patch.object(strategy, "model") as mock_model, patch.object(strategy, "_mill") as mock_mill:
+        mock_model.predict.return_value.shape = mask_shape
+
         strategy.run(microscope, stage)
 
         # # The calls for cracks will be skipped as mask_crack_clean is None
