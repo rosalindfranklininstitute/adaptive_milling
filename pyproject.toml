@@ -39,6 +39,7 @@ dependencies = [
   "albumentations",
   "segmentation-models-pytorch >= 0.4.0",
   "jinja2",
+  "pydantic",
   "fibsem@git+https://github.com/DeMarcoLab/fibsem.git",
   "napari[all]",
 ]
