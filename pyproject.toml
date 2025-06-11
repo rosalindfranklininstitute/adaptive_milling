@@ -40,7 +40,6 @@ dependencies = [
   "segmentation-models-pytorch >= 0.4.0",
   "jinja2",
   "fibsem@git+https://github.com/DeMarcoLab/fibsem.git",
-  "autolamella@git+https://github.com/DeMarcoLab/autolamella.git",
   "napari[all]",
 ]
 
