@@ -539,6 +539,14 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
 
         # draw patterns
         draw_patterns(microscope=microscope, patterns=pattern)
+
+        try:
+            # Log patterns created
+            for pattern_str in _format_microscope_patterns(microscope=microscope):
+                logging.debug("Pattern created: %s", pattern_str)
+        except Exception:
+            logging.debug
+
         try:
             estimated_time = microscope.estimate_milling_time()
             logging.info(
@@ -696,3 +704,22 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
         self, microscope: FibsemMicroscope, imaging_settings: ImageSettings
     ) -> FibsemImage:
         return acquire.new_image(microscope, imaging_settings)
+
+
+def _format_microscope_patterns(microscope: FibsemMicroscope) -> list[str]:
+    pattern_string_list: list[str] = []
+    for pattern in microscope._patterns:
+        pattern_name = pattern.__class__.__name__
+        attr_list: list[str] = []
+        for attr_name in dir(pattern):
+            if attr_name.startswith("_"):
+                continue
+            try:
+                value = getattr(pattern, attr_name)
+                if isinstance(value, str):
+                    value = f'"{value}"'
+                attr_list.append(f"{attr_name}={value}")
+            except Exception:
+                pass
+        pattern_string_list.append(f"{pattern_name}({', '.join(attr_list)})")
+    return pattern_string_list
