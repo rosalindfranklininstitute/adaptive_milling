@@ -545,7 +545,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             for pattern_str in _format_microscope_patterns(microscope=microscope):
                 logging.debug("Pattern created: %s", pattern_str)
         except Exception:
-            logging.debug
+            logging.debug("Failed to log pattern information", exc_info=True)
 
         try:
             estimated_time = microscope.estimate_milling_time()
