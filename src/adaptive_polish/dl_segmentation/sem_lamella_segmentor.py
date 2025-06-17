@@ -16,7 +16,7 @@ import cv2
 import torch
 from torchvision.transforms import v2
 import albumentations as alb
-import albumentations.pytorch
+from albumentations.pytorch import ToTensorV2
 import segmentation_models_pytorch as smp
 import numpy as np
 
@@ -192,15 +192,12 @@ class Gen0Model(AbstractAdaptivePolishingModel):
         transform = alb.Compose(
             [
                 alb.ToFloat(max_value=65535.0),
-                # alb.Lambda(name="normalize_by_mean_std_with_clip35", image=normalize_by_mean_std_with_clip35, always_apply=True),
                 alb.Lambda(
                     name="normalize_by_mean_std_with_clip",
                     image=normalize_by_mean_std_with_clip,
-                    # always_apply=True,
                 ),
-                # alb.CenterCrop(sqsize, sqsize,always_apply=True),
                 alb.Resize(*new_size),
-                albumentations.pytorch.ToTensorV2(),
+                ToTensorV2(),
             ]
         )
 
