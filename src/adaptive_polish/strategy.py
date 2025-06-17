@@ -79,22 +79,16 @@ def _restore_beam_shifts(
         microscope.set_beam_shift(fib_shift, BeamType.ION)
 
 
-@dataclass
-class AdaptivePolishMillingStrategy(MillingStrategy):
+class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]):
     name: str = "AdaptivePolishing"
     fullname: str = "Adaptive polishing according to GIS thickness"
+    config_class: typing.ClassVar[typing.Type[AdaptivePolishMillingConfig]] = (
+        AdaptivePolishMillingConfig
+    )
 
-    def __init__(self, config: AdaptivePolishMillingConfig) -> None:
-        self.config = config
+    def __init__(self, config: AdaptivePolishMillingConfig | None = None) -> None:
+        super().__init__(config=config)
         self.model: typing.Optional[AbstractAdaptivePolishingModel] = None
-
-    def to_dict(self) -> dict[str, typing.Any]:
-        return {"name": self.name, "config": self.config.to_dict()}
-
-    @classmethod
-    def from_dict(cls, d: dict[str, typing.Any]) -> "AdaptivePolishMillingStrategy":
-        config = AdaptivePolishMillingConfig.from_dict(d["config"])
-        return cls(config=config)
 
     def run(
         self,
