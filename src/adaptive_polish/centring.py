@@ -10,12 +10,15 @@ from adaptive_polish.exceptions import CentringException
 
 if typing.TYPE_CHECKING:
     from numpy.typing import NDArray
+    from collections.abc import Callable
 
 
 def get_mask_bounding_box(
     mask: NDArray[np.bool_],
     edge_finding: typing.Literal["median", "mean", "min", "max"] = "median",
 ) -> typing.Tuple[float, float, float, float]:
+    edge_fn_max: Callable[..., np.integer[typing.Any] | np.floating[typing.Any]]
+    edge_fn_min: Callable[..., np.integer[typing.Any] | np.floating[typing.Any]]
     if edge_finding == "median":
         edge_fn_min = np.median
         edge_fn_max = np.median
@@ -43,10 +46,10 @@ def get_mask_bounding_box(
     valid_xmaxs = x_maxs[mask[y_range, x_maxs]]
     valid_ymins = y_mins[mask[y_mins, x_range]]
     valid_ymaxs = y_maxs[mask[y_maxs, x_range]]
-    xmin = edge_fn_min(valid_xmins)
-    xmax = edge_fn_max(valid_xmaxs)
-    ymin = edge_fn_min(valid_ymins)
-    ymax = edge_fn_max(valid_ymaxs)
+    xmin = float(edge_fn_min(valid_xmins))
+    xmax = float(edge_fn_max(valid_xmaxs))
+    ymin = float(edge_fn_min(valid_ymins))
+    ymax = float(edge_fn_max(valid_ymaxs))
     bbox = (ymin, xmin, ymax, xmax)
 
     if np.any(np.isnan(bbox)):

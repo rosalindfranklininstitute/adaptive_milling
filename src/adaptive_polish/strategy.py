@@ -342,7 +342,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy):
             ),
         )
 
-        prediction_pixel_size_um = (
+        prediction_pixel_size_um = float(
             sem_image.metadata.pixel_size.x
             * constants.SI_TO_MICRO
             * sem_image.data.shape[1]
