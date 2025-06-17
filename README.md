@@ -1,9 +1,9 @@
 # Adaptive polishing
 
-Adaptive polishing for FIB milling lamellae, compatible with fibsem and autolamella
+Adaptive polishing strategy for OpenFIBSEM, which uses machine learning to determine when polishing is complete.
 
-![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)
-[![Building](https://github.com/rosalindfranklininstitute/python-template/actions/workflows/python-package.yml/badge.svg)](https://github.com/rosalindfranklininstitute/python-template/actions/workflows/python-package.yml)
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![CI](https://github.com/rosalindfranklininstitute/adaptive_polish/actions/workflows/python-test.yml/badge.svg)](https://github.com/rosalindfranklininstitute/adaptive_polish/actions/workflows/python-test.yml)
 
 ## Installation
 
@@ -12,8 +12,11 @@ You can install the package by running the following commands:
 ```
 pip install -e .
 ```
-Please note that you will also need fibsem and autolamella to get this to work
-(Franklin forks - see the organisation Github)
+or
+```
+uv sync
+```
+Autolamella will have to be installed separately.
 
 ## Testing
 
@@ -26,7 +29,7 @@ pytest
 
 ## Issues
 
-Please use the [GitHub issue tracker](https://github.com/rosalindfranklininstitute/python-template/issues) to submit bugs or request features.
+Please use the [GitHub issue tracker](https://github.com/rosalindfranklininstitute/adaptive_polish/issues) to submit bugs or request features.
 
 ## Contributions
 
@@ -36,5 +39,4 @@ If you would like to help contribute to profet, please read our [contribution](C
 
 Copyright Rosalind Franklin Institute, 2024.
 
-Distributed under the terms of the Apache-2.0 license, python-template is free and open source software.
-
+Distributed under the terms of the Apache-2.0 license, adaptive polish is free and open source software.
