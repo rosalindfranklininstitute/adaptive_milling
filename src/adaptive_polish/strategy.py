@@ -5,7 +5,6 @@ import time
 import typing
 from contextlib import contextmanager
 from copy import deepcopy
-from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
