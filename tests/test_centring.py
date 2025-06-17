@@ -2,12 +2,25 @@ import pytest
 
 import numpy as np
 
+from fibsem.detection.detection import AdaptiveLamellaCentre
 from adaptive_polish.centring import (
     get_mask_bounding_box,
     get_lamella_centre,
 )
 
 from .setup import SimpleRectangleLamellaMask
+
+
+def test_methods_equivalent_for_simple_rectangle() -> None:
+    # Required to be fairly big due to `detect_centre_point` threshold defaulting to 500
+    test_lamella = SimpleRectangleLamellaMask((1000, 2000))
+    centre_point = AdaptiveLamellaCentre().detect(
+        test_lamella.array, mask=test_lamella.array.astype(np.uint8) * 2
+    )
+    centre_1 = (centre_point.y, centre_point.x)
+    # get_lamella_centre returns (y, x), whereas Point is (x, y)
+    centre_2 = get_lamella_centre(array=test_lamella.array, edge_finding="median")
+    assert centre_1 == centre_2, "Centres do not match"
 
 
 @pytest.mark.parametrize("edge_finding", ["median", "mean", "min", "max"])
