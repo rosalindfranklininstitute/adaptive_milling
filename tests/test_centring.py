@@ -1,5 +1,7 @@
 import pytest
 
+from typing import Literal
+
 import numpy as np
 
 from fibsem.detection.detection import AdaptiveLamellaCentre
@@ -24,7 +26,9 @@ def test_methods_equivalent_for_simple_rectangle() -> None:
 
 
 @pytest.mark.parametrize("edge_finding", ["median", "mean", "min", "max"])
-def test_get_mask_bounding_box_simple(edge_finding: str) -> None:
+def test_get_mask_bounding_box_simple(
+    edge_finding: Literal["median", "mean", "min", "max"],
+) -> None:
     test_lamella = SimpleRectangleLamellaMask((100, 200), 20)
     # All the edge finding methods should be the same for this case
     found_bounding_box = get_mask_bounding_box(
