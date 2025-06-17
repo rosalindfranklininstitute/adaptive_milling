@@ -58,6 +58,7 @@ version_file = "adaptive_polish/_version.py"
 test = [
   "pytest",
   "pytest-cov",
+  "autolamella@git+https://github.com/DeMarcoLab/autolamella.git",
 ]
 dev = [
   "ruff",
