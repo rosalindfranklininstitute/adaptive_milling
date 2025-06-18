@@ -7,7 +7,7 @@ milling:
       patterning_mode: Serial
     imaging:
       dwell_time: 2.0e-06
-      hfw: 4e-5
+      hfw: 4.0e-5
       resolution:
         - 3072
         - 2048
@@ -28,7 +28,7 @@ milling:
         max_milling_cycles: 5,
         window_size_px: 10,
         max_crack_area_um2: 2,
-        model_path: C:\Users\dmv31621\OneDrive - The Rosalind Franklin Institute\2025\00_Adaptive-milling\models\2024-02-24_0013_gis_lamela_crack_pytorch_AUnet.ptchkp
+        model_path:
       }}
 options:
   name: autolamella-adaptive-polish-only
