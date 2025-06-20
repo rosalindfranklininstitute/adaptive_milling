@@ -354,8 +354,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]
 
         try:
             # Get lamella position
-            lamella_bbox = get_bounding_box_scaled_to_image(
-                sem_image.data, mask=mask_lamella_clean
+            lamella_bbox, _ = get_bounding_box_scaled_to_image(
+                image=sem_image.data, mask=mask_lamella_clean, edge_finding="median"
             )
         except CentringException:
             raise StopEarlyError("Failed to get lamella bounds from the segmentation")
@@ -598,9 +598,10 @@ class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]
         centre_px: typing.Optional[Point] = None
         lamella_bbox: typing.Optional[tuple[float, float, float, float]] = None
         try:
-            lamella_bbox = get_bounding_box_scaled_to_image(
+            lamella_bbox, _ = get_bounding_box_scaled_to_image(
                 sem_image.data,
                 mask=mask_lamella_clean,
+                edge_finding="median",
             )
             if sem_image.metadata is None:
                 raise ValueError(

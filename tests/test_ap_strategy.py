@@ -503,7 +503,10 @@ def test_align_beam(
 
     strategy = ap_strategy.AdaptivePolishMillingStrategy(config=ap_config)
 
-    mock_get_bounding_box_scaled_to_image.return_value = test_lamella.bounding_box
+    mock_get_bounding_box_scaled_to_image.return_value = (
+        test_lamella.bounding_box,
+        test_lamella.bounding_box,
+    )
 
     with (
         patch.object(strategy, "model") as mock_model,

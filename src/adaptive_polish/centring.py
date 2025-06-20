@@ -81,7 +81,9 @@ def get_bounding_box_scaled_to_image(
     image: NDArray[typing.Any],
     mask: NDArray[np.bool_],
     edge_finding: typing.Literal["median", "mean", "min", "max"] = "median",
-) -> typing.Tuple[float, float, float, float]:
+) -> typing.Tuple[
+    typing.Tuple[float, float, float, float], typing.Tuple[float, float, float, float]
+]:
     # This does assume square pixels
     prediction_to_image_scale_multiplier: float
     if image.shape[1] == mask.shape[1]:
@@ -96,7 +98,7 @@ def get_bounding_box_scaled_to_image(
         bbox_mask[1] * prediction_to_image_scale_multiplier,
         bbox_mask[2] * prediction_to_image_scale_multiplier,
         bbox_mask[3] * prediction_to_image_scale_multiplier,
-    )
+    ), bbox_mask
 
 
 def get_centre_points_from_bounding_box(
