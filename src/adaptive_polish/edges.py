@@ -8,8 +8,29 @@ if typing.TYPE_CHECKING:
 
 
 def get_mask_edge(
-    mask_2d: NDArray[np.bool_], axis: int, side: typing.Literal["min", "max"] = "min"
+    mask_2d: NDArray[np.bool_],
+    axis: int,
+    side: typing.Literal["min", "max"] = "min",
+    filter_valid: bool = True,
 ) -> NDArray[np.uint16]:
+    """Get the edge along an axis of a 2D mask
+
+    Args:
+        mask_2d (NDArray[np.bool_]): boolean array
+        axis (int): which axis to check along (NumPy indexing)
+        side (typing.Literal["min", "max"], optional): Whether to get the
+            minimum or maximum side along an axis. Defaults to "min".
+        filter_valid (bool, optional): Whether to filter out values that aren't
+            connected to an object. Warning: if False, "min" may return the
+            final index of the axis, and "max" may return 0s but gains a small
+            performance improvement. Defaults to True.
+
+    Raises:
+        ValueError: Invalid argument for side
+
+    Returns:
+        NDArray[np.uint16]: Array of (y, x) coordinates
+    """
     if side == "max":
         indexes = (
             slice(None, None, -1 if axis == 0 else None),
@@ -31,10 +52,12 @@ def get_mask_edge(
     if axis != 0:
         coordinates = coordinates[:, ::-1]
 
-    # Only include edge values that are True
-    # This filters out any rows/columns that were all False
-    valid_idxs = mask_2d[coordinates[:, 0], coordinates[:, 1]]
-    return coordinates[valid_idxs].astype(np.uint16)
+    if filter_valid:
+        # Only include edge values that are True
+        # This filters out any rows/columns that were all False
+        valid_idxs = mask_2d[coordinates[:, 0], coordinates[:, 1]]
+        coordinates = coordinates[valid_idxs]
+    return coordinates.astype(np.uint16)
 
 
 def get_mask_edges(
