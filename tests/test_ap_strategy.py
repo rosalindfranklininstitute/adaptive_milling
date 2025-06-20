@@ -342,6 +342,10 @@ def test_results_saved(
     lamella_mask[:lamella_bottom, :] = True
     gis_mask[lamella_bottom:gis_bottom, :] = True
 
+    prediction = np.full(mask_shape, SegmentationLabels.VACUUM.value, dtype=np.uint8)
+    prediction[lamella_mask] = SegmentationLabels.LAMELLA.value
+    prediction[gis_mask] = SegmentationLabels.GIS.value
+
     mock_clean_prediction.return_value = (lamella_mask, gis_mask, None)
 
     expected_gis_thickness = np.asarray(
@@ -360,7 +364,7 @@ def test_results_saved(
     mock_filter_gis_thickness.side_effect = expected_filtered_gis_thicknesses
     # Stop it trying to load a model
     with patch.object(strategy, "model") as mock_model, patch.object(strategy, "_mill") as mock_mill:
-        mock_model.predict.return_value.shape = mask_shape
+        mock_model.predict.return_value = prediction
 
         strategy.run(microscope, stage)
 

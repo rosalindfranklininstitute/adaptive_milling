@@ -354,39 +354,33 @@ class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]
 
         try:
             # Get lamella position
-            lamella_bbox, _ = get_bounding_box_scaled_to_image(
+            lamella_bbox, lamella_mask_bbox = get_bounding_box_scaled_to_image(
                 image=sem_image.data, mask=mask_lamella_clean, edge_finding="median"
             )
         except CentringException:
             raise StopEarlyError("Failed to get lamella bounds from the segmentation")
 
         # Measure GIS
+        gis_thickness_px = gm.get_gis_thickness(
+            mask_gis=mask_gis_clean,
+            mask_lamella=mask_lamella_clean,
+            mask_background=prediction == SegmentationLabels.BACKGROUND.value,
+            mask_crack=mask_crack_clean,
+            mask_vacuum=prediction == SegmentationLabels.VACUUM.value,
+            lamella_mask_bbox=lamella_mask_bbox,
+            image_shape=sem_image.data.shape,
+        )
+
         gis_thickness_um = (
-            np.sum(
-                gm.resize_image(
-                    mask_gis_clean,
-                    new_shape=(sem_image.data.shape[-2], sem_image.data.shape[-1]),
-                ),
-                axis=0,
-            )
-            * sem_image.metadata.pixel_size.x
-            * constants.SI_TO_MICRO
+            gis_thickness_px * sem_image.metadata.pixel_size.x * constants.SI_TO_MICRO
         )
         results_dict["gis_thickness_um"] = gis_thickness_um.tolist()
 
-        lamella_xlims_px = np.round(
-            (
-                lamella_bbox[1],
-                lamella_bbox[3],
-            )
-        ).astype(np.uint32)
-
-        maximum_side_difference_px = int(
-            round(
-                self.config.maximum_side_difference_um
-                / (sem_image.metadata.pixel_size.x * constants.SI_TO_MICRO)
-            )
+        xlims_px = (
+            int(round(lamella_bbox[1])),
+            int(round(lamella_bbox[3])),
         )
+        results_dict["xlims_px"] = xlims_px
 
         gis_thickness_filtered_um = gm.filter_gis_thickness(
             gis_thickness_um,
@@ -394,23 +388,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]
             pixel_size_m=sem_image.metadata.pixel_size.x,
         )
         results_dict["gis_thickness_filtered_um"] = gis_thickness_filtered_um.tolist()
-
-        gis_above_threshold = gis_thickness_filtered_um > self.config.gis_stop_um
-
-        gis_xlims_px = np.asarray(
-            (
-                np.argmax(gis_above_threshold),
-                len(gis_above_threshold) - 1 - np.argmax(gis_above_threshold[::-1]),
-            ),
-            dtype=np.uint32,
-        )
-
-        # Allow maximum of maximum_side_difference_um inward from lamella edge
-        xlims_px = (
-            min(gis_xlims_px[0], lamella_xlims_px[0] + maximum_side_difference_px),
-            max(gis_xlims_px[1], lamella_xlims_px[1] - maximum_side_difference_px),
-        )
-        results_dict["xlims_px"] = xlims_px
 
         min_gis_um = float(
             np.nanmin(gis_thickness_filtered_um[xlims_px[0] : xlims_px[1] + 1])
