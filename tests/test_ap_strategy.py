@@ -291,8 +291,6 @@ def test_results_saved(
     mock_clean_prediction,
     protocol_template_path: Path,
     microscope_config_path: Path,
-    fib_image_dir: Path,
-    sem_image_dir: Path,
     tmp_path: Path,
 ) -> None:
     """Tests that results are saved in correct file naming convention"""
