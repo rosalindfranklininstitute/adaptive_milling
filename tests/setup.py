@@ -61,8 +61,8 @@ class SimpleRectangleLamellaMask:
     box_proportion: InitVar[int] = 20
     centre_px: InitVar[typing.Optional[typing.Tuple[int, int]]] = None
     array: NDArray[np.bool_] = field(init=False)
-    centre: NDArray[np.integer] = field(init=False)
-    bounding_box: NDArray[np.integer] = field(init=False)
+    centre: NDArray[np.int_] = field(init=False)
+    bounding_box: NDArray[np.int_] = field(init=False)
 
     def __post_init__(self, shape, box_proportion, centre_px) -> None:
         array_shape = np.asarray(shape)
@@ -72,7 +72,7 @@ class SimpleRectangleLamellaMask:
         if centre_px is None:
             centre = np.random.randint(box_size, array_shape - box_size, size=2)
         else:
-            centre = np.asarray(centre_px[:2], dtype=np.uint32)
+            centre = np.asarray(centre_px[:2])
         bbox = np.concatenate(
             (centre - box_centre_to_edge, centre + box_centre_to_edge)
         )
