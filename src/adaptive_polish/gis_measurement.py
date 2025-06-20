@@ -14,7 +14,6 @@
 from __future__ import annotations
 import logging
 import typing
-import xml.etree.ElementTree as ET  # to handle metadata as xml
 from math import ceil, floor
 
 import skimage
@@ -34,23 +33,6 @@ _logger = logging.getLogger(__name__)
 DEFAULT_SEM_MODEL_GENERATION = sgm._get_newest_generation_key()
 
 load_sem_model = sgm.load_model
-
-def get_pixel_width(img) -> float | None:
-    """Gets the pixel width of an AdornedImage, or if not possible, returns None
-
-    Args:
-        img (AdornedImage): TFS AutoScript AdornedImage
-    """
-    try:
-        xml_sett = img.metadata.metadata_as_xml
-        xml_parse = ET.fromstring(xml_sett)
-        pixel_size_x = xml_parse.find("BinaryResult/PixelSize/X")
-        if pixel_size_x is None:
-            raise ValueError("No BinaryResult/PixelSize/X found")
-        return float(pixel_size_x.text)  # type: ignore
-    except Exception:
-        # if there is no metadata with 'PixelWidth' defaults to the value above
-        return None
 
 
 def keep_only_largest_object(mask: NDArray[np.integer]) -> NDArray[np.bool_]:
@@ -194,52 +176,6 @@ def resize_image(
         output_shape=new_shape,
         preserve_range=True,
     )
-
-
-def measure_gis(
-    gis_mask: NDArray[typing.Any],
-    window_size_m: float,
-    pixel_size_m: float,
-) -> NDArray[np.floating]:
-    # Sum to get thickness along x in pixels
-    gis_thickness_px = np.sum(gis_mask, axis=0)
-
-    return filter_gis_thickness(
-        gis_thickness_px=gis_thickness_px,
-        window_size_m=window_size_m,
-        pixel_size_m=pixel_size_m,
-    )
-
-
-def cleanup_crack_segmentation(
-    prediction: NDArray[np.integer[typing.Any]],
-) -> NDArray[np.bool_]:
-    """Measure the area in the prediction for cracks in um2.
-
-    Cracks are only considered if they are within the largest combined lamella+
-    GIS+crack object in the prediction.
-
-    Args:
-        prediction (np.array): Segmentation mask
-
-    Returns:
-        NDArray[np.bool_]: Segmentation of cracks that are connected to the lamella and/or GIS
-    """
-    # Restrict crack search area to the largest object which is not background
-    mask_gis_lamella = np.isin(
-        prediction,
-        (
-            sgm.SegmentationLabels.LAMELLA.value,
-            sgm.SegmentationLabels.GIS.value,
-        ),
-    )
-    mask_crack = prediction == 3
-
-    mask_foreground_largest_only = keep_only_largest_object(
-        mask_gis_lamella + mask_crack
-    )
-
-    return np.logical_and(mask_crack, mask_foreground_largest_only)
 
 
 def get_mask_area_um2(mask: NDArray[np.bool_], pixel_size_um: float) -> float:
