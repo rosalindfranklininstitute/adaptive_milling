@@ -208,123 +208,53 @@ def masks_to_labels(
 
 
 def get_gis_thickness(
-    mask_gis: NDArray[np.bool_],
-    mask_lamella: NDArray[np.bool_],
-    mask_background: NDArray[np.bool_],
-    mask_vacuum: NDArray[np.bool_],
-    mask_crack: typing.Optional[NDArray[np.bool_]],
+    prediction: NDArray[np.integer[typing.Any]],
     lamella_mask_bbox: tuple[float, float, float, float],
     image_shape: typing.Optional[tuple[int, int]],
 ) -> NDArray[np.float32]:
     """Get an array of GIS thickness values across the width specified by image_shape (or by the masks not given)
 
     Note: undefined pixels will be treated as if they are vacuum/crack."""
-    mask_shape = mask_gis.shape
+    prediction_shape = prediction.shape
 
     # Only include mask that is lamella and below
     slicer = (
-        slice(int(floor(lamella_mask_bbox[2])), None),
+        slice(int(floor(lamella_mask_bbox[0])), None),
         slice(int(floor(lamella_mask_bbox[1])), int(ceil(lamella_mask_bbox[3])) + 1),
     )
-    mask_gis = mask_gis[slicer]
-    mask_background = mask_background[slicer]
-    mask_lamella = mask_lamella[slicer]
-    mask_vacuum = mask_vacuum[slicer]
+    prediction = prediction[slicer]
+
+    mask_lamella = prediction == sgm.SegmentationLabels.LAMELLA.value
+    mask_gis = prediction == sgm.SegmentationLabels.GIS.value
+    mask_background = prediction == sgm.SegmentationLabels.BACKGROUND.value
+    mask_bad = np.isin(
+        prediction,
+        (
+            sgm.SegmentationLabels.CRACK.value,
+            sgm.SegmentationLabels.VACUUM.value,
+        ),
+    )
 
     mask_gis_background = mask_gis + mask_background
 
     mask_good = mask_gis + mask_lamella
 
-    if mask_crack is None:
-        mask_bad = mask_vacuum
-    else:
-        mask_crack = mask_crack[slicer]
-        mask_bad = mask_crack + mask_vacuum
-
-    lower_mask = mask_bad.copy()
-
     good_bottom = get_mask_edge(mask_good, axis=0, side="max")
 
-    # Set everything above the good bottom to False for lower_mask
+    # Set everything above the good bottom to False for mask_bad
     for y, x in good_bottom:
-        lower_mask[: y + 1, x] = False
+        mask_bad[: y + 1, x] = False
 
-    # Setting everything below bad top to True
-    lower_top = get_mask_edge(lower_mask, axis=0, side="min")
-    for y, x in lower_top:
-        lower_mask[y:, x] = True
+    # Ignore GIS/background below the top of the lower crack/vacuum area
+    for y, x in get_mask_edge(mask_bad, axis=0, side="min"):
+        mask_gis_background[y:, x] = False
 
-    mask_gis_background[lower_mask] = False
-
-    new_mask_gis: NDArray[typing.Union[np.bool_, np.float_]]
-    new_mask_gis = np.zeros(mask_shape, dtype=np.bool_)
-    new_mask_gis[slicer] = mask_gis_background
-
-    if image_shape is not None:
-        new_mask_gis = resize_image(
-            new_mask_gis,
-            new_shape=(image_shape[0], image_shape[1]),
-        )
-    return np.sum(
-        new_mask_gis,
-        axis=0,
-        dtype=np.float32,
-    )
-
-
-def get_gis_thickness_2(
-    mask_gis: NDArray[np.bool_],
-    mask_lamella: NDArray[np.bool_],
-    mask_vacuum: NDArray[np.bool_],
-    mask_crack: typing.Optional[NDArray[np.bool_]],
-    lamella_mask_bbox: tuple[float, float, float, float],
-    image_shape: typing.Optional[tuple[int, int]],
-) -> NDArray[np.float32]:
-    """Get an array of GIS thickness values across the width specified by image_shape (or by the masks not given)
-
-    Slightly slower than get_gis_thickness but handles undefined pixels as if they are GIS/background"""
-    mask_shape = mask_gis.shape
-
-    # Only include mask that is lamella and below
-    slicer = (
-        slice(int(floor(lamella_mask_bbox[2])), None),
-        slice(int(floor(lamella_mask_bbox[1])), int(ceil(lamella_mask_bbox[3])) + 1),
-    )
-    mask_gis = mask_gis[slicer]
-    mask_lamella = mask_lamella[slicer]
-    mask_vacuum = mask_vacuum[slicer]
-
-    mask_good = mask_gis + mask_lamella
-
-    if mask_crack is None:
-        mask_bad = mask_vacuum
-    else:
-        mask_crack = mask_crack[slicer]
-        mask_bad = mask_crack + mask_vacuum
-
-    lower_mask = mask_bad.copy()
-
-    good_bottom = get_mask_edge(mask_good, axis=0, side="max")
-    lamella_bottom = get_mask_edge(mask_lamella, axis=0, side="max")
-
-    # Set everything above the good bottom to False for lower_mask
-    for y, x in good_bottom:
-        lower_mask[: y + 1, x] = False
-
-    # Setting everything below bad top to True
-    lower_top = get_mask_edge(lower_mask, axis=0, side="min")
-    for y, x in lower_top:
-        lower_mask[y:, x] = True
-
-    # Creates a mask of everything bad below the GIS and lamella
-    mask_gis_background = np.logical_not(lower_mask + mask_bad)
-
-    # Sets everything above the bottom edge of the lamella to False
-    for y, x in lamella_bottom:
+    # Ignore GIS/background above the bottom of the lamella
+    for y, x in get_mask_edge(mask_lamella, axis=0, side="max"):
         mask_gis_background[: y + 1, x] = False
 
     new_mask_gis: NDArray[typing.Union[np.bool_, np.float_]]
-    new_mask_gis = np.zeros(mask_shape, dtype=np.bool_)
+    new_mask_gis = np.zeros(prediction_shape, dtype=np.bool_)
     new_mask_gis[slicer] = mask_gis_background
 
     if image_shape is not None:

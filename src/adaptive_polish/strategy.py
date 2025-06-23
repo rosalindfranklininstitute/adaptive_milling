@@ -382,11 +382,16 @@ class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]
         )
         results_dict["xlims_px"] = xlims_px
 
-        gis_thickness_filtered_um = gm.filter_gis_thickness(
-            gis_thickness_um,
-            window_size_m=self.config.window_size_px * sem_image.metadata.pixel_size.x,
-            pixel_size_m=sem_image.metadata.pixel_size.x,
+        gis_thickness_filtered_um = np.zeros_like(gis_thickness_um)
+        gis_thickness_filtered_um[xlims_px[0] : xlims_px[1] + 1] = (
+            gm.filter_gis_thickness(
+                gis_thickness_um[xlims_px[0] : xlims_px[1] + 1],
+                window_size_m=self.config.window_size_px
+                * sem_image.metadata.pixel_size.x,
+                pixel_size_m=sem_image.metadata.pixel_size.x,
+            )
         )
+
         results_dict["gis_thickness_filtered_um"] = gis_thickness_filtered_um.tolist()
 
         min_gis_um = float(
