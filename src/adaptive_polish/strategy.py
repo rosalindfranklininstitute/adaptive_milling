@@ -340,7 +340,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]
         lamella_area_um2 = gm.get_mask_area_um2(
             mask_lamella_clean, pixel_size_um=prediction_pixel_size_um
         )
-        if lamella_area_um2 < self.config.minimum_lamella_area_um2:
+        if self._get_lamella_too_small(lamella_area_um2):
             raise StopEarlyError(
                 f"Lamella found was only {lamella_area_um2:.4e} um2, below the threshold of {self.config.minimum_lamella_area_um2:.4e} um2"
             )
@@ -600,6 +600,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]
                     plot_path=plot_path,
                     bounding_box=lamella_bbox,
                 )
+
+    def _get_lamella_too_small(self, lamella_area_um2: float) -> bool:
+        return lamella_area_um2 < self.config.minimum_lamella_area_um2
 
     def _get_drift_too_large(self, centre_drift_um: float) -> bool:
         return centre_drift_um > float(self.config.maximum_drift_um)
