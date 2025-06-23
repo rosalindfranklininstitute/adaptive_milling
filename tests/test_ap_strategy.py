@@ -35,7 +35,7 @@ def setup_protocol_and_milling_stages(
     config_dict: dict[str, typing.Any],
     protocol_template_path: Path,
     temporary_path: Path,
-) -> tuple[dict[str, typing.Any], FibsemMillingStage]:
+) -> tuple[dict[str, typing.Any], list[FibsemMillingStage]]:
     protocol_path = setup.setup_protocol_path(
         protocol_template_path, temporary_path, config_dict, ap_only=True
     )
@@ -291,8 +291,6 @@ def test_results_saved(
     mock_clean_prediction,
     protocol_template_path: Path,
     microscope_config_path: Path,
-    fib_image_dir: Path,
-    sem_image_dir: Path,
     tmp_path: Path,
 ) -> None:
     """Tests that results are saved in correct file naming convention"""
@@ -342,7 +340,11 @@ def test_results_saved(
     lamella_mask[:lamella_bottom, :] = True
     gis_mask[lamella_bottom:gis_bottom, :] = True
 
-    mock_clean_prediction.return_value = (lamella_mask, gis_mask, None)
+    prediction = np.full(mask_shape, SegmentationLabels.VACUUM.value, dtype=np.uint8)
+    prediction[lamella_mask] = SegmentationLabels.LAMELLA.value
+    prediction[gis_mask] = SegmentationLabels.GIS.value
+
+    mock_clean_prediction.return_value = prediction
 
     expected_gis_thickness = np.asarray(
         [gis_bottom - lamella_bottom] * mask_shape[1], dtype=np.float32
@@ -360,7 +362,7 @@ def test_results_saved(
     mock_filter_gis_thickness.side_effect = expected_filtered_gis_thicknesses
     # Stop it trying to load a model
     with patch.object(strategy, "model") as mock_model, patch.object(strategy, "_mill") as mock_mill:
-        mock_model.predict.return_value.shape = mask_shape
+        mock_model.predict.return_value = prediction
 
         strategy.run(microscope, stage)
 
@@ -482,7 +484,7 @@ def test_align_beam(
         lamella_centre_px[1] * sem_image.metadata.pixel_size.x,
     )
     test_lamella = setup.SimpleRectangleLamellaMask(
-        sem_image.data.shape,
+        (sem_image.data.shape[0], sem_image.data.shape[1]),
         20,
         centre_px=(
             sem_image.data.shape[0] // 2 - lamella_centre_px[0],
@@ -503,7 +505,10 @@ def test_align_beam(
 
     strategy = ap_strategy.AdaptivePolishMillingStrategy(config=ap_config)
 
-    mock_get_bounding_box_scaled_to_image.return_value = test_lamella.bounding_box
+    mock_get_bounding_box_scaled_to_image.return_value = (
+        test_lamella.bounding_box,
+        test_lamella.bounding_box,
+    )
 
     with (
         patch.object(strategy, "model") as mock_model,
@@ -558,9 +563,11 @@ def test_check_lamella(
     lamella_ap_plots_folder = lamella_ap_folder / "plots"
     lamella_ap_folder.mkdir()
     lamella_ap_plots_folder.mkdir()
-    results_dict = {}
+    results_dict: dict[str, typing.Any] = {}
     ap_config = ap_strategy.AdaptivePolishMillingConfig(model_path="path/to/model.file")
 
+    saves_results: bool
+    exception: typing.Optional[type[Exception]]
     pass_checks_kwargs = _AP_PASS_CHECKS_CONFIG.copy()
     if failure_reason == "gis":
         saves_results = True
@@ -596,8 +603,8 @@ def test_check_lamella(
     # open images
     fib_image_path = next(fib_image_dir.glob("*.tif"))
     sem_image_path = next(sem_image_dir.glob("*.tif"))
-    fib_image = FibsemImage.load(fib_image_path)
-    sem_image = FibsemImage.load(sem_image_path)
+    fib_image = FibsemImage.load(str(fib_image_path))
+    sem_image = FibsemImage.load(str(sem_image_path))
 
     with utils.assert_raises(exception):
         strategy._check_lamella(

@@ -1,4 +1,6 @@
+from __future__ import annotations
 import pytest
+from numpy.testing import assert_array_equal
 
 from typing import Literal
 
@@ -8,9 +10,68 @@ from fibsem.detection.detection import AdaptiveLamellaCentre
 from adaptive_polish.centring import (
     get_mask_bounding_box,
     get_lamella_centre,
+    get_bounding_box_from_edges,
+    get_centre_from_bounding_box,
 )
 
 from .setup import SimpleRectangleLamellaMask
+
+
+@pytest.mark.parametrize("edge_finding", ["median", "mean", "min", "max"])
+def test_get_bounding_box_from_edges(
+    edge_finding: Literal["median", "mean", "min", "max"],
+) -> None:
+    expected_bounding_box = np.asarray(
+        (
+            50,
+            20,
+            70,
+            60,
+        )
+    )
+    y_range = np.arange(expected_bounding_box[0], expected_bounding_box[2] + 1)
+    x_range = np.arange(expected_bounding_box[1], expected_bounding_box[3] + 1)
+    edges = [
+        [
+            np.stack(
+                ([expected_bounding_box[0]] * len(x_range), x_range), axis=-1
+            ).astype(np.uint16),
+            np.stack(
+                ([expected_bounding_box[2]] * len(x_range), x_range), axis=-1
+            ).astype(np.uint16),
+        ],
+        [
+            np.stack(
+                (y_range, [expected_bounding_box[1]] * len(y_range)), axis=-1
+            ).astype(np.uint16),
+            np.stack(
+                (y_range, [expected_bounding_box[3]] * len(y_range)), axis=-1
+            ).astype(np.uint16),
+        ],
+    ]
+    bounding_box = get_bounding_box_from_edges(edges, edge_finding=edge_finding)
+    assert_array_equal(
+        bounding_box, expected_bounding_box, err_msg="Bounding box is not as expected"
+    )
+
+
+@pytest.mark.parametrize("subpixel_accuracy", [True, False], ids=["subpixel", "pixel"])
+def test_get_centre_from_bounding_box(subpixel_accuracy: bool):
+    expected_centre = np.asarray((20.5, 50.5))
+    diffs = np.asarray((5.5, 12.5))
+    if not subpixel_accuracy:
+        expected_centre = expected_centre.astype(np.uint8)
+        diffs = diffs.astype(np.uint8)
+
+    bounding_box = np.concatenate((expected_centre - diffs, expected_centre + diffs))
+    assert_array_equal(
+        get_centre_from_bounding_box(
+            (bounding_box[0], bounding_box[1], bounding_box[2], bounding_box[3]),
+            subpixel_accuracy=subpixel_accuracy,
+        ),
+        expected_centre,
+        err_msg="Failed to find correct centre",
+    )
 
 
 def test_methods_equivalent_for_simple_rectangle() -> None:

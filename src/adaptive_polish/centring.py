@@ -6,15 +6,16 @@ import numpy as np
 from fibsem import conversions
 from fibsem.structures import Point
 
+from adaptive_polish.edges import get_mask_edges
 from adaptive_polish.exceptions import CentringException
 
 if typing.TYPE_CHECKING:
     from numpy.typing import NDArray
-    from collections.abc import Callable
+    from collections.abc import Callable, Sequence
 
 
-def get_mask_bounding_box(
-    mask: NDArray[np.bool_],
+def get_bounding_box_from_edges(
+    edges_array: Sequence[Sequence[NDArray[np.integer[typing.Any]]]],
     edge_finding: typing.Literal["median", "mean", "min", "max"] = "median",
 ) -> typing.Tuple[float, float, float, float]:
     edge_fn_max: Callable[..., np.integer[typing.Any] | np.floating[typing.Any]]
@@ -33,28 +34,22 @@ def get_mask_bounding_box(
         edge_fn_max = np.max
     else:
         raise ValueError(f"Invalid option edge_finding='{edge_finding}'")
-
-    x_mins = np.argmax(mask, axis=1)
-    x_maxs = mask.shape[1] - np.argmax(mask[:, ::-1], axis=1) - 1
-    y_mins = np.argmax(mask, axis=0)
-    y_maxs = mask.shape[0] - np.argmax(mask[::-1, :], axis=0) - 1
-    x_range = np.arange(mask.shape[1])
-    y_range = np.arange(mask.shape[0])
-    # Only include edge values that are True
-    # This filters out any rows/columns that were all False
-    valid_xmins = x_mins[mask[y_range, x_mins]]
-    valid_xmaxs = x_maxs[mask[y_range, x_maxs]]
-    valid_ymins = y_mins[mask[y_mins, x_range]]
-    valid_ymaxs = y_maxs[mask[y_maxs, x_range]]
-    xmin = float(edge_fn_min(valid_xmins))
-    xmax = float(edge_fn_max(valid_xmaxs))
-    ymin = float(edge_fn_min(valid_ymins))
-    ymax = float(edge_fn_max(valid_ymaxs))
+    xmin = edge_fn_min(edges_array[1][0][:, 1]).item()
+    xmax = edge_fn_max(edges_array[1][1][:, 1]).item()
+    ymin = edge_fn_min(edges_array[0][0][:, 0]).item()
+    ymax = edge_fn_max(edges_array[0][1][:, 0]).item()
     bbox = (ymin, xmin, ymax, xmax)
 
     if np.any(np.isnan(bbox)):
         raise CentringException("Bounding box coordinates contains a NaN")
     return bbox
+
+
+def get_mask_bounding_box(
+    mask: NDArray[np.bool_],
+    edge_finding: typing.Literal["median", "mean", "min", "max"] = "median",
+) -> typing.Tuple[float, float, float, float]:
+    return get_bounding_box_from_edges(get_mask_edges(mask), edge_finding=edge_finding)
 
 
 def get_centre_from_bounding_box(
@@ -76,7 +71,9 @@ def get_lamella_centre(
     edge_finding: typing.Literal["median", "mean"] = "median",
     subpixel_accuracy: bool = False,
 ) -> typing.Union[typing.Tuple[int, int], typing.Tuple[float, float]]:
-    bbox = get_mask_bounding_box(array, edge_finding=edge_finding)
+    bbox = get_bounding_box_from_edges(
+        get_mask_edges(mask=array), edge_finding=edge_finding
+    )
     return get_centre_from_bounding_box(bbox, subpixel_accuracy=subpixel_accuracy)
 
 
@@ -84,8 +81,11 @@ def get_bounding_box_scaled_to_image(
     image: NDArray[typing.Any],
     mask: NDArray[np.bool_],
     edge_finding: typing.Literal["median", "mean", "min", "max"] = "median",
-) -> typing.Tuple[float, float, float, float]:
+) -> typing.Tuple[
+    typing.Tuple[float, float, float, float], typing.Tuple[float, float, float, float]
+]:
     # This does assume square pixels
+    prediction_to_image_scale_multiplier: float
     if image.shape[1] == mask.shape[1]:
         prediction_to_image_scale_multiplier = 1
     else:
@@ -98,7 +98,7 @@ def get_bounding_box_scaled_to_image(
         bbox_mask[1] * prediction_to_image_scale_multiplier,
         bbox_mask[2] * prediction_to_image_scale_multiplier,
         bbox_mask[3] * prediction_to_image_scale_multiplier,
-    )
+    ), bbox_mask
 
 
 def get_centre_points_from_bounding_box(

@@ -20,7 +20,6 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
     minimum_lamella_area_um2: float = 30.0  # 30μm²
     maximum_drift_um: float = 0.1
     model_generation: str = DEFAULT_SEM_MODEL_GENERATION
-    maximum_side_difference_um: float = 0.05
 
     _advanced_attributes = []
 
@@ -39,7 +38,6 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
             "minimum_lamella_area_um2": self.minimum_lamella_area_um2,
             "maximum_drift_um": self.maximum_drift_um,
             "model_generation": self.model_generation,
-            "maximum_side_difference_um": self.maximum_side_difference_um,
         }
 
     def get_model_generation(self) -> typing.Optional[str]:

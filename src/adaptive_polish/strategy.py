@@ -327,13 +327,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]
 
         prediction = self._segment_sem_image(sem_image.data)
 
-        mask_lamella_clean, mask_gis_clean, mask_crack_clean = gm.clean_prediction(
-            prediction,
-            additional_labels=(
-                SegmentationLabels.GIS,
-                SegmentationLabels.CRACK,
-            ),
-        )
+        clean_prediction = gm.clean_prediction(prediction)
 
         prediction_pixel_size_um = float(
             sem_image.metadata.pixel_size.x
@@ -342,75 +336,52 @@ class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]
             / prediction.shape[1]
         )
 
+        mask_lamella_clean = clean_prediction == SegmentationLabels.LAMELLA.value
         lamella_area_um2 = gm.get_mask_area_um2(
             mask_lamella_clean, pixel_size_um=prediction_pixel_size_um
         )
-        if lamella_area_um2 < self.config.minimum_lamella_area_um2:
+        if self._get_lamella_too_small(lamella_area_um2):
             raise StopEarlyError(
                 f"Lamella found was only {lamella_area_um2:.4e} um2, below the threshold of {self.config.minimum_lamella_area_um2:.4e} um2"
             )
-        if mask_gis_clean is None:
-            raise StopEarlyError("No GIS found beneath the lamella")
 
         try:
             # Get lamella position
-            lamella_bbox = get_bounding_box_scaled_to_image(
-                sem_image.data, mask=mask_lamella_clean
+            lamella_bbox, lamella_mask_bbox = get_bounding_box_scaled_to_image(
+                image=sem_image.data, mask=mask_lamella_clean, edge_finding="median"
             )
         except CentringException:
             raise StopEarlyError("Failed to get lamella bounds from the segmentation")
 
         # Measure GIS
+        gis_thickness_px = gm.get_gis_thickness(
+            clean_prediction,
+            lamella_mask_bbox=lamella_mask_bbox,
+            image_shape=(sem_image.data.shape[0], sem_image.data.shape[1]),
+        )
+
         gis_thickness_um = (
-            np.sum(
-                gm.resize_image(
-                    mask_gis_clean,
-                    new_shape=(sem_image.data.shape[-2], sem_image.data.shape[-1]),
-                ),
-                axis=0,
-            )
-            * sem_image.metadata.pixel_size.x
-            * constants.SI_TO_MICRO
+            gis_thickness_px * sem_image.metadata.pixel_size.x * constants.SI_TO_MICRO
         )
         results_dict["gis_thickness_um"] = gis_thickness_um.tolist()
 
-        lamella_xlims_px = np.round(
-            (
-                lamella_bbox[1],
-                lamella_bbox[3],
-            )
-        ).astype(np.uint32)
-
-        maximum_side_difference_px = int(
-            round(
-                self.config.maximum_side_difference_um
-                / (sem_image.metadata.pixel_size.x * constants.SI_TO_MICRO)
-            )
-        )
-
-        gis_thickness_filtered_um = gm.filter_gis_thickness(
-            gis_thickness_um,
-            window_size_m=self.config.window_size_px * sem_image.metadata.pixel_size.x,
-            pixel_size_m=sem_image.metadata.pixel_size.x,
-        )
-        results_dict["gis_thickness_filtered_um"] = gis_thickness_filtered_um.tolist()
-
-        gis_above_threshold = gis_thickness_filtered_um > self.config.gis_stop_um
-
-        gis_xlims_px = np.asarray(
-            (
-                np.argmax(gis_above_threshold),
-                len(gis_above_threshold) - 1 - np.argmax(gis_above_threshold[::-1]),
-            ),
-            dtype=np.uint32,
-        )
-
-        # Allow maximum of maximum_side_difference_um inward from lamella edge
         xlims_px = (
-            min(gis_xlims_px[0], lamella_xlims_px[0] + maximum_side_difference_px),
-            max(gis_xlims_px[1], lamella_xlims_px[1] - maximum_side_difference_px),
+            int(round(lamella_bbox[1])),
+            int(round(lamella_bbox[3])),
         )
         results_dict["xlims_px"] = xlims_px
+
+        gis_thickness_filtered_um = np.zeros_like(gis_thickness_um)
+        gis_thickness_filtered_um[xlims_px[0] : xlims_px[1] + 1] = (
+            gm.filter_gis_thickness(
+                gis_thickness_um[xlims_px[0] : xlims_px[1] + 1],
+                window_size_m=self.config.window_size_px
+                * sem_image.metadata.pixel_size.x,
+                pixel_size_m=sem_image.metadata.pixel_size.x,
+            )
+        )
+
+        results_dict["gis_thickness_filtered_um"] = gis_thickness_filtered_um.tolist()
 
         min_gis_um = float(
             np.nanmin(gis_thickness_filtered_um[xlims_px[0] : xlims_px[1] + 1])
@@ -423,12 +394,10 @@ class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]
         )
         results_dict["min_GIS_um"] = min_gis_um
 
-        if mask_crack_clean is None:
-            crack_area_um2 = 0
-        else:
-            crack_area_um2 = gm.get_mask_area_um2(
-                mask_crack_clean, pixel_size_um=prediction_pixel_size_um
-            )
+        crack_area_um2 = gm.get_mask_area_um2(
+            mask=clean_prediction == SegmentationLabels.CRACK.value,
+            pixel_size_um=prediction_pixel_size_um,
+        )
 
         _logger.info(
             "Area of cracks found in milling cycle %i = %.4e um2",
@@ -443,11 +412,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]
                 save_path=plots_folder / f"{image_name}_plot.png",
                 sem_image=sem_image.data,
                 first_prediction=prediction,
-                clean_prediction=gm.masks_to_labels(
-                    lamella_mask=mask_lamella_clean,
-                    gis_mask=mask_gis_clean,
-                    crack_mask=mask_crack_clean,
-                ),
+                clean_prediction=clean_prediction,
                 fib_image=fib_image.data,
                 gis_thickness_um=gis_thickness_filtered_um,
                 gis_stop_um=self.config.gis_stop_um,
@@ -585,10 +550,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]
         try:
             prediction = self._segment_sem_image(sem_image.data)
 
-            mask_lamella_clean, _, _ = gm.clean_prediction(
-                prediction,
-                additional_labels=(SegmentationLabels.GIS, SegmentationLabels.CRACK),
-            )
+            mask_lamella_clean = gm.clean_lamella(prediction)
         except Exception as e:
             raise SegmentationException(
                 f"Failed to get clean lamella mask required for SEM alignment: {e}"
@@ -598,9 +560,10 @@ class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]
         centre_px: typing.Optional[Point] = None
         lamella_bbox: typing.Optional[tuple[float, float, float, float]] = None
         try:
-            lamella_bbox = get_bounding_box_scaled_to_image(
+            lamella_bbox, _ = get_bounding_box_scaled_to_image(
                 sem_image.data,
                 mask=mask_lamella_clean,
+                edge_finding="median",
             )
             if sem_image.metadata is None:
                 raise ValueError(
@@ -637,6 +600,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]
                     plot_path=plot_path,
                     bounding_box=lamella_bbox,
                 )
+
+    def _get_lamella_too_small(self, lamella_area_um2: float) -> bool:
+        return lamella_area_um2 < self.config.minimum_lamella_area_um2
 
     def _get_drift_too_large(self, centre_drift_um: float) -> bool:
         return centre_drift_um > float(self.config.maximum_drift_um)

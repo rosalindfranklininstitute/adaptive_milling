@@ -14,16 +14,16 @@
 from __future__ import annotations
 import logging
 import typing
-import xml.etree.ElementTree as ET  # to handle metadata as xml
+from math import ceil, floor
 
-import skimage
 import numpy as np
 from scipy.signal.windows import gaussian
+from skimage import measure, morphology, transform
 
+from adaptive_polish.edges import get_mask_edge
 from adaptive_polish.dl_segmentation import sem_lamella_segmentor as sgm
 
 if typing.TYPE_CHECKING:
-    from collections.abc import Sequence
     from numpy.typing import NDArray
 
 
@@ -33,40 +33,26 @@ DEFAULT_SEM_MODEL_GENERATION = sgm._get_newest_generation_key()
 
 load_sem_model = sgm.load_model
 
-def get_pixel_width(img) -> float | None:
-    """Gets the pixel width of an AdornedImage, or if not possible, returns None
 
-    Args:
-        img (AdornedImage): TFS AutoScript AdornedImage
-    """
-    try:
-        xml_sett = img.metadata.metadata_as_xml
-        xml_parse = ET.fromstring(xml_sett)
-        pixel_size_x = xml_parse.find("BinaryResult/PixelSize/X")
-        if pixel_size_x is None:
-            raise ValueError("No BinaryResult/PixelSize/X found")
-        return float(pixel_size_x.text)  # type: ignore
-    except Exception:
-        # if there is no metadata with 'PixelWidth' defaults to the value above
-        return None
-
-
-def keep_only_largest_object(mask: NDArray[np.integer]) -> NDArray[np.bool_]:
+def keep_only_largest_object(
+    mask: NDArray[typing.Union[np.integer[typing.Any], np.bool_]],
+    connectivity: int = 2,
+) -> NDArray[np.bool_]:
     """Find the largest object in a mask and sets everything in that object to
     `fill_value`, background is 0.
 
     Args:
-        mask (np.array): Segmentation mask
+        mask (NDArray[typing.Union[np.integer[typing.Any], np.bool_]]): Segmentation mask
+        connectivity (int): connectivity when finding objects (1 is edges only, 2 includes corners)
 
     Returns:
-        np.array: Boolean mask with all but the largest object set to False
+        NDArray[np.bool_]: Boolean mask with all but the largest object set to False
     """
-    instances = skimage.measure.label(mask)
-    largest_area = max([_.area for _ in skimage.measure.regionprops(instances)])
-    mask_largest_only = skimage.morphology.remove_small_objects(
-        instances, min_size=largest_area - 1
-    )
-    return mask_largest_only > 0
+    labels, num = measure.label(mask, return_num=True, connectivity=connectivity)
+    if num == 1:
+        return labels.astype(np.bool_)
+    prop = max(measure.regionprops(labels), key=lambda x: x.area)
+    return labels == prop.label
 
 
 def check_minimum_area(
@@ -76,59 +62,68 @@ def check_minimum_area(
     return bool(np.sum(mask) * pixel_size <= minimum_size)
 
 
-def clean_prediction(
-    prediction: NDArray[np.integer],
-    additional_labels: typing.Optional[
-        Sequence[
-            typing.Literal[
-                sgm.SegmentationLabels.GIS,
-                sgm.SegmentationLabels.CRACK,
-            ]
-        ]
-    ] = None,
-) -> typing.Tuple[
-    NDArray[np.bool_],
-    typing.Optional[NDArray[np.bool_]],
-    typing.Optional[NDArray[np.bool_]],
-]:
-    labels = [sgm.SegmentationLabels.LAMELLA]
-    if additional_labels is not None:
-        labels.extend(additional_labels)
-
-    _logger.debug(
-        "Cleaning prediction with shape: %s, finding: %s",
-        str(prediction.shape),
-        ", ".join(_.name for _ in labels),
+def clean_lamella(prediction: NDArray[np.integer]) -> NDArray[np.bool_]:
+    # TODO: check whether the crack need to be touching lamella to be a crack
+    mask_lamella = prediction == sgm.SegmentationLabels.LAMELLA.value
+    mask_gis_crack = np.isin(
+        prediction,
+        (
+            sgm.SegmentationLabels.GIS.value,
+            sgm.SegmentationLabels.CRACK.value,
+        ),
     )
 
-    # Generate bool masks for GIS and lamella
-    masks = {label: prediction == label.value for label in labels}
+    mask_largest_foreground = keep_only_largest_object(mask_lamella + mask_gis_crack)
+    return mask_largest_foreground & mask_lamella
+
+
+def prediction_to_masks(
+    prediction: NDArray[np.integer[typing.Any]],
+) -> dict[sgm.SegmentationLabels, NDArray[np.bool_]]:
+    return {label: prediction == label.value for label in sgm.SegmentationLabels}
+
+
+def clean_prediction(
+    prediction: NDArray[np.integer[typing.Any]],
+) -> NDArray[np.uint8]:
+    _logger.debug(
+        "Cleaning prediction with shape: %s",
+        str(prediction.shape),
+    )
+
+    # Generate bool masks
+    masks = prediction_to_masks(prediction=prediction)
 
     # Doing these all together could be an issue if the model fails too hard
     # (e.g. layers of gis and crack would mess up the GIS reading) but this
     # seems unlikely.
     # TODO: check whether the crack need to be touching lamella to be a crack
     mask_largest_foreground = keep_only_largest_object(
-        np.sum(list(masks.values()), axis=0, dtype=np.bool_)
+        masks[sgm.SegmentationLabels.LAMELLA]
+        + masks[sgm.SegmentationLabels.GIS]
+        + masks[sgm.SegmentationLabels.CRACK]
     )
 
-    # Gets the label that's connected to the other foreground elements
-    connected_masks = {
-        label: np.logical_and(mask_largest_foreground, masks[label]) for label in labels
-    }
-
-    mask_connected_lamella = connected_masks.pop(sgm.SegmentationLabels.LAMELLA)
-
-    for key, mask in tuple(connected_masks.items()):
-        if not np.sum(mask):
-            # No need to keep an array of 0s
-            del connected_masks[key]
-
-    return (
-        mask_connected_lamella,
-        connected_masks.get(sgm.SegmentationLabels.GIS, None),
-        connected_masks.get(sgm.SegmentationLabels.CRACK, None),
+    non_foreground_crack = (
+        masks[sgm.SegmentationLabels.CRACK] & ~mask_largest_foreground
     )
+    non_foreground_gis = masks[sgm.SegmentationLabels.GIS] & ~mask_largest_foreground
+    return masks_to_labels(
+        masks={
+            sgm.SegmentationLabels.LAMELLA: mask_largest_foreground
+            & masks[sgm.SegmentationLabels.LAMELLA],
+            sgm.SegmentationLabels.GIS: mask_largest_foreground
+            & masks[sgm.SegmentationLabels.GIS],
+            sgm.SegmentationLabels.CRACK: mask_largest_foreground
+            & masks[sgm.SegmentationLabels.CRACK],
+            sgm.SegmentationLabels.VACUUM: masks[sgm.SegmentationLabels.VACUUM]
+            + non_foreground_crack,
+            sgm.SegmentationLabels.BACKGROUND: masks[sgm.SegmentationLabels.BACKGROUND]
+            + non_foreground_gis,
+        },
+        # Use an unused value so anything that isn't filled in is visible
+        default_value=len(sgm.SegmentationLabels),
+    ).astype(np.uint8)
 
 
 def apply_binary_opening(
@@ -137,7 +132,7 @@ def apply_binary_opening(
     # Get window size in px
     if window_size_m > 0:
         window_size_px = int(round(window_size_m / pixel_size_m))
-        return skimage.morphology.binary_opening(
+        return morphology.binary_opening(
             array,
             footprint=[
                 (np.ones((window_size_px, 1)), 1),
@@ -163,7 +158,7 @@ def filter_gis_thickness(
     gaussian_curve = gaussian(window_size_px, std=sigma)
     gaussian_curve /= gaussian_curve.sum()
     return np.convolve(
-        np.pad(gis_thickness_px, int(gaussian_curve.size / 2)),
+        np.pad(gis_thickness_px, int(gaussian_curve.size / 2), mode="constant"),
         gaussian_curve,
         mode="valid",
     )
@@ -187,57 +182,11 @@ def resize_image(
     if not isinstance(image.dtype, np.floating):
         # Needs to be floating type if we want interpolation
         image = image.astype(np.float_)
-    return skimage.transform.resize(
+    return transform.resize(
         image,
         output_shape=new_shape,
         preserve_range=True,
     )
-
-
-def measure_gis(
-    gis_mask: NDArray[typing.Any],
-    window_size_m: float,
-    pixel_size_m: float,
-) -> NDArray[np.floating]:
-    # Sum to get thickness along x in pixels
-    gis_thickness_px = np.sum(gis_mask, axis=0)
-
-    return filter_gis_thickness(
-        gis_thickness_px=gis_thickness_px,
-        window_size_m=window_size_m,
-        pixel_size_m=pixel_size_m,
-    )
-
-
-def cleanup_crack_segmentation(
-    prediction: NDArray[np.integer[typing.Any]],
-) -> NDArray[np.bool_]:
-    """Measure the area in the prediction for cracks in um2.
-
-    Cracks are only considered if they are within the largest combined lamella+
-    GIS+crack object in the prediction.
-
-    Args:
-        prediction (np.array): Segmentation mask
-
-    Returns:
-        NDArray[np.bool_]: Segmentation of cracks that are connected to the lamella and/or GIS
-    """
-    # Restrict crack search area to the largest object which is not background
-    mask_gis_lamella = np.isin(
-        prediction,
-        (
-            sgm.SegmentationLabels.LAMELLA.value,
-            sgm.SegmentationLabels.GIS.value,
-        ),
-    )
-    mask_crack = prediction == 3
-
-    mask_foreground_largest_only = keep_only_largest_object(
-        mask_gis_lamella + mask_crack
-    )
-
-    return np.logical_and(mask_crack, mask_foreground_largest_only)
 
 
 def get_mask_area_um2(mask: NDArray[np.bool_], pixel_size_um: float) -> float:
@@ -245,25 +194,73 @@ def get_mask_area_um2(mask: NDArray[np.bool_], pixel_size_um: float) -> float:
 
 
 def masks_to_labels(
-    lamella_mask: typing.Optional[NDArray[np.bool_]] = None,
-    gis_mask: typing.Optional[NDArray[np.bool_]] = None,
-    crack_mask: typing.Optional[NDArray[np.bool_]] = None,
-    background_mask: typing.Optional[NDArray[np.bool_]] = None,
-    vacuum_mask: typing.Optional[NDArray[np.bool_]] = None,
+    masks: typing.Dict[sgm.SegmentationLabels, NDArray[np.bool_]],
     default_value: typing.Union[int, float] = np.nan,
 ) -> NDArray[typing.Any]:
-    mask_label_pairs = [
-        (lamella_mask, sgm.SegmentationLabels.LAMELLA),
-        (gis_mask, sgm.SegmentationLabels.GIS),
-        (crack_mask, sgm.SegmentationLabels.CRACK),
-        (background_mask, sgm.SegmentationLabels.BACKGROUND),
-        (vacuum_mask, sgm.SegmentationLabels.VACUUM),
-    ]
+    return np.select(
+        list(masks.values()),
+        [_.value for _ in masks.keys()],
+        default=default_value,
+    )
 
-    masks = []
-    label_values = []
-    for mask, label in mask_label_pairs:
-        if mask is not None:
-            masks.append(mask)
-            label_values.append(label.value)
-    return np.select(masks, label_values, default=default_value)
+
+def get_gis_thickness(
+    prediction: NDArray[np.integer[typing.Any]],
+    lamella_mask_bbox: tuple[float, float, float, float],
+    image_shape: typing.Optional[tuple[int, int]],
+) -> NDArray[np.float32]:
+    """Get an array of GIS thickness values across the width specified by image_shape (or by the masks not given)
+
+    Note: undefined pixels will be treated as if they are vacuum/crack."""
+    prediction_shape = prediction.shape
+
+    # Only include mask that is lamella and below
+    slicer = (
+        slice(int(floor(lamella_mask_bbox[0])), None),
+        slice(int(floor(lamella_mask_bbox[1])), int(ceil(lamella_mask_bbox[3])) + 1),
+    )
+    prediction = prediction[slicer]
+
+    mask_lamella = prediction == sgm.SegmentationLabels.LAMELLA.value
+    mask_gis = prediction == sgm.SegmentationLabels.GIS.value
+    mask_background = prediction == sgm.SegmentationLabels.BACKGROUND.value
+    mask_bad = np.isin(
+        prediction,
+        (
+            sgm.SegmentationLabels.CRACK.value,
+            sgm.SegmentationLabels.VACUUM.value,
+        ),
+    )
+
+    mask_gis_background = mask_gis + mask_background
+
+    mask_good = mask_gis + mask_lamella
+
+    good_bottom = get_mask_edge(mask_good, axis=0, side="max")
+
+    # Set everything above the good bottom to False for mask_bad
+    for y, x in good_bottom:
+        mask_bad[: y + 1, x] = False
+
+    # Ignore GIS/background below the top of the lower crack/vacuum area
+    for y, x in get_mask_edge(mask_bad, axis=0, side="min"):
+        mask_gis_background[y:, x] = False
+
+    # Ignore GIS/background above the bottom of the lamella
+    for y, x in get_mask_edge(mask_lamella, axis=0, side="max"):
+        mask_gis_background[: y + 1, x] = False
+
+    new_mask_gis: NDArray[typing.Union[np.bool_, np.float_]]
+    new_mask_gis = np.zeros(prediction_shape, dtype=np.bool_)
+    new_mask_gis[slicer] = mask_gis_background
+
+    if image_shape is not None:
+        new_mask_gis = resize_image(
+            new_mask_gis,
+            new_shape=(image_shape[0], image_shape[1]),
+        )
+    return np.sum(
+        new_mask_gis,
+        axis=0,
+        dtype=np.float32,
+    )
