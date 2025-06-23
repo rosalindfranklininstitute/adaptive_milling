@@ -327,13 +327,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]
 
         prediction = self._segment_sem_image(sem_image.data)
 
-        mask_lamella_clean, mask_gis_clean, mask_crack_clean = gm.clean_prediction(
-            prediction,
-            additional_labels=(
-                SegmentationLabels.GIS,
-                SegmentationLabels.CRACK,
-            ),
-        )
+        clean_prediction = gm.clean_prediction(prediction)
 
         prediction_pixel_size_um = float(
             sem_image.metadata.pixel_size.x
@@ -342,6 +336,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]
             / prediction.shape[1]
         )
 
+        mask_lamella_clean = clean_prediction == SegmentationLabels.LAMELLA.value
         lamella_area_um2 = gm.get_mask_area_um2(
             mask_lamella_clean, pixel_size_um=prediction_pixel_size_um
         )
@@ -349,8 +344,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]
             raise StopEarlyError(
                 f"Lamella found was only {lamella_area_um2:.4e} um2, below the threshold of {self.config.minimum_lamella_area_um2:.4e} um2"
             )
-        if mask_gis_clean is None:
-            raise StopEarlyError("No GIS found beneath the lamella")
 
         try:
             # Get lamella position
@@ -362,13 +355,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]
 
         # Measure GIS
         gis_thickness_px = gm.get_gis_thickness(
-            mask_gis=mask_gis_clean,
-            mask_lamella=mask_lamella_clean,
-            mask_background=prediction == SegmentationLabels.BACKGROUND.value,
-            mask_crack=mask_crack_clean,
-            mask_vacuum=prediction == SegmentationLabels.VACUUM.value,
+            clean_prediction,
             lamella_mask_bbox=lamella_mask_bbox,
-            image_shape=sem_image.data.shape,
+            image_shape=(sem_image.data.shape[0], sem_image.data.shape[1]),
         )
 
         gis_thickness_um = (
@@ -405,12 +394,10 @@ class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]
         )
         results_dict["min_GIS_um"] = min_gis_um
 
-        if mask_crack_clean is None:
-            crack_area_um2 = 0
-        else:
-            crack_area_um2 = gm.get_mask_area_um2(
-                mask_crack_clean, pixel_size_um=prediction_pixel_size_um
-            )
+        crack_area_um2 = gm.get_mask_area_um2(
+            mask=clean_prediction == SegmentationLabels.CRACK.value,
+            pixel_size_um=prediction_pixel_size_um,
+        )
 
         _logger.info(
             "Area of cracks found in milling cycle %i = %.4e um2",
@@ -425,11 +412,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]
                 save_path=plots_folder / f"{image_name}_plot.png",
                 sem_image=sem_image.data,
                 first_prediction=prediction,
-                clean_prediction=gm.masks_to_labels(
-                    lamella_mask=mask_lamella_clean,
-                    gis_mask=mask_gis_clean,
-                    crack_mask=mask_crack_clean,
-                ),
+                clean_prediction=clean_prediction,
                 fib_image=fib_image.data,
                 gis_thickness_um=gis_thickness_filtered_um,
                 gis_stop_um=self.config.gis_stop_um,
@@ -567,10 +550,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]
         try:
             prediction = self._segment_sem_image(sem_image.data)
 
-            mask_lamella_clean, _, _ = gm.clean_prediction(
-                prediction,
-                additional_labels=(SegmentationLabels.GIS, SegmentationLabels.CRACK),
-            )
+            mask_lamella_clean = gm.clean_lamella(prediction)
         except Exception as e:
             raise SegmentationException(
                 f"Failed to get clean lamella mask required for SEM alignment: {e}"

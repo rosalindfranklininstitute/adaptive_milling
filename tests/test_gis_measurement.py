@@ -136,3 +136,54 @@ def test_get_gis_thickness(with_crack: bool) -> None:
         np.asarray(expected_gis_thickness, dtype=np.float32),
         err_msg="Incorrect GIS thicknesses found",
     )
+
+
+def test_clean_prediction() -> None:
+    background_lamella_overlap = 20
+    image_shape: tuple[int, int] = (200, 250)
+    lamella_bbox: tuple[int, int, int, int] = (10, 50, 70, 150)
+    vacuum_bottom_pixels = 3
+    prediction, segmented_gis_thickness, _ = _create_mock_prediction_gis_thickness(
+        image_shape,
+        lamella_bbox,
+        background_lamella_overlap,
+        vacuum_bottom_pixels,
+        add_crack=True,
+    )
+    max_gis_thickness = segmented_gis_thickness.max()
+
+    messy_prediction = prediction.copy()
+
+    num_random_crack = 20
+    for _ in range(num_random_crack):
+        idx = (
+            # Beneath the lamella and GIS
+            np.random.randint(
+                lamella_bbox[2] + max_gis_thickness + 1,
+                image_shape[0] - vacuum_bottom_pixels,
+            ),
+            # Between the edges of the background
+            np.random.randint(
+                lamella_bbox[1] + background_lamella_overlap,
+                lamella_bbox[3] - background_lamella_overlap,
+            ),
+        )
+        messy_prediction[idx] = SegmentationLabels.CRACK.value
+
+    num_random_gis = 20
+    for _ in range(num_random_gis):
+        idx = (
+            # Anywhere in Y
+            np.random.randint(0, image_shape[0]),
+            # Before the lamella (without touching it)
+            np.random.randint(0, lamella_bbox[1] - 1),
+        )
+        messy_prediction[idx] = SegmentationLabels.GIS.value
+
+    clean_prediction = gm.clean_prediction(prediction=messy_prediction)
+
+    assert_array_equal(
+        clean_prediction,
+        prediction,
+        err_msg="Prediction cleaning has not worked as expected",
+    )

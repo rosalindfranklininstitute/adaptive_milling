@@ -344,7 +344,7 @@ def test_results_saved(
     prediction[lamella_mask] = SegmentationLabels.LAMELLA.value
     prediction[gis_mask] = SegmentationLabels.GIS.value
 
-    mock_clean_prediction.return_value = (lamella_mask, gis_mask, None)
+    mock_clean_prediction.return_value = prediction
 
     expected_gis_thickness = np.asarray(
         [gis_bottom - lamella_bottom] * mask_shape[1], dtype=np.float32
