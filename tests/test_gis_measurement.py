@@ -3,6 +3,7 @@ import pytest
 from numpy.testing import assert_array_equal
 
 import typing
+import itertools
 import numpy as np
 
 from adaptive_polish.dl_segmentation.sem_lamella_segmentor import SegmentationLabels
@@ -136,6 +137,44 @@ def test_get_gis_thickness(with_crack: bool) -> None:
         np.asarray(expected_gis_thickness, dtype=np.float32),
         err_msg="Incorrect GIS thicknesses found",
     )
+
+
+@pytest.mark.parametrize("dtype,connectivity", itertools.product([bool, int], [1, 2]))
+def test_keep_only_largest_object(dtype: type, connectivity: int) -> None:
+    input_array = np.zeros((50, 50), dtype=np.uint8)
+
+    # Draw largest object
+    input_array[5:20, 5:20] = 5
+
+    expected_output = input_array.copy().astype(np.bool_)
+
+    # Add corner pixel to test connectivity
+    input_array[20, 20] = 5
+    if connectivity > 1:
+        expected_output[20, 20] = True
+
+    # Add other objects
+    input_array[:4, :4] = 3
+
+    input_array[22:25, :4] = 8
+
+    input_array[40:45, 40:45] = 2
+
+    # Same label as largest object but not touching
+    input_array[:4, 22:25] = 5
+
+    if dtype is bool:
+        input_array = input_array.astype(np.bool_)
+    elif dtype is int:
+        # Attached to largest object but with different value
+        # Check it does recognise them as different
+        input_array[40:45, 20:30] = 2
+    else:
+        raise TypeError(f"Unsupported dtype '{dtype}'")
+
+    output = gm.keep_only_largest_object(mask=input_array, connectivity=connectivity)
+
+    assert_array_equal(output, expected_output)
 
 
 def test_clean_prediction() -> None:

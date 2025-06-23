@@ -36,22 +36,23 @@ load_sem_model = sgm.load_model
 
 def keep_only_largest_object(
     mask: NDArray[typing.Union[np.integer[typing.Any], np.bool_]],
+    connectivity: int = 2,
 ) -> NDArray[np.bool_]:
     """Find the largest object in a mask and sets everything in that object to
     `fill_value`, background is 0.
 
     Args:
-        mask (np.array): Segmentation mask
+        mask (NDArray[typing.Union[np.integer[typing.Any], np.bool_]]): Segmentation mask
+        connectivity (int): connectivity when finding objects (1 is edges only, 2 includes corners)
 
     Returns:
-        np.array: Boolean mask with all but the largest object set to False
+        NDArray[np.bool_]: Boolean mask with all but the largest object set to False
     """
-    instances = skimage.measure.label(mask)
-    largest_area = max([_.area for _ in skimage.measure.regionprops(instances)])
-    mask_largest_only = skimage.morphology.remove_small_objects(
-        instances, min_size=largest_area - 1
-    )
-    return mask_largest_only > 0
+    labels, num = skimage.measure.label(mask, return_num=True, connectivity=connectivity)
+    if num == 1:
+        return labels.astype(np.bool_)
+    prop = max(skimage.measure.regionprops(labels), key=lambda x: x.area)
+    return labels == prop.label
 
 
 def check_minimum_area(
