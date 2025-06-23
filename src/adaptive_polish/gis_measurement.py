@@ -24,7 +24,6 @@ from adaptive_polish.edges import get_mask_edge
 from adaptive_polish.dl_segmentation import sem_lamella_segmentor as sgm
 
 if typing.TYPE_CHECKING:
-    from collections.abc import Sequence
     from numpy.typing import NDArray
 
 
@@ -35,7 +34,9 @@ DEFAULT_SEM_MODEL_GENERATION = sgm._get_newest_generation_key()
 load_sem_model = sgm.load_model
 
 
-def keep_only_largest_object(mask: NDArray[np.integer]) -> NDArray[np.bool_]:
+def keep_only_largest_object(
+    mask: NDArray[typing.Union[np.integer[typing.Any], np.bool_]],
+) -> NDArray[np.bool_]:
     """Find the largest object in a mask and sets everything in that object to
     `fill_value`, background is 0.
 
@@ -156,7 +157,7 @@ def filter_gis_thickness(
     gaussian_curve = gaussian(window_size_px, std=sigma)
     gaussian_curve /= gaussian_curve.sum()
     return np.convolve(
-        np.pad(gis_thickness_px, int(gaussian_curve.size / 2)),
+        np.pad(gis_thickness_px, int(gaussian_curve.size / 2), mode="constant"),
         gaussian_curve,
         mode="valid",
     )
