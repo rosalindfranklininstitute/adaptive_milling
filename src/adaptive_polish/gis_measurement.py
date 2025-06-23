@@ -16,9 +16,9 @@ import logging
 import typing
 from math import ceil, floor
 
-import skimage
 import numpy as np
 from scipy.signal.windows import gaussian
+from skimage import measure, morphology, transform
 
 from adaptive_polish.edges import get_mask_edge
 from adaptive_polish.dl_segmentation import sem_lamella_segmentor as sgm
@@ -48,10 +48,10 @@ def keep_only_largest_object(
     Returns:
         NDArray[np.bool_]: Boolean mask with all but the largest object set to False
     """
-    labels, num = skimage.measure.label(mask, return_num=True, connectivity=connectivity)
+    labels, num = measure.label(mask, return_num=True, connectivity=connectivity)
     if num == 1:
         return labels.astype(np.bool_)
-    prop = max(skimage.measure.regionprops(labels), key=lambda x: x.area)
+    prop = max(measure.regionprops(labels), key=lambda x: x.area)
     return labels == prop.label
 
 
@@ -132,7 +132,7 @@ def apply_binary_opening(
     # Get window size in px
     if window_size_m > 0:
         window_size_px = int(round(window_size_m / pixel_size_m))
-        return skimage.morphology.binary_opening(
+        return morphology.binary_opening(
             array,
             footprint=[
                 (np.ones((window_size_px, 1)), 1),
@@ -182,7 +182,7 @@ def resize_image(
     if not isinstance(image.dtype, np.floating):
         # Needs to be floating type if we want interpolation
         image = image.astype(np.float_)
-    return skimage.transform.resize(
+    return transform.resize(
         image,
         output_shape=new_shape,
         preserve_range=True,
