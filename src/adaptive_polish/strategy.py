@@ -368,10 +368,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[AdaptivePolishMillingConfig]
         )
         results_dict["gis_thickness_um"] = gis_thickness_um.tolist()
 
-        xlims_px = (
-            int(round(lamella_bbox[1])),
-            int(round(lamella_bbox[3])),
-        )
+        xlims_px = gm.bbox_to_xlims(lamella_bbox)
         results_dict["xlims_px"] = xlims_px
 
         gis_thickness_filtered_um = np.zeros_like(gis_thickness_um)

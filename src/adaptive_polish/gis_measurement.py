@@ -188,6 +188,14 @@ def masks_to_labels(
     )
 
 
+def bbox_to_ylims(bbox: tuple[float, float, float, float]) -> tuple[int, int]:
+    return (int(floor(bbox[0])), int(ceil(bbox[2])))
+
+
+def bbox_to_xlims(bbox: tuple[float, float, float, float]) -> tuple[int, int]:
+    return (int(floor(bbox[1])), int(ceil(bbox[3])))
+
+
 def get_gis_thickness(
     prediction: NDArray[np.integer[typing.Any]],
     lamella_mask_bbox: tuple[float, float, float, float],
@@ -196,20 +204,21 @@ def get_gis_thickness(
     """Get an array of GIS thickness values across the width specified by image_shape (or by the masks not given)
 
     Note: undefined pixels will be treated as if they are vacuum/crack."""
-    prediction_shape = prediction.shape
-
     # Only include mask that is lamella and below
-    slicer = (
-        slice(int(floor(lamella_mask_bbox[0])), None),
-        slice(int(floor(lamella_mask_bbox[1])), int(ceil(lamella_mask_bbox[3])) + 1),
-    )
-    prediction = prediction[slicer]
+    prediction_xlims = bbox_to_xlims(lamella_mask_bbox)
+    prediction_ylims = bbox_to_ylims(lamella_mask_bbox)
 
-    mask_lamella = prediction == sgm.SegmentationLabels.LAMELLA.value
-    mask_gis = prediction == sgm.SegmentationLabels.GIS.value
-    mask_background = prediction == sgm.SegmentationLabels.BACKGROUND.value
+    slicer = (
+        slice(int(floor(prediction_ylims[0])), None),
+        slice(prediction_xlims[0], prediction_xlims[1] + 1),
+    )
+    prediction_slice = prediction[slicer]
+
+    mask_lamella = prediction_slice == sgm.SegmentationLabels.LAMELLA.value
+    mask_gis = prediction_slice == sgm.SegmentationLabels.GIS.value
+    mask_background = prediction_slice == sgm.SegmentationLabels.BACKGROUND.value
     mask_bad = np.isin(
-        prediction,
+        prediction_slice,
         (
             sgm.SegmentationLabels.CRACK.value,
             sgm.SegmentationLabels.VACUUM.value,
@@ -235,7 +244,7 @@ def get_gis_thickness(
         mask_gis_background[: y + 1, x] = False
 
     new_mask_gis: NDArray[typing.Union[np.bool_, np.float_]]
-    new_mask_gis = np.zeros(prediction_shape, dtype=np.bool_)
+    new_mask_gis = np.zeros(prediction.shape, dtype=np.bool_)
     new_mask_gis[slicer] = mask_gis_background
 
     if image_shape is not None:
