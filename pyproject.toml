@@ -41,7 +41,6 @@ dependencies = [
   "jinja2",
   "pydantic",
   "fibsem@git+https://github.com/rosalindfranklininstitute/fibsem-os.git",
-  "napari[all]",
 ]
 
 [project.urls]
@@ -58,7 +57,7 @@ version_file = "adaptive_polish/_version.py"
 test = [
   "pytest",
   "pytest-cov",
-  "autolamella@git+https://github.com/rosalindfranklininstitute/autolamella.git",
+  "adaptive_polish[ui]",
 ]
 dev = [
   "ruff",
@@ -68,6 +67,10 @@ dev = [
 scripts = [
   "jupyter",
   "ipywidgets",
+]
+ui = [
+  "napari[all]",
+  "autolamella@git+https://github.com/rosalindfranklininstitute/autolamella.git",
 ]
 
 [tool.setuptools.packages.find]
