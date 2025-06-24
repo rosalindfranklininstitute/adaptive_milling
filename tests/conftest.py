@@ -64,15 +64,16 @@ def latest_sem_segmentation_model() -> tuple[str, Path]:
 
 
 @pytest.fixture(
-    params=list(_MODEL_PATHS.keys()),
-    ids=[f"Model {_}" for _ in _MODEL_PATHS.keys()],
+    params=[(k, p) for k, v in _MODEL_PATHS.items() for p in v],
+    ids=[
+        f"Model {k} {i}" for k, v in _MODEL_PATHS.items() for i in range(1, len(v) + 1)
+    ],
     scope="session",
 )
 def sem_segmentation_model(
     request: pytest.FixtureRequest,
 ) -> typing.Generator[tuple[str, Path]]:
-    for path in _MODEL_PATHS[request.param]:
-        yield request.param, path
+    yield request.param
 
 
 @pytest.fixture(scope="session")
