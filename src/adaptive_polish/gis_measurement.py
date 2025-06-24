@@ -18,7 +18,7 @@ from math import ceil, floor
 
 import numpy as np
 from scipy.signal.windows import gaussian
-from skimage import measure, morphology, transform
+from skimage import measure, transform
 
 from adaptive_polish.edges import get_mask_edge
 from adaptive_polish.dl_segmentation import sem_lamella_segmentor as sgm
@@ -53,13 +53,6 @@ def keep_only_largest_object(
         return labels.astype(np.bool_)
     prop = max(measure.regionprops(labels), key=lambda x: x.area)
     return labels == prop.label
-
-
-def check_minimum_area(
-    mask: NDArray[np.bool_], pixel_size: float, minimum_size: float
-) -> bool:
-    # Ensure lamella and GIS object is bigger than minimum size
-    return bool(np.sum(mask) * pixel_size <= minimum_size)
 
 
 def clean_lamella(prediction: NDArray[np.integer]) -> NDArray[np.bool_]:
@@ -126,27 +119,11 @@ def clean_prediction(
     ).astype(np.uint8)
 
 
-def apply_binary_opening(
-    array: NDArray[np.bool_], window_size_m: float, pixel_size_m: float
-):
-    # Get window size in px
-    if window_size_m > 0:
-        window_size_px = int(round(window_size_m / pixel_size_m))
-        return morphology.binary_opening(
-            array,
-            footprint=[
-                (np.ones((window_size_px, 1)), 1),
-                (np.ones((1, window_size_px)), 1),
-            ],
-            mode="ignore",
-        )
-
-
 def filter_gis_thickness(
     gis_thickness_px: NDArray[typing.Union[np.integer, np.floating]],
     window_size_m: float,
     pixel_size_m: float,
-) -> NDArray[np.float64]:
+) -> NDArray[np.floating[typing.Any]]:
     # TODO: Change window_size_m to beam FWHM
     # FWHM is 2 * sqrt(2 * np.log(2)) * sigma, which is approx 2.355 * sigma
     # The number of points in the gaussian curve should be approx 6 * std for convolution
@@ -191,6 +168,13 @@ def resize_image(
 
 def get_mask_area_um2(mask: NDArray[np.bool_], pixel_size_um: float) -> float:
     return float(np.sum(mask) * (pixel_size_um**2))
+
+
+def check_minimum_area(
+    mask: NDArray[np.bool_], pixel_size: float, minimum_size: float
+) -> bool:
+    # Ensure lamella and GIS object is bigger than minimum size
+    return bool(np.sum(mask) * pixel_size <= minimum_size)
 
 
 def masks_to_labels(
