@@ -62,6 +62,10 @@ test = [
 ]
 dev = [
   "ruff",
+  "mypy",
+  "microsoft-python-type-stubs@git+https://github.com/microsoft/python-type-stubs.git",
+]
+scripts = [
   "jupyter",
   "ipywidgets",
 ]
