@@ -1,4 +1,5 @@
 from __future__ import annotations
+from functools import partial
 import typing
 
 import numpy as np
@@ -16,7 +17,10 @@ if typing.TYPE_CHECKING:
 
 def get_bounding_box_from_edges(
     edges_array: Sequence[Sequence[NDArray[np.integer[typing.Any]]]],
-    edge_finding: typing.Literal["median", "mean", "min", "max"] = "median",
+    edge_finding: typing.Literal[
+        "median", "mean", "min", "max", "percentile"
+    ] = "median",
+    percentile: typing.Optional[float] = None,
 ) -> typing.Tuple[float, float, float, float]:
     edge_fn_max: Callable[..., np.integer[typing.Any] | np.floating[typing.Any]]
     edge_fn_min: Callable[..., np.integer[typing.Any] | np.floating[typing.Any]]
@@ -32,6 +36,13 @@ def get_bounding_box_from_edges(
     elif edge_finding == "max":
         edge_fn_min = np.min
         edge_fn_max = np.max
+    elif edge_finding == "percentile":
+        if percentile is None:
+            raise ValueError(
+                "Edge finding method 'percentile' requires additional argument 'percentile'"
+            )
+        edge_fn_min = partial(np.percentile, q=100 - percentile)
+        edge_fn_max = partial(np.percentile, q=percentile)
     else:
         raise ValueError(f"Invalid option edge_finding='{edge_finding}'")
     xmin = edge_fn_min(edges_array[1][0][:, 1]).item()
@@ -47,9 +58,14 @@ def get_bounding_box_from_edges(
 
 def get_mask_bounding_box(
     mask: NDArray[np.bool_],
-    edge_finding: typing.Literal["median", "mean", "min", "max"] = "median",
+    edge_finding: typing.Literal[
+        "median", "mean", "min", "max", "percentile"
+    ] = "median",
+    percentile: typing.Optional[float] = None,
 ) -> typing.Tuple[float, float, float, float]:
-    return get_bounding_box_from_edges(get_mask_edges(mask), edge_finding=edge_finding)
+    return get_bounding_box_from_edges(
+        get_mask_edges(mask), edge_finding=edge_finding, percentile=percentile
+    )
 
 
 def get_centre_from_bounding_box(
@@ -68,11 +84,12 @@ def get_centre_from_bounding_box(
 
 def get_lamella_centre(
     array: NDArray[np.bool_],
-    edge_finding: typing.Literal["median", "mean"] = "median",
     subpixel_accuracy: bool = False,
+    edge_finding: typing.Literal["median", "mean", "percentile"] = "median",
+    percentile: typing.Optional[float] = None,
 ) -> typing.Union[typing.Tuple[int, int], typing.Tuple[float, float]]:
     bbox = get_bounding_box_from_edges(
-        get_mask_edges(mask=array), edge_finding=edge_finding
+        get_mask_edges(mask=array), edge_finding=edge_finding, percentile=percentile
     )
     return get_centre_from_bounding_box(bbox, subpixel_accuracy=subpixel_accuracy)
 
@@ -80,7 +97,10 @@ def get_lamella_centre(
 def get_bounding_box_scaled_to_image(
     image: NDArray[typing.Any],
     mask: NDArray[np.bool_],
-    edge_finding: typing.Literal["median", "mean", "min", "max"] = "median",
+    edge_finding: typing.Literal[
+        "median", "mean", "min", "max", "percentile"
+    ] = "median",
+    percentile: typing.Optional[float] = None,
 ) -> typing.Tuple[
     typing.Tuple[float, float, float, float], typing.Tuple[float, float, float, float]
 ]:
@@ -91,7 +111,9 @@ def get_bounding_box_scaled_to_image(
     else:
         prediction_to_image_scale_multiplier = image.shape[1] / mask.shape[1]
 
-    bbox_mask = get_mask_bounding_box(mask, edge_finding=edge_finding)
+    bbox_mask = get_mask_bounding_box(
+        mask, edge_finding=edge_finding, percentile=percentile
+    )
 
     return (
         bbox_mask[0] * prediction_to_image_scale_multiplier,
