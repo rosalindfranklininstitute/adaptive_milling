@@ -43,7 +43,10 @@ _MODEL_PATHS: dict[str, list[Path]] = {
         / "gen01_quality_1536_v7_FPN"
         / "gen01_quality_1536_v7_FPN.pth"
     ],
-    "1.4fpn": [_MODELS_DIR / "Gen1" / "gen01_V8_FPN_RGB" / "cryo_sem_epoch_49.pth"],
+    "1.4fpn": [
+        _MODELS_DIR / "Gen1" / "gen01_V8_FPN_RGB" / "cryo_sem_epoch_49.pth",
+        _MODELS_DIR / "Gen1" / "gen01_quality_1536_v9_FPN" / "cryo_sem_epoch_73.pth",
+    ],
 }
 
 
