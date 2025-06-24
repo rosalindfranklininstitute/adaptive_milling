@@ -180,10 +180,13 @@ def create_milling_cycle_plot(
         axs[0, 2].axvline(x=xlims[0], color="C4")
         axs[0, 2].axvline(x=xlims[1], color="C4")
     axs[0, 2].axis("off")
-    axs[0, 2].set_title(
+    _crack_title = (
         "SEM cleaned segmentation\n"
-        rf"Crack area {crack_area_um2:.2f} $\mu m^2$ (threshold {max_crack_area_um2:.2f})",
+        rf"Crack area {crack_area_um2:.2f} $\mu m^2$"
     )
+    if max_crack_area_um2 is not None:
+        _crack_title += f" (threshold {max_crack_area_um2:.2f})"
+    axs[0, 2].set_title(_crack_title)
 
     # FIB image
     axs[1, 0].imshow(fib_image, cmap="Greys_r")
