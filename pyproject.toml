@@ -40,7 +40,7 @@ dependencies = [
   "segmentation-models-pytorch >= 0.4.0",
   "jinja2",
   "pydantic",
-  "fibsem@git+https://github.com/DeMarcoLab/fibsem.git",
+  "fibsem@git+https://github.com/rosalindfranklininstitute/fibsem-os.git",
   "napari[all]",
 ]
 
@@ -58,10 +58,14 @@ version_file = "adaptive_polish/_version.py"
 test = [
   "pytest",
   "pytest-cov",
-  "autolamella@git+https://github.com/DeMarcoLab/autolamella.git",
+  "autolamella@git+https://github.com/rosalindfranklininstitute/autolamella.git",
 ]
 dev = [
   "ruff",
+  "mypy",
+  "microsoft-python-type-stubs@git+https://github.com/microsoft/python-type-stubs.git",
+]
+scripts = [
   "jupyter",
   "ipywidgets",
 ]
