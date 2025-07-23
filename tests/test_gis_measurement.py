@@ -110,12 +110,24 @@ def _create_mock_prediction_gis_thickness(
 
     return prediction, segmented_gis_thickness, expected_gis_thickness
 
-
+@pytest.mark.parametrize("pad_limits", [True, False], ids=["padded", "unpadded"])
 @pytest.mark.parametrize("with_crack", [True, False], ids=["crack", "no crack"])
-def test_get_gis_thickness(with_crack: bool) -> None:
+def test_get_gis_thickness(with_crack: bool, pad_limits: bool) -> None:
     background_lamella_overlap = 20
     image_shape: tuple[int, int] = (200, 250)
     lamella_bbox: tuple[int, int, int, int] = (10, 50, 70, 150)
+    padding: tuple[int, int] = (20, 10)
+
+    xlims = gm.bbox_to_xlims(
+        lamella_bbox,
+        pad=padding[1] if pad_limits else 0,
+        x_bounds=(0, image_shape[1] - 1),
+    )
+    ylims = gm.bbox_to_ylims(
+        lamella_bbox,
+        pad=padding[0] if pad_limits else 0,
+        y_bounds=(0, image_shape[0] - 1),
+    )
     vacuum_bottom_pixels = 3
 
     prediction, _, expected_gis_thickness = _create_mock_prediction_gis_thickness(
@@ -126,15 +138,24 @@ def test_get_gis_thickness(with_crack: bool) -> None:
         add_crack=with_crack,
     )
 
-    gis_thickness = gm.get_gis_thickness(
+    gis_thickness, xlims_out = gm.get_gis_thickness(
         prediction=prediction,
-        lamella_mask_bbox=lamella_bbox,
+        xlims=xlims,
+        ylims=(ylims[0], None),
         image_shape=None,
     )
 
+    assert xlims_out == xlims, "xlims should not be changed if image_shape is None"
+
+    expected_gis_thickness = np.asarray(expected_gis_thickness, dtype=np.float32)
+    expected_gis_thickness[: lamella_bbox[1]] = image_shape[0] - ylims[0]
+    expected_gis_thickness[lamella_bbox[3] + 1 :] = image_shape[0] - ylims[0]
+    expected_gis_thickness[: xlims[0]] = np.nan
+    expected_gis_thickness[xlims[1] + 1 :] = np.nan
+
     assert_array_equal(
         gis_thickness,
-        np.asarray(expected_gis_thickness, dtype=np.float32),
+        expected_gis_thickness,
         err_msg="Incorrect GIS thicknesses found",
     )
 

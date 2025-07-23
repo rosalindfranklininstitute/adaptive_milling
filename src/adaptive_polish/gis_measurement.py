@@ -188,29 +188,51 @@ def masks_to_labels(
     )
 
 
-def bbox_to_ylims(bbox: tuple[float, float, float, float]) -> tuple[int, int]:
-    return (int(floor(bbox[0])), int(ceil(bbox[2])))
+def bbox_to_ylims(
+    bbox: tuple[float, float, float, float],
+    y_bounds: tuple[int, int],
+    pad: int = 0,
+) -> tuple[int, int]:
+    return (
+        max(int(floor(bbox[0])) - pad, y_bounds[0]),
+        min(int(ceil(bbox[2])) + pad, y_bounds[1]),
+    )
 
 
-def bbox_to_xlims(bbox: tuple[float, float, float, float]) -> tuple[int, int]:
-    return (int(floor(bbox[1])), int(ceil(bbox[3])))
+def bbox_to_xlims(
+    bbox: tuple[float, float, float, float],
+    x_bounds: tuple[int, int],
+    pad: int = 0,
+) -> tuple[int, int]:
+    return (
+        int(max(floor(bbox[1]) - pad, x_bounds[0])),
+        int(min(ceil(bbox[3]) + pad, x_bounds[1])),
+    )
 
 
 def get_gis_thickness(
     prediction: NDArray[np.integer[typing.Any]],
-    lamella_mask_bbox: tuple[float, float, float, float],
-    image_shape: typing.Optional[tuple[int, int]],
-) -> NDArray[np.float32]:
+    xlims: tuple[int | None, int | None] = (None, None),
+    ylims: tuple[int | None, int | None] = (None, None),
+    image_shape: typing.Optional[tuple[int, int]] = None,
+    clean_edges: bool = True,
+) -> tuple[NDArray[np.float32], tuple[int, int]]:
     """Get an array of GIS thickness values across the width specified by image_shape (or by the masks not given)
 
     Note: undefined pixels will be treated as if they are vacuum/crack."""
-    # Only include mask that is lamella and below
-    prediction_xlims = bbox_to_xlims(lamella_mask_bbox)
-    prediction_ylims = bbox_to_ylims(lamella_mask_bbox)
 
+    # Pad slices by 1 on each side (unless at limits) to avoid scaling edge issues
     slicer = (
-        slice(int(floor(prediction_ylims[0])), None),
-        slice(prediction_xlims[0], prediction_xlims[1] + 1),
+        slice(None if ylims[0] is None else max(0, ylims[0]), None),
+        slice(
+            None
+            if xlims[0] is None
+            else max(
+                0,
+                xlims[0] - 1,
+            ),
+            None if xlims[1] is None else min(xlims[1] + 2, prediction.shape[1]),
+        ),
     )
     prediction_slice = prediction[slicer]
 
@@ -244,16 +266,31 @@ def get_gis_thickness(
         mask_gis_background[: y + 1, x] = False
 
     new_mask_gis: NDArray[typing.Union[np.bool_, np.float_]]
-    new_mask_gis = np.zeros(prediction.shape, dtype=np.bool_)
+    new_mask_gis = np.full(
+        prediction.shape, fill_value=np.nan if clean_edges else 0, dtype=np.float64
+    )
     new_mask_gis[slicer] = mask_gis_background
 
-    if image_shape is not None:
+    if image_shape is None or image_shape == (prediction.shape[0], prediction.shape[1]):
+        xlims_out = (
+            0 if xlims[0] is None else xlims[0],
+            prediction.shape[1] - 1 if xlims[1] is None else xlims[1],
+        )
+    else:
+        x_scaling = image_shape[1] / prediction.shape[1]
+        xlims_out = (
+            0 if xlims[0] is None else floor(xlims[0] * x_scaling),
+            image_shape[1] if xlims[1] is None else ceil(xlims[1] * x_scaling),
+        )
         new_mask_gis = resize_image(
             new_mask_gis,
-            new_shape=(image_shape[0], image_shape[1]),
+            new_shape=image_shape,
         )
-    return np.sum(
+
+    sliced_gis_thickness = np.nansum(
         new_mask_gis,
         axis=0,
         dtype=np.float32,
     )
+
+    return sliced_gis_thickness, xlims_out
