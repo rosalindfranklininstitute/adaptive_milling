@@ -11,6 +11,7 @@ import numpy as np
 if typing.TYPE_CHECKING:
     from numpy.typing import NDArray
 
+
 def setup_protocol_path(
     protocol_template_path: Path,
     temporary_directory: Path,
