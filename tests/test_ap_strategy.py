@@ -13,7 +13,7 @@ from fibsem.structures import BeamType, Point, FibsemImage
 from fibsem.milling.base import get_milling_stages
 from autolamella.protocol.validation import validate_protocol
 
-from adaptive_polish import strategy as ap_strategy
+from adaptive_polish.strategy import adaptive_polish as ap_strategy
 from adaptive_polish.dl_segmentation.sem_lamella_segmentor import SegmentationLabels
 
 from . import setup, utils
@@ -202,15 +202,14 @@ def test_reference_images_saved_correctly(
             f"Expected {image_type} image paths do not match found .tif paths"
         )
 
-
+@patch.object(ap_strategy, "create_milling_cycle_plot")
 @patch.object(
     ap_strategy.fs_utils, "current_timestamp", new=MagicMock(return_value=TIMESTAMP)
 )
 def test_max_milling_cycles_not_exceeded(
+    mock_create_milling_cycle_plot: MagicMock,
     protocol_template_path: Path,
     microscope_config_path: Path,
-    fib_image_dir: Path,
-    sem_image_dir: Path,
     tmp_path: Path,
 ) -> None:
     """Tests that milling cycles cannot exceed the max"""
@@ -235,11 +234,14 @@ def test_max_milling_cycles_not_exceeded(
     strategy = ap_strategy.AdaptivePolishMillingStrategy(config=ap_config)
 
     lamella_directory = tmp_path / "lamella"
+    lamella_ap_folder = lamella_directory / f"adaptive_polish_{TIMESTAMP}"
+    plots_directory = lamella_ap_folder / "plots"
+
     lamella_directory.mkdir()
 
     stage.imaging.path = lamella_directory
 
-    lamella_ap_folder = lamella_directory / f"adaptive_polish_{TIMESTAMP}"
+
 
     # Stop it trying to load a model
     with (
@@ -248,6 +250,7 @@ def test_max_milling_cycles_not_exceeded(
             strategy, "_get_lamella_info", autospec=True
         ) as mock_get_lamella_info,
         patch.object(strategy, "_check_lamella", autospec=True) as mock_check_lamella,
+        patch.object(strategy, "_update_milling_stage") as mock_update_milling_stage,
         patch.object(strategy, "_mill") as mock_mill,
     ):
         mock_stats = MagicMock()
@@ -256,6 +259,7 @@ def test_max_milling_cycles_not_exceeded(
             MagicMock(stats=mock_stats) for _ in range(max_milling_cycles + 1)
         ]
         mock_get_lamella_info.side_effect = lamella_infos
+        mock_update_milling_stage.return_value = "stage"
 
         strategy.run(microscope, stage)
 
@@ -281,8 +285,40 @@ def test_max_milling_cycles_not_exceeded(
             [
                 call(
                     lamella_info=lamella_infos[i],
-                    plots_directory=lamella_ap_folder / "plots",
                     expected_lamella_centre_m=None,  # Due to align_sem=False
+                    plots_directory=plots_directory,
+                )
+                for i in range(max_milling_cycles + 1)
+            ]
+        )
+
+        mock_update_milling_stage.assert_has_calls(
+            [
+                call(stage=stage, lamella_info=lamella_infos[i])
+                for i in range(max_milling_cycles + 1)
+            ]
+        )
+
+        mock_create_milling_cycle_plot.assert_has_calls(
+            [
+                call(
+                    save_path=plots_directory
+                    / f"{lamella_infos[i].identifier}_plot.png",
+                    sem_image=lamella_infos[i].sem_image,
+                    first_prediction=lamella_infos[i].prediction,
+                    clean_prediction=lamella_infos[i].clean_prediction,
+                    fib_image=lamella_infos[i].fib_image,
+                    gis_thickness_um=lamella_infos[
+                        i
+                    ].statistics.gis_thickness_filtered_um,
+                    gis_stop_um=strategy.config.gis_stop_um,
+                    crack_area_um2=lamella_infos[i].statistics.crack_area_um2,
+                    min_gis_um=lamella_infos[i].statistics.min_GIS_um,
+                    xlims=lamella_infos[i].statistics.xlims_px,
+                    total_milling_time=lamella_infos[i].statistics.milling_time_s,
+                    max_crack_area_um2=strategy.config.max_crack_area_um2,
+                    img_name=lamella_infos[i].identifier,
+                    milling_stage=mock_update_milling_stage.return_value,
                 )
                 for i in range(max_milling_cycles + 1)
             ]
@@ -294,8 +330,7 @@ def test_max_milling_cycles_not_exceeded(
                 call(
                     i,
                     microscope=microscope,
-                    stage=stage,
-                    patterns=stage.pattern.define(),
+                    stage=mock_update_milling_stage.return_value,
                     asynch=False,
                     parent_ui=None,
                 )
@@ -324,13 +359,11 @@ def test_results_saved(
     pass_checks_kwargs["max_milling_cycles"] = max_milling_cycles
     max_checks = max_milling_cycles + 1
 
-    sem_res = (1536, 1024)
+    sem_res: tuple[int, int] = (1536, 1024)
 
     ap_config = ap_strategy.AdaptivePolishMillingConfig(
         model_path=model_path,
         align_sem=False,
-        sem_res_x=sem_res[0],
-        sem_res_y=sem_res[1],
         **pass_checks_kwargs,
     )
     _, stages = setup_protocol_and_milling_stages(
@@ -386,9 +419,11 @@ def test_results_saved(
     # Stop it trying to load a model
     with (
         patch.object(strategy, "model") as mock_model,
+        patch.object(strategy, "_update_milling_stage") as mock_update_milling_stage,
         patch.object(strategy, "_mill") as mock_mill,
     ):
         mock_model.predict.return_value = prediction
+        mock_update_milling_stage.return_value = "stage"
 
         strategy.run(microscope, stage)
 
@@ -404,8 +439,7 @@ def test_results_saved(
                 call(
                     _,
                     microscope=microscope,
-                    stage=stage,
-                    patterns=ANY,
+                    stage=mock_update_milling_stage.return_value,
                     asynch=False,
                     parent_ui=None,
                 )
@@ -478,11 +512,6 @@ def test_results_saved(
         check_dtype=False,
         obj="Detailed results DataFrame",
     )
-
-
-# def test_milling_time_adjustment() -> None:
-#     """Tests that milling cycle time cannot be < 10s"""
-#     pass
 
 
 @pytest.mark.parametrize("hits_limits", [False, True], ids=["normal", "hits_limits"])
@@ -670,7 +699,7 @@ def test_check_lamella(
 
 @pytest.mark.parametrize("file_exists", [True, False], ids=["file", "no file"])
 @patch("pathlib.Path.is_file")
-@patch("adaptive_polish.strategy.gm.load_sem_model")
+@patch("adaptive_polish.strategy.adaptive_polish.gm.load_sem_model")
 def test_load_model(mock_load_sem_model, mock_is_file, file_exists: bool) -> None:
     model_generation = "model_generation"
     model_path = "model_path"
@@ -697,7 +726,7 @@ def test_load_model(mock_load_sem_model, mock_is_file, file_exists: bool) -> Non
         assert strategy.model is None
 
 
-def test_restore_beam_shifts(microscope_config_path: Path, tmp_path: Path) -> None:
+def test_restore_beam_shifts(microscope_config_path: Path) -> None:
     microscope, _ = fibsem_utils.setup_session(config_path=microscope_config_path)
     initial_electron_shift = Point(-11, 12)
     initial_ion_shift = Point(50, -20)
