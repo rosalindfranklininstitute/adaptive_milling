@@ -68,8 +68,8 @@ ui = [
 requires-dist = [
     { name = "adaptive-polish", extras = ["ui"], marker = "extra == 'test'" },
     { name = "albumentations" },
-    { name = "autolamella", marker = "extra == 'ui'", git = "https://github.com/rosalindfranklininstitute/autolamella.git?rev=ap-0.1.0" },
-    { name = "fibsem", git = "https://github.com/rosalindfranklininstitute/fibsem-os.git?rev=ap-0.1.0" },
+    { name = "autolamella", marker = "extra == 'ui'", git = "https://github.com/rosalindfranklininstitute/autolamella.git" },
+    { name = "fibsem", git = "https://github.com/rosalindfranklininstitute/fibsem-os.git" },
     { name = "ipywidgets", marker = "extra == 'scripts'" },
     { name = "jinja2" },
     { name = "jupyter", marker = "extra == 'scripts'" },
@@ -305,8 +305,8 @@ wheels = [
 
 [[package]]
 name = "autolamella"
-version = "0.4.1a0"
-source = { git = "https://github.com/rosalindfranklininstitute/autolamella.git?rev=ap-0.1.0#bf6f775c8b80b8515fc478e370f4b72d172535f0" }
+version = "0.4.1a1"
+source = { git = "https://github.com/rosalindfranklininstitute/autolamella.git#f35a29934dfb34c52029345a5048eb5d5dd7c2db" }
 dependencies = [
     { name = "fibsem" },
 ]
@@ -1044,7 +1044,7 @@ wheels = [
 [[package]]
 name = "fibsem"
 version = "0.4.1a1"
-source = { git = "https://github.com/rosalindfranklininstitute/fibsem-os.git?rev=ap-0.1.0#178e836c0f660634e36a4a6df3a353f6547988c7" }
+source = { git = "https://github.com/rosalindfranklininstitute/fibsem-os.git#827f51d5399807800b0283d308303c8277fef9d2" }
 dependencies = [
     { name = "lxml" },
     { name = "matplotlib", version = "3.9.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
