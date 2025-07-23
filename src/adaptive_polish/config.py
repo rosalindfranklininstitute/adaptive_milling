@@ -1,6 +1,5 @@
 from __future__ import annotations
 import typing
-from os import PathLike
 from pydantic import ConfigDict
 from pydantic.dataclasses import dataclass
 
@@ -11,7 +10,7 @@ from adaptive_polish.gis_measurement import DEFAULT_SEM_MODEL_GENERATION
 
 @dataclass(config=ConfigDict(validate_assignment=True))
 class AdaptivePolishMillingConfig(MillingStrategyConfig):
-    model_path: typing.Union[str, PathLike] = "Undefined"
+    model_path: str = ""
     align_sem: bool = True
     gis_stop_um: float = 0.2
     max_crack_area_um2: float = 2
@@ -20,25 +19,6 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
     minimum_lamella_area_um2: float = 30.0  # 30μm²
     maximum_drift_um: float = 0.1
     model_generation: str = DEFAULT_SEM_MODEL_GENERATION
-
-    _advanced_attributes = []
-
-    @staticmethod
-    def from_dict(d: dict[str, typing.Any]) -> "AdaptivePolishMillingConfig":
-        return AdaptivePolishMillingConfig(**d)
-
-    def to_dict(self) -> dict[str, typing.Any]:
-        return {
-            "model_path": str(self.model_path),
-            "align_sem": self.align_sem,
-            "gis_stop_um": self.gis_stop_um,
-            "max_milling_cycles": self.max_milling_cycles,
-            "window_size_px": self.window_size_px,
-            "max_crack_area_um2": self.max_crack_area_um2,
-            "minimum_lamella_area_um2": self.minimum_lamella_area_um2,
-            "maximum_drift_um": self.maximum_drift_um,
-            "model_generation": self.model_generation,
-        }
 
     def get_model_generation(self) -> typing.Optional[str]:
         model_generation = self.model_generation.strip()
