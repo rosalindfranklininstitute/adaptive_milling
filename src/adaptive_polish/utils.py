@@ -75,6 +75,7 @@ def ensure_subdirectories(directory: Path, *subdirectory_names: str) -> list[Pat
         directory.mkdir(exist_ok=True)
     return directories
 
+
 def setup_results_df() -> tuple[pd.DataFrame, pd.DataFrame]:
     results = pd.DataFrame(
         {
