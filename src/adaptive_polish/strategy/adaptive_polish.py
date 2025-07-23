@@ -278,6 +278,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             sem_image=sem_image,
             fib_image=fib_image,
             milling_stage=stage,
+            lamella_pad_x=self.config.lamella_pad_x,
         )
         try:
             self._check_lamella(

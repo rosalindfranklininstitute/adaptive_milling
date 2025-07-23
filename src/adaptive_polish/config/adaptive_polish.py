@@ -18,6 +18,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
     window_size_px: int = 10
     minimum_lamella_area_um2: float = 30.0  # 30μm²
     maximum_drift_um: float = 0.1
+    lamella_pad_x: float = 0.0  # fraction of lamella width to pad by on each side
     model_generation: str = DEFAULT_SEM_MODEL_GENERATION
 
     def get_model_generation(self) -> typing.Optional[str]:

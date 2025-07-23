@@ -269,6 +269,7 @@ def test_max_milling_cycles_not_exceeded(
                     sem_image=ANY,
                     fib_image=ANY,
                     milling_stage=stage,
+                    lamella_pad_x=strategy.config.lamella_pad_x,
                 )
                 for i in range(max_milling_cycles + 1)
             ],
@@ -644,6 +645,7 @@ def test_check_lamella(
             sem_image=sem_image,
             fib_image=fib_image,
             milling_stage=stage,
+            lamella_pad_x=0,
         )
 
     with utils.assert_raises(check_exception):
