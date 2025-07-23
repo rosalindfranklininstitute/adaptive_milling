@@ -35,7 +35,7 @@ load_sem_model = sgm.load_model
 
 
 def keep_only_largest_object(
-    mask: NDArray[typing.Union[np.integer[typing.Any], np.bool_]],
+    mask: NDArray[np.integer[typing.Any] | np.bool_],
     connectivity: int = 2,
 ) -> NDArray[np.bool_]:
     """Find the largest object in a mask and sets everything in that object to
@@ -142,7 +142,7 @@ def filter_gis_thickness(
 
 
 def filter_gis_thickness_fast(
-    gis_thickness_px: NDArray[typing.Union[np.integer, np.floating]],
+    gis_thickness_px: NDArray[np.integer[typing.Any] | np.float64 | np.float32],
     window_size_m: int,
     pixel_size_m: float,
 ) -> NDArray[np.float64]:
@@ -178,9 +178,9 @@ def check_minimum_area(
 
 
 def masks_to_labels(
-    masks: typing.Dict[sgm.SegmentationLabels, NDArray[np.bool_]],
-    default_value: typing.Union[int, float] = np.nan,
-) -> NDArray[typing.Any]:
+    masks: dict[sgm.SegmentationLabels, NDArray[np.bool_]],
+    default_value: int | float = np.nan,
+) -> NDArray[np.float64]:
     return np.select(
         list(masks.values()),
         [_.value for _ in masks.keys()],
