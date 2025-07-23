@@ -244,26 +244,43 @@ def test_max_milling_cycles_not_exceeded(
     # Stop it trying to load a model
     with (
         patch.object(strategy, "_load_model") as mock_load_model,
-        patch.object(strategy, "_check_lamella") as mock_check_lamella,
+        patch.object(
+            strategy, "_get_lamella_info", autospec=True
+        ) as mock_get_lamella_info,
+        patch.object(strategy, "_check_lamella", autospec=True) as mock_check_lamella,
         patch.object(strategy, "_mill") as mock_mill,
     ):
+        mock_stats = MagicMock()
+        mock_stats.to_dict.side_effect = dict
+        lamella_infos = [
+            MagicMock(stats=mock_stats) for _ in range(max_milling_cycles + 1)
+        ]
+        mock_get_lamella_info.side_effect = lamella_infos
+
         strategy.run(microscope, stage)
 
         mock_load_model.assert_called_once()
+
+        mock_get_lamella_info.assert_has_calls(
+            [
+                call(
+                    milling_cycle=i,
+                    identifier=f"{lamella_directory.stem}_AP_img_{i:03}",
+                    sem_image=ANY,
+                    fib_image=ANY,
+                    milling_stage=stage,
+                )
+                for i in range(max_milling_cycles + 1)
+            ],
+            any_order=True,
+        )
 
         # One extra round of checks should be run
         mock_check_lamella.assert_has_calls(
             [
                 call(
-                    i,
-                    image_name=f"{lamella_directory.stem}_AP_img_{i:03}",
-                    fib_image=ANY,
-                    sem_image=ANY,
-                    plots_folder=lamella_ap_folder / "plots",
-                    results_dict={
-                        "image": f"{lamella_directory.stem}_AP_img_{i:03}",
-                        "milling_time_s": stage.pattern.time * i,
-                    },
+                    lamella_info=lamella_infos[i],
+                    plots_directory=lamella_ap_folder / "plots",
                     expected_lamella_centre_m=None,  # Due to align_sem=False
                 )
                 for i in range(max_milling_cycles + 1)
@@ -274,9 +291,14 @@ def test_max_milling_cycles_not_exceeded(
         mock_mill.assert_has_calls(
             [
                 call(
-                    _, microscope=microscope, stage=stage, asynch=False, parent_ui=None
+                    i,
+                    microscope=microscope,
+                    stage=stage,
+                    patterns=stage.pattern.define(),
+                    asynch=False,
+                    parent_ui=None,
                 )
-                for _ in range(max_milling_cycles)
+                for i in range(max_milling_cycles)
             ]
         )
 
@@ -361,7 +383,10 @@ def test_results_saved(
 
     mock_filter_gis_thickness.side_effect = expected_filtered_gis_thicknesses
     # Stop it trying to load a model
-    with patch.object(strategy, "model") as mock_model, patch.object(strategy, "_mill") as mock_mill:
+    with (
+        patch.object(strategy, "model") as mock_model,
+        patch.object(strategy, "_mill") as mock_mill,
+    ):
         mock_model.predict.return_value = prediction
 
         strategy.run(microscope, stage)
@@ -376,7 +401,12 @@ def test_results_saved(
         mock_mill.assert_has_calls(
             [
                 call(
-                    _, microscope=microscope, stage=stage, asynch=False, parent_ui=None
+                    _,
+                    microscope=microscope,
+                    stage=stage,
+                    patterns=ANY,
+                    asynch=False,
+                    parent_ui=None,
                 )
                 for _ in range(max_milling_cycles)
             ]
@@ -563,37 +593,35 @@ def test_check_lamella(
     lamella_ap_plots_folder = lamella_ap_folder / "plots"
     lamella_ap_folder.mkdir()
     lamella_ap_plots_folder.mkdir()
-    results_dict: dict[str, typing.Any] = {}
-    ap_config = ap_strategy.AdaptivePolishMillingConfig(model_path="path/to/model.file")
 
     saves_results: bool
-    exception: typing.Optional[type[Exception]]
     pass_checks_kwargs = _AP_PASS_CHECKS_CONFIG.copy()
+    check_exception: type[Exception] | None = None
+    info_exception: type[Exception] | None = None
     if failure_reason == "gis":
         saves_results = True
-        exception = ap_strategy.StopMillingException
+        check_exception = ap_strategy.StopMillingException
         pass_checks_kwargs["gis_stop_um"] = 500
     elif failure_reason == "crack":
         saves_results = True
-        exception = ap_strategy.StopMillingException
+        check_exception = ap_strategy.StopMillingException
         pass_checks_kwargs["max_crack_area_um2"] = 0
     elif failure_reason == "lamella area":
         saves_results = False
-        exception = ap_strategy.StopEarlyError
+        check_exception = ap_strategy.StopEarlyError
         pass_checks_kwargs["minimum_lamella_area_um2"] = 1e5
     elif failure_reason == "centring":
         saves_results = True
-        exception = ap_strategy.StopEarlyError
+        check_exception = ap_strategy.StopEarlyError
         pass_checks_kwargs["maximum_drift_um"] = 0
     elif failure_reason == "none":
         saves_results = True
-        exception = None
     else:
         raise NotImplementedError(f"Invalid failure reason {failure_reason}")
 
     ap_config = ap_strategy.AdaptivePolishMillingConfig(
         model_generation=latest_sem_segmentation_model[0],
-        model_path=latest_sem_segmentation_model[1],
+        model_path=str(latest_sem_segmentation_model[1]),
         **pass_checks_kwargs,
     )
 
@@ -606,20 +634,36 @@ def test_check_lamella(
     fib_image = FibsemImage.load(str(fib_image_path))
     sem_image = FibsemImage.load(str(sem_image_path))
 
-    with utils.assert_raises(exception):
-        strategy._check_lamella(
+    stage = MagicMock()
+    stage.pattern.time = 20
+
+    with utils.assert_raises(info_exception):
+        lamella_info = strategy._get_lamella_info(
             milling_cycle=milling_cycle,
-            image_name=image_name,
-            fib_image=fib_image,
+            identifier=image_name,
             sem_image=sem_image,
-            plots_folder=lamella_ap_plots_folder,
-            results_dict=results_dict,
+            fib_image=fib_image,
+            milling_stage=stage,
+        )
+
+    with utils.assert_raises(check_exception):
+        strategy._check_lamella(
+            lamella_info=lamella_info,
+            plots_directory=lamella_ap_plots_folder,
             expected_lamella_centre_m=Point(0, 0),
         )
 
-        assert bool(results_dict) is saves_results, "Results should%s be empty" % (
-            "n't" if saves_results else ""
-        )
+    for key, value in lamella_info.statistics.to_dict().items():
+        if not saves_results and key in (
+            "lamella_bounding_box_px",
+            "gis_thickness_um",
+            "xlims_px",
+            "gis_thickness_filtered_um",
+            "min_GIS_um",
+        ):
+            assert value is None, f"{key} should be None"
+        else:
+            assert value is not None, f"{key} should not be None"
 
 
 @pytest.mark.parametrize("file_exists", [True, False], ids=["file", "no file"])
