@@ -16,7 +16,6 @@ from fibsem.milling import (
     setup_milling,
     draw_patterns,
     run_milling,
-    finish_milling,
 )
 from fibsem.structures import BeamType
 
@@ -243,12 +242,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                     )
                 except Exception:
                     _logger.error("Failed to create summary plot(s)", exc_info=True)
-                # finish milling (clear patterns, restore imaging current)
-                finish_milling(
-                    microscope=microscope,
-                    imaging_current=microscope.system.ion.beam.beam_current,
-                    imaging_voltage=microscope.system.ion.beam.voltage,
-                )
 
     def _run_milling_cycle(
         self,
