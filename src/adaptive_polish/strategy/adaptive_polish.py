@@ -217,16 +217,18 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                             save_directory=lamella_ap_directory,
                         )
                 _logger.info(
-                    "Adaptive milling complete (ended due to maximum milling cycles)"
+                    "%s complete (ended due to maximum milling cycles)", self.name
                 )
             except StopMillingException as e:
-                _logger.info("Stopping milling due to: %s", str(e))
+                _logger.info("Stopping %s due to: %s", self.name, str(e))
             except StopEarlyError as e:
                 # Likely due to something not working correctly (e.g.
                 # segmentation issues)
-                _logger.warning("Stopping milling early due to: %s", str(e))
+                _logger.warning("Stopping %s early due to: %s", self.name, str(e))
             except Exception:
-                _logger.error("Stopping due to unexpected exception", exc_info=True)
+                _logger.error(
+                    "Stopping %s due to unexpected exception", self.name, exc_info=True
+                )
                 raise
             finally:
                 # Always try to create a summary plot(s) and finish milling
@@ -262,7 +264,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
     ) -> None:
         # Acquire images
         _logger.info(
-            "Acquiring images for milling cycle %i/%i",
+            "Acquiring images for %s milling cycle %i/%i",
+            self.name,
             milling_cycle,
             self.config.max_milling_cycles,
         )
@@ -340,11 +343,11 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
 
         # FIB
         fib_imaging_settings.beam_type = BeamType.ION
-        _logger.debug("Adaptive polish FIB settings: %s", str(fib_imaging_settings))
+        _logger.debug("%s FIB settings: %s", self.name, str(fib_imaging_settings))
 
         # SEM
         sem_imaging_settings.beam_type = BeamType.ELECTRON
-        _logger.debug("Adaptive polish SEM settings: %s", str(sem_imaging_settings))
+        _logger.debug("%s SEM settings: %s", self.name, str(sem_imaging_settings))
 
         return fib_imaging_settings, sem_imaging_settings
 
@@ -594,9 +597,13 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                 milling_voltage=stage.milling.milling_voltage,
                 asynch=asynch,
             )
-            _logger.info("Completed milling")
+            _logger.info("Completed milling cycle %i", milling_cycle)
         except Exception:
-            _logger.error("An error occurred during milling", exc_info=True)
+            _logger.error(
+                "An error occurred during milling cycle %i",
+                milling_cycle,
+                exc_info=True,
+            )
         finally:
             microscope.stop_milling()  # dont use milling.finish_milling as it would clear patterns
 
