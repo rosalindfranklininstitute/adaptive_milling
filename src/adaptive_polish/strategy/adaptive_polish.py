@@ -293,23 +293,10 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             stage = self._update_milling_stage(stage=stage, lamella_info=lamella_info)
 
             try:
-                stats = lamella_info.statistics
-                # Create plots
-                create_milling_cycle_plot(
-                    save_path=plots_directory / f"{lamella_info.identifier}_plot.png",
-                    sem_image=lamella_info.sem_image.data,
-                    first_prediction=lamella_info.prediction,
-                    clean_prediction=lamella_info.clean_prediction,
-                    fib_image=lamella_info.fib_image.data,
-                    gis_thickness_um=stats.gis_thickness_filtered_um,
-                    gis_stop_um=self.config.gis_stop_um,
-                    crack_area_um2=stats.crack_area_um2,
-                    min_gis_um=stats.min_GIS_um,
-                    xlims=stats.xlims_px,
-                    total_milling_time=stats.milling_time_s,
-                    max_crack_area_um2=self.config.max_crack_area_um2,
-                    img_name=lamella_info.identifier,
-                    fib_screenshot=None,
+                self._create_milling_cycle_plot(
+                    plots_directory=plots_directory,
+                    lamella_info=lamella_info,
+                    stage=stage,
                 )
             except Exception:
                 _logger.error(
@@ -324,6 +311,32 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                 asynch=asynch,
                 parent_ui=parent_ui,
             )
+
+    def _create_milling_cycle_plot(
+        self,
+        plots_directory: Path,
+        lamella_info: LamellaInformation,
+        stage: FibsemMillingStage | None,
+    ) -> None:
+        stats = lamella_info.statistics
+        # Create plots
+        create_milling_cycle_plot(
+            save_path=plots_directory / f"{lamella_info.identifier}_plot.png",
+            sem_image=lamella_info.sem_image,
+            fib_image=lamella_info.fib_image,
+            first_prediction=lamella_info.prediction,
+            clean_prediction=lamella_info.clean_prediction,
+            gis_thickness_um=stats.gis_thickness_filtered_um,
+            crack_area_um2=stats.crack_area_um2,
+            min_gis_um=stats.min_GIS_um,
+            gis_stop_threshold_um=self.config.gis_stop_um,
+            milling_stage=stage,
+            xlims=stats.xlims_px,
+            total_milling_time=stats.milling_time_s,
+            max_crack_area_um2=self.config.max_crack_area_um2,
+            img_name=lamella_info.identifier,
+        )
+
 
     def _update_milling_stage(
         self, stage: FibsemMillingStage, lamella_info: LamellaInformation

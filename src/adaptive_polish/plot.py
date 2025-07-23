@@ -9,7 +9,9 @@ from matplotlib.colors import ListedColormap
 import matplotlib.pyplot as plt
 
 from fibsem import constants
-from fibsem.structures import Point
+from fibsem.structures import Point, FibsemImage
+from fibsem.milling import FibsemMillingStage
+from fibsem.milling.patterning.plotting import draw_milling_patterns
 
 from adaptive_polish.dl_segmentation.sem_lamella_segmentor import SegmentationLabels
 
@@ -24,11 +26,14 @@ _logger = logging.getLogger(__name__)
 plt.rc("axes", titlesize="small")
 plt.rc("figure", titlesize="large")
 
+
 def __create_cmap() -> ListedColormap:
     _tab10 = plt.get_cmap("tab10")
     return ListedColormap([_tab10(_.value) for _ in SegmentationLabels])
 
+
 LABEL_CMAP = __create_cmap()
+
 
 def create_centring_plot(
     sem_image: FibsemImage,
@@ -120,22 +125,21 @@ def create_centring_plot(
 
 def create_milling_cycle_plot(
     save_path: str | PathLike[str],
-    sem_image: NDArray[typing.Any],
+    sem_image: FibsemImage,
+    fib_image: FibsemImage,
     first_prediction: NDArray[np.integer[typing.Any]],
     clean_prediction: NDArray[np.integer[typing.Any]],
-    fib_image: NDArray[typing.Any],
-    gis_stop_um: float,
-    crack_area_um2: float,
-    gis_thickness_um: ArrayLike | None,
-    min_gis_um: float | None,
+    gis_thickness_um: ArrayLike | None = None,
+    crack_area_um2: float | None = None,
+    min_gis_um: float | None = None,
+    gis_stop_threshold_um: float | None = None,
+    milling_stage: FibsemMillingStage | None = None,
     total_milling_time: float | None = None,
     max_crack_area_um2: float | None = None,
     xlims: tuple[int, int] | None = None,
-    fib_screenshot: NDArray[typing.Any] | None = None,
     img_name: str | None = None,
-):
-    gis_thickness_um = np.asarray(gis_thickness_um)
-
+    gis_ymax_um: float = 2,
+) -> None:
     _logger.debug("Creating milling cycle plot")
     fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(12, 8), tight_layout=True)
     plot_title = img_name
@@ -146,13 +150,13 @@ def create_milling_cycle_plot(
         fig.suptitle(plot_title)
 
     # SEM
-    _ = axs[0, 0].imshow(sem_image, cmap="Greys_r")
+    _ = axs[0, 0].imshow(sem_image.data, cmap="Greys_r")
     sem_image_extent = _.get_extent()
     axs[0, 0].axis("off")
     axs[0, 0].set_title("SEM")
 
     # SEM + 1st pass prediction
-    axs[0, 1].imshow(sem_image, cmap="Greys_r")
+    axs[0, 1].imshow(sem_image.data, cmap="Greys_r")
     axs[0, 1].imshow(
         first_prediction,
         alpha=0.4,
@@ -166,7 +170,7 @@ def create_milling_cycle_plot(
     axs[0, 1].set_title("SEM segmentation")
 
     # SEM + clean prediction
-    axs[0, 2].imshow(sem_image, cmap="Greys_r")
+    axs[0, 2].imshow(sem_image.data, cmap="Greys_r")
     axs[0, 2].imshow(
         clean_prediction,
         alpha=0.4,
@@ -180,59 +184,72 @@ def create_milling_cycle_plot(
         axs[0, 2].axvline(x=xlims[0], color="C4")
         axs[0, 2].axvline(x=xlims[1], color="C4")
     axs[0, 2].axis("off")
-    _crack_title = (
-        "SEM cleaned segmentation\n"
-        rf"Crack area {crack_area_um2:.2f} $\mu m^2$"
-    )
+
+    _crack_title = "SEM cleaned segmentation"
+    _crack_subtitle: list[str] = []
+    if crack_area_um2 is not None:
+        _crack_subtitle.append(rf"Crack area {crack_area_um2:.2f} $\mu m^2$")
     if max_crack_area_um2 is not None:
-        _crack_title += f" (threshold {max_crack_area_um2:.2f})"
+        _crack_subtitle.append(f"(threshold {max_crack_area_um2:.2f})")
+    if _crack_subtitle:
+        _crack_title += "\n" + " ".join(_crack_subtitle)
     axs[0, 2].set_title(_crack_title)
 
     # FIB image
-    axs[1, 0].imshow(fib_image, cmap="Greys_r")
+    axs[1, 0].imshow(fib_image.data, cmap="Greys_r")
     axs[1, 0].axis("off")
     axs[1, 0].set_title("FIB")
 
     # FIB + milling box
-    if fib_screenshot is not None:
-        # Doesn't work -> for some reason I can't open a new napari.Viewer()
-        # pattern_viewer = napari.Viewer()
-        # pattern_viewer.add_image(fib_image, name="fib_image")
-        # _draw_patterns_in_napari(
-        #     viewer=pattern_viewer,
-        #     ib_image=FibsemImage(data=fib_image),
-        #     eb_image=None,
-        #     milling_stages=list(adaptive_polish_stage)
-        # )
-        # screenshot = pattern_viewer.screenshot()
-        # axs[1, 1].imshow(screenshot)
-        # pattern_viewer.close()
-        axs[1, 1].imshow(fib_screenshot[:, int(fib_screenshot.shape[1] / 2) :, :])
-    axs[1, 1].axis("off")
+    if milling_stage is not None:
+        try:
+            draw_milling_patterns(
+                fib_image,
+                milling_stages=[milling_stage],
+                crosshair=True,
+                scalebar=True,
+                ax=axs[1, 1],
+            )
+        except Exception:
+            logging.error("Failed to draw milling patterns", exc_info=True)
+            axs[1, 1].axis("off")
 
-    # GIS thickness
-    axs[1, 2].plot(gis_thickness_um, ".-")
-    axs[1, 2].set_xlabel("Distance along x $px$")
-    axs[1, 2].set_ylabel(r"GIS thickness ($\mu m$)")
-    axs[1, 2].set_xlim(0, len(gis_thickness_um))
-    axs[1, 2].set_ylim(0, 2)
-    axs[1, 2].hlines(
-        y=gis_stop_um,
-        xmin=0,
-        xmax=len(gis_thickness_um),
-        label="Target GIS",
-        linestyles="dashed",
-        colors="C1",
-    )
+    if gis_thickness_um is None:
+        axs[1, 2].axis("off")
+    else:
+        gis_thickness_um = np.asarray(gis_thickness_um)
 
-    if xlims is not None:
-        axs[1, 2].axvline(x=xlims[0], color="C4")
-        axs[1, 2].axvline(x=xlims[1], color="C4")
+        # GIS thickness
+        axs[1, 2].plot(gis_thickness_um, ".-")
+        axs[1, 2].set_xlabel("Distance along x $px$")
+        axs[1, 2].set_ylabel(r"GIS thickness ($\mu m$)")
+        axs[1, 2].set_xlim(0, len(gis_thickness_um))
+        axs[1, 2].set_ylim(0, gis_ymax_um)
 
-    axs[1, 2].set_title(
-        "GIS thickness\n"
-        rf"Minimum {min_gis_um:.3f} $\mu m$ (threshold {gis_stop_um:.3f})"
-    )
+        if gis_stop_threshold_um is not None:
+            axs[1, 2].hlines(
+                y=gis_stop_threshold_um,
+                xmin=0,
+                xmax=len(gis_thickness_um),
+                label="Stop milling threshold",
+                linestyles="dashed",
+                colors="red",
+            )
+
+        if xlims is not None:
+            axs[1, 2].axvline(x=xlims[0], color="C4")
+            axs[1, 2].axvline(x=xlims[1], color="C4")
+
+    _gis_title = "GIS thickness"
+    _gis_subtitle: list[str] = []
+    if min_gis_um is not None:
+        _gis_subtitle.append(rf"Minimum {min_gis_um:.3f} $\mu m$")
+    if gis_stop_threshold_um is not None:
+        _gis_subtitle.append(f"(threshold {gis_stop_threshold_um:.3f})")
+    if _gis_subtitle:
+        _gis_title += "\n" + " ".join(_gis_subtitle)
+
+    axs[1, 2].set_title(_gis_title)
     axs[1, 2].legend()
 
     fig.savefig(save_path)

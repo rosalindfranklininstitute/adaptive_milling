@@ -202,6 +202,7 @@ def test_reference_images_saved_correctly(
             f"Expected {image_type} image paths do not match found .tif paths"
         )
 
+
 @patch.object(ap_strategy, "create_milling_cycle_plot")
 @patch.object(
     ap_strategy.fs_utils, "current_timestamp", new=MagicMock(return_value=TIMESTAMP)
@@ -240,8 +241,6 @@ def test_max_milling_cycles_not_exceeded(
     lamella_directory.mkdir()
 
     stage.imaging.path = lamella_directory
-
-
 
     # Stop it trying to load a model
     with (
@@ -305,20 +304,20 @@ def test_max_milling_cycles_not_exceeded(
                     save_path=plots_directory
                     / f"{lamella_infos[i].identifier}_plot.png",
                     sem_image=lamella_infos[i].sem_image,
+                    fib_image=lamella_infos[i].fib_image,
                     first_prediction=lamella_infos[i].prediction,
                     clean_prediction=lamella_infos[i].clean_prediction,
-                    fib_image=lamella_infos[i].fib_image,
                     gis_thickness_um=lamella_infos[
                         i
                     ].statistics.gis_thickness_filtered_um,
-                    gis_stop_um=strategy.config.gis_stop_um,
                     crack_area_um2=lamella_infos[i].statistics.crack_area_um2,
                     min_gis_um=lamella_infos[i].statistics.min_GIS_um,
+                    gis_stop_threshold_um=strategy.config.gis_stop_um,
+                    milling_stage=mock_update_milling_stage.return_value,
                     xlims=lamella_infos[i].statistics.xlims_px,
                     total_milling_time=lamella_infos[i].statistics.milling_time_s,
                     max_crack_area_um2=strategy.config.max_crack_area_um2,
                     img_name=lamella_infos[i].identifier,
-                    milling_stage=mock_update_milling_stage.return_value,
                 )
                 for i in range(max_milling_cycles + 1)
             ]
