@@ -121,6 +121,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
 
         fib_imaging_settings, sem_imaging_settings = self._get_imaging_settings(stage)
 
+        if fib_imaging_settings.path is None:
+            raise ValueError(f"Imaging path has not been set for {stage.name}")
+
         lamella_directory = Path(fib_imaging_settings.path)
         lamella_name = lamella_directory.stem
         lamella_ap_directory = (
