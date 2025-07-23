@@ -1,5 +1,6 @@
 from __future__ import annotations
 import pytest
+from unittest.mock import MagicMock, patch, ANY
 from numpy.testing import assert_array_equal
 
 import typing
@@ -110,28 +111,49 @@ def _create_mock_prediction_gis_thickness(
 
     return prediction, segmented_gis_thickness, expected_gis_thickness
 
+
+@patch.object(gm, "resize_image")
+@pytest.mark.parametrize("prediction_binning", [None, 2], ids=["unscaled", "scaled"])
 @pytest.mark.parametrize("pad_limits", [True, False], ids=["padded", "unpadded"])
 @pytest.mark.parametrize("with_crack", [True, False], ids=["crack", "no crack"])
-def test_get_gis_thickness(with_crack: bool, pad_limits: bool) -> None:
+def test_get_gis_thickness(
+    mock_resize_image: MagicMock,
+    with_crack: bool,
+    pad_limits: bool,
+    prediction_binning: int | None,
+) -> None:
     background_lamella_overlap = 20
-    image_shape: tuple[int, int] = (200, 250)
+    prediction_shape: tuple[int, int] = (200, 250)
     lamella_bbox: tuple[int, int, int, int] = (10, 50, 70, 150)
     padding: tuple[int, int] = (20, 10)
+    if prediction_binning is None:
+        image_shape = None
+    else:
+        image_shape = (
+            prediction_shape[0] * prediction_binning,
+            prediction_shape[1] * prediction_binning,
+        )
+
+    def passthrough_resize(image, new_shape):
+        return image
+
+    mock_resize_image.side_effect = passthrough_resize
 
     xlims = gm.bbox_to_xlims(
         lamella_bbox,
         pad=padding[1] if pad_limits else 0,
-        x_bounds=(0, image_shape[1] - 1),
+        x_bounds=(0, prediction_shape[1] - 1),
     )
     ylims = gm.bbox_to_ylims(
         lamella_bbox,
         pad=padding[0] if pad_limits else 0,
-        y_bounds=(0, image_shape[0] - 1),
+        y_bounds=(0, prediction_shape[0] - 1),
     )
     vacuum_bottom_pixels = 3
 
+    expected_gis_thickness: NDArray[typing.Any]
     prediction, _, expected_gis_thickness = _create_mock_prediction_gis_thickness(
-        image_shape,
+        prediction_shape,
         lamella_bbox,
         background_lamella_overlap,
         vacuum_bottom_pixels,
@@ -142,16 +164,30 @@ def test_get_gis_thickness(with_crack: bool, pad_limits: bool) -> None:
         prediction=prediction,
         xlims=xlims,
         ylims=(ylims[0], None),
-        image_shape=None,
+        image_shape=image_shape,
     )
 
-    assert xlims_out == xlims, "xlims should not be changed if image_shape is None"
+    if prediction_binning is None:
+        assert xlims_out == xlims, "xlims should not be changed if image_shape is None"
+    else:
+        assert xlims_out == (
+            xlims[0] * prediction_binning,
+            xlims[1] * prediction_binning,
+        ), "xlims should be scaled by the binning amount"
 
     expected_gis_thickness = np.asarray(expected_gis_thickness, dtype=np.float32)
-    expected_gis_thickness[: lamella_bbox[1]] = image_shape[0] - ylims[0]
-    expected_gis_thickness[lamella_bbox[3] + 1 :] = image_shape[0] - ylims[0]
-    expected_gis_thickness[: xlims[0]] = np.nan
-    expected_gis_thickness[xlims[1] + 1 :] = np.nan
+
+    # Add the thickness due to background at the edges
+    expected_gis_thickness[: lamella_bbox[1]] = prediction_shape[0] - ylims[0]
+    expected_gis_thickness[lamella_bbox[3] + 1 :] = prediction_shape[0] - ylims[0]
+
+    expected_gis_thickness[: xlims[0] - 1] = 0
+    expected_gis_thickness[xlims[1] + 2 :] = 0
+
+    if image_shape is None:
+        mock_resize_image.assert_not_called()
+    else:
+        mock_resize_image.assert_called_once_with(ANY, new_shape=image_shape)
 
     assert_array_equal(
         gis_thickness,

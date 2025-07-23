@@ -13,7 +13,7 @@ from fibsem.milling import get_milling_stages, mill_stages
 
 from autolamella.protocol.validation import validate_protocol
 from autolamella.structures import AutoLamellaProtocol
-from adaptive_polish.strategy import AdaptivePolishMillingConfig
+from adaptive_polish.config.adaptive_polish import AdaptivePolishMillingConfig
 
 from . import setup
 
@@ -43,7 +43,7 @@ def protocol_path(
 ) -> Path:
     ap_config = AdaptivePolishMillingConfig(
         model_generation=sem_segmentation_model[0],
-        model_path=sem_segmentation_model[1],
+        model_path=str(sem_segmentation_model[1]),
         **_AP_MILLING_CONFIG_SETTINGS,
     )
 
@@ -90,7 +90,7 @@ def raise_error_after_num_calls(
 
 @pytest.mark.usefixtures("skip_if_no_models")
 @patch(
-    "adaptive_polish.strategy.fs_utils.current_timestamp",
+    "adaptive_polish.strategy.adaptive_polish.fs_utils.current_timestamp",
     new=MagicMock(return_value=TIMESTAMP),
 )
 def test_runs(
