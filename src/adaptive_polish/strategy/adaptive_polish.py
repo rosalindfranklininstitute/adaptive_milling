@@ -66,7 +66,7 @@ _logger = logging.getLogger(__name__)
 
 
 def _results_entry_helper(
-    *dfs: DataFrame, milling_cycle: int, results: typing.Dict[str, typing.Any]
+    *dfs: DataFrame, milling_cycle: int, results: dict[str, typing.Any]
 ) -> None:
     for df in dfs:
         df.loc[milling_cycle] = {  # type: ignore
@@ -90,13 +90,13 @@ def _restore_beam_shifts(
 class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig]):
     name: str = "AdaptivePolishing"
     fullname: str = "Adaptive polishing according to GIS thickness"
-    config_class: typing.ClassVar[typing.Type[AdaptivePolishMillingConfig]] = (
+    config_class: typing.ClassVar[type[AdaptivePolishMillingConfig]] = (
         AdaptivePolishMillingConfig
     )
 
     def __init__(self, config: TAdaptivePolishMillingConfig | None = None) -> None:
         super().__init__(config=config)
-        self.model: typing.Optional[AbstractAdaptivePolishingModel] = None
+        self.model: AbstractAdaptivePolishingModel | None = None
 
     def run(
         self,
@@ -255,7 +255,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         results_dict: dict[str, typing.Any],
         microscope: FibsemMicroscope,
         stage: FibsemMillingStage,
-        expected_lamella_centre_m: typing.Optional[Point],
+        expected_lamella_centre_m: Point | None,
         mill: bool = True,
         asynch: bool = False,
         parent_ui=None,
@@ -333,7 +333,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
 
     def _get_imaging_settings(
         self, stage: FibsemMillingStage
-    ) -> typing.Tuple[ImageSettings, ImageSettings]:
+    ) -> tuple[ImageSettings, ImageSettings]:
         # TODO: Figure out how to get lamella directory without assuming previous image's path was correct
         fib_imaging_settings = deepcopy(stage.imaging)
         sem_imaging_settings = deepcopy(stage.imaging)
@@ -348,7 +348,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
 
         return fib_imaging_settings, sem_imaging_settings
 
-    def _load_model(self):
+    def _load_model(self) -> None:
         model_path = Path(self.config.model_path)
         if not model_path.is_file():
             raise FileNotFoundError(
@@ -604,7 +604,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         self,
         microscope: FibsemMicroscope,
         sem_imaging_settings: ImageSettings,
-        plot_path: typing.Optional[Path] = None,
+        plot_path: Path | None = None,
     ) -> Point:
         _logger.info("Aligning SEM beam in order to centre the lamella")
 
@@ -620,9 +620,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                 f"Failed to get clean lamella mask required for SEM alignment: {e}"
             )
 
-        centre_m: typing.Optional[Point] = None
-        centre_px: typing.Optional[Point] = None
-        lamella_bbox: typing.Optional[tuple[float, float, float, float]] = None
+        centre_m: Point | None = None
+        centre_px: Point | None = None
+        lamella_bbox: tuple[float, float, float, float] | None = None
         try:
             lamella_bbox, _ = get_bounding_box_scaled_to_image(
                 sem_image.data,
@@ -682,10 +682,10 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         # Total crack area check
         return crack_area_um2 > float(self.config.max_crack_area_um2)
 
-    def _setup_results_dataframes(self) -> typing.Tuple[DataFrame, DataFrame]:
+    def _setup_results_dataframes(self) -> tuple[DataFrame, DataFrame]:
         return ap_utils.setup_results_df()
 
-    def _save_results_dataframes(self, *dfs, directory: Path) -> None:
+    def _save_results_dataframes(self, *dfs: DataFrame, directory: Path) -> None:
         results, gis_results_detailed = dfs
         results.to_json(directory / "GIS_thickness.json")
         gis_results_detailed.to_json(directory / "GIS_thickness_detailed.json")
@@ -693,7 +693,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
     def _handle_results(
         self,
         milling_cycle: int,
-        results_dict: typing.Dict[str, typing.Any],
+        results_dict: dict[str, typing.Any],
         *results_dataframes: DataFrame,
         save_directory: Path,
     ) -> None:

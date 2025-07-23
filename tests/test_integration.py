@@ -18,6 +18,7 @@ from adaptive_polish.config.adaptive_polish import AdaptivePolishMillingConfig
 from . import setup
 
 if typing.TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
     from fibsem.structures import ImageSettings
 
@@ -54,7 +55,7 @@ def protocol_path(
 
 def create_dummy_acquire_image_function(
     fib_image_dir: Path, sem_image_dir: Path
-) -> typing.Callable[[ImageSettings], FibsemImage]:
+) -> Callable[[ImageSettings], FibsemImage]:
     fib_image_paths = itertools.cycle(fib_image_dir.glob("*.tif"))
     sem_image_paths = itertools.cycle(sem_image_dir.glob("*.tif"))
 
@@ -69,7 +70,7 @@ def create_dummy_acquire_image_function(
 
 
 def raise_error_after_num_calls(
-    fn: typing.Callable,
+    fn: Callable,
     calls_before_exception: int,
 ) -> typing.Any:
     _calls = 0
@@ -135,7 +136,7 @@ def test_runs(
     milling_stages[0].imaging.hfw = 4e-5
     milling_stages[0].imaging.dwell_time = 2e-7
     milling_stages[0].imaging.frame_integration = 2
-    milling_stages[0].imaging.path = str(lamella_directory)
+    milling_stages[0].imaging.path = lamella_directory
 
     # Check milling loop runs but exits at the end of loop calls_before_exception + 1
     with (

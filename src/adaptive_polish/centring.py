@@ -20,8 +20,8 @@ def get_bounding_box_from_edges(
     edge_finding: typing.Literal[
         "median", "mean", "min", "max", "percentile"
     ] = "median",
-    percentile: typing.Optional[float] = None,
-) -> typing.Tuple[float, float, float, float]:
+    percentile: float | None = None,
+) -> tuple[float, float, float, float]:
     edge_fn_max: Callable[..., np.integer[typing.Any] | np.floating[typing.Any]]
     edge_fn_min: Callable[..., np.integer[typing.Any] | np.floating[typing.Any]]
     if edge_finding == "median":
@@ -61,19 +61,38 @@ def get_mask_bounding_box(
     edge_finding: typing.Literal[
         "median", "mean", "min", "max", "percentile"
     ] = "median",
-    percentile: typing.Optional[float] = None,
-) -> typing.Tuple[float, float, float, float]:
+    percentile: float | None = None,
+) -> tuple[float, float, float, float]:
     return get_bounding_box_from_edges(
         get_mask_edges(mask), edge_finding=edge_finding, percentile=percentile
     )
 
 
+@typing.overload
 def get_centre_from_bounding_box(
-    bbox: typing.Union[
-        typing.Tuple[int, int, int, int], typing.Tuple[float, float, float, float]
-    ],
+    bbox: tuple[int, int, int, int] | tuple[float, float, float, float],
+    subpixel_accuracy: typing.Literal[False] = ...,
+) -> tuple[int, int]: ...
+
+
+@typing.overload
+def get_centre_from_bounding_box(
+    bbox: tuple[int, int, int, int] | tuple[float, float, float, float],
+    subpixel_accuracy: typing.Literal[True] = ...,
+) -> tuple[float, float]: ...
+
+
+@typing.overload
+def get_centre_from_bounding_box(
+    bbox: tuple[int, int, int, int] | tuple[float, float, float, float],
+    subpixel_accuracy: bool = ...,
+) -> tuple[int, int] | tuple[float, float]: ...
+
+
+def get_centre_from_bounding_box(
+    bbox: tuple[int, int, int, int] | tuple[float, float, float, float],
     subpixel_accuracy: bool = False,
-):
+) -> tuple[int, int] | tuple[float, float]:
     cx = (bbox[1] + bbox[3]) / 2
     cy = (bbox[0] + bbox[2]) / 2
     if not subpixel_accuracy:
@@ -86,8 +105,8 @@ def get_lamella_centre(
     array: NDArray[np.bool_],
     subpixel_accuracy: bool = False,
     edge_finding: typing.Literal["median", "mean", "percentile"] = "median",
-    percentile: typing.Optional[float] = None,
-) -> typing.Union[typing.Tuple[int, int], typing.Tuple[float, float]]:
+    percentile: float | None = None,
+) -> tuple[int, int] | tuple[float, float]:
     bbox = get_bounding_box_from_edges(
         get_mask_edges(mask=array), edge_finding=edge_finding, percentile=percentile
     )
@@ -101,9 +120,7 @@ def get_bounding_box_scaled_to_image(
         "median", "mean", "min", "max", "percentile"
     ] = "median",
     percentile: typing.Optional[float] = None,
-) -> typing.Tuple[
-    typing.Tuple[float, float, float, float], typing.Tuple[float, float, float, float]
-]:
+) -> tuple[tuple[float, float, float, float], tuple[float, float, float, float]]:
     # This does assume square pixels
     prediction_to_image_scale_multiplier: float
     if image.shape[1] == mask.shape[1]:

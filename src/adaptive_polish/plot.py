@@ -33,11 +33,11 @@ LABEL_CMAP = __create_cmap()
 def create_centring_plot(
     sem_image: FibsemImage,
     mask_lamella_clean: NDArray[np.bool_],
-    centre_px: typing.Optional[Point],
-    centre_m: typing.Optional[Point],
-    plot_path: typing.Union[str, PathLike],
-    prediction: typing.Optional[NDArray[np.integer]] = None,
-    bounding_box: typing.Optional[tuple[float, float, float, float]] = None,
+    centre_px: Point | None,
+    centre_m: Point | None,
+    plot_path: str | PathLike[str],
+    prediction: NDArray[np.integer] | None = None,
+    bounding_box: tuple[float, float, float, float] | None = None,
 ) -> None:
     _logger.debug("Creating centring plot")
     # Plot centring stuff
@@ -119,20 +119,20 @@ def create_centring_plot(
 
 
 def create_milling_cycle_plot(
-    save_path: typing.Union[str, PathLike],
+    save_path: str | PathLike[str],
     sem_image: NDArray[typing.Any],
-    first_prediction: NDArray[np.integer],
-    clean_prediction: NDArray[typing.Any],
+    first_prediction: NDArray[np.integer[typing.Any]],
+    clean_prediction: NDArray[np.integer[typing.Any]],
     fib_image: NDArray[typing.Any],
-    gis_thickness_um: ArrayLike,
     gis_stop_um: float,
     crack_area_um2: float,
-    min_gis_um: float,
-    total_milling_time: typing.Optional[float] = None,
-    max_crack_area_um2: typing.Optional[float] = None,
-    xlims: typing.Optional[typing.Tuple[int, int]] = None,
-    fib_screenshot: typing.Optional[NDArray[typing.Any]] = None,
-    img_name: typing.Optional[str] = None,
+    gis_thickness_um: ArrayLike | None,
+    min_gis_um: float | None,
+    total_milling_time: float | None = None,
+    max_crack_area_um2: float | None = None,
+    xlims: tuple[int, int] | None = None,
+    fib_screenshot: NDArray[typing.Any] | None = None,
+    img_name: str | None = None,
 ):
     gis_thickness_um = np.asarray(gis_thickness_um)
 
