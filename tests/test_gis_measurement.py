@@ -196,6 +196,48 @@ def test_get_gis_thickness(
     )
 
 
+@pytest.mark.parametrize("scaling", np.arange(1, 2.01, 0.01).tolist())
+def test_get_gis_thickness_edge_issues(scaling: float) -> None:
+    background_lamella_overlap = 20
+    prediction_shape: tuple[int, int] = (200, 250)
+    lamella_bbox: tuple[int, int, int, int] = (10, 50, 70, 150)
+
+    image_shape = (
+        int(np.ceil(prediction_shape[0] * scaling)),
+        int(np.ceil(prediction_shape[1] * scaling)),
+    )
+
+    xlims = gm.bbox_to_xlims(
+        lamella_bbox,
+        pad=0,
+        x_bounds=(0, prediction_shape[1] - 1),
+    )
+    ylims = gm.bbox_to_ylims(
+        lamella_bbox,
+        pad=0,
+        y_bounds=(0, prediction_shape[0] - 1),
+    )
+    vacuum_bottom_pixels = 3
+
+    prediction, _, _ = _create_mock_prediction_gis_thickness(
+        prediction_shape,
+        lamella_bbox,
+        background_lamella_overlap,
+        vacuum_bottom_pixels,
+    )
+
+    gis_thickness, xlims_out = gm.get_gis_thickness(
+        prediction=prediction,
+        xlims=xlims,
+        ylims=(ylims[0], None),
+        image_shape=image_shape,
+    )
+
+    assert np.all(gis_thickness[xlims_out[0] : xlims_out[1] + 1] >= 1), (
+        "If a 0 shows up, it's due to rounding issues at the boundaries of the analysed area"
+    )
+
+
 @pytest.mark.parametrize("dtype,connectivity", itertools.product([bool, int], [1, 2]))
 def test_keep_only_largest_object(dtype: type, connectivity: int) -> None:
     input_array = np.zeros((50, 50), dtype=np.uint8)
