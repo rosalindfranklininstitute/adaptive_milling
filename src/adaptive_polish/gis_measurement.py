@@ -210,6 +210,69 @@ def bbox_to_xlims(
     )
 
 
+def get_gis_thickness_old(
+    prediction: NDArray[np.integer[typing.Any]],
+    lamella_mask_bbox: tuple[float, float, float, float],
+    image_shape: typing.Optional[tuple[int, int]],
+) -> NDArray[np.float32]:
+    """Get an array of GIS thickness values across the width specified by image_shape (or by the masks not given)
+
+    Note: undefined pixels will be treated as if they are vacuum/crack."""
+    # Only include mask that is lamella and below
+    prediction_xlims = bbox_to_xlims(lamella_mask_bbox, (0, prediction.shape[0] - 1))
+    prediction_ylims = bbox_to_ylims(lamella_mask_bbox, (0, prediction.shape[1] - 1))
+
+    slicer = (
+        slice(prediction_ylims[0], None),
+        slice(prediction_xlims[0], prediction_xlims[1] + 1),
+    )
+    prediction_slice = prediction[slicer]
+
+    mask_lamella = prediction_slice == sgm.SegmentationLabels.LAMELLA.value
+    mask_gis = prediction_slice == sgm.SegmentationLabels.GIS.value
+    mask_background = prediction_slice == sgm.SegmentationLabels.BACKGROUND.value
+    mask_bad = np.isin(
+        prediction_slice,
+        (
+            sgm.SegmentationLabels.CRACK.value,
+            sgm.SegmentationLabels.VACUUM.value,
+        ),
+    )
+
+    mask_gis_background = mask_gis + mask_background
+
+    mask_good = mask_gis + mask_lamella
+
+    good_bottom = get_mask_edge(mask_good, axis=0, side="max")
+
+    # Set everything above the good bottom to False for mask_bad
+    for y, x in good_bottom:
+        mask_bad[: y + 1, x] = False
+
+    # Ignore GIS/background below the top of the lower crack/vacuum area
+    for y, x in get_mask_edge(mask_bad, axis=0, side="min"):
+        mask_gis_background[y:, x] = False
+
+    # Ignore GIS/background above the bottom of the lamella
+    for y, x in get_mask_edge(mask_lamella, axis=0, side="max"):
+        mask_gis_background[: y + 1, x] = False
+
+    new_mask_gis: NDArray[typing.Union[np.bool_, np.float_]]
+    new_mask_gis = np.zeros(prediction.shape, dtype=np.bool_)
+    new_mask_gis[slicer] = mask_gis_background
+
+    if image_shape is not None:
+        new_mask_gis = resize_image(
+            new_mask_gis,
+            new_shape=(image_shape[0], image_shape[1]),
+        )
+    return np.sum(
+        new_mask_gis,
+        axis=0,
+        dtype=np.float32,
+    )
+
+
 def get_gis_thickness(
     prediction: NDArray[np.integer[typing.Any]],
     xlims: tuple[int | None, int | None] = (None, None),

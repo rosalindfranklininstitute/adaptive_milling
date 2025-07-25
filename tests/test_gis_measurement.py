@@ -237,6 +237,84 @@ def test_get_gis_thickness_edge_issues(scaling: float) -> None:
         "If a 0 shows up, it's due to rounding issues at the boundaries of the analysed area"
     )
 
+@pytest.mark.parametrize(
+    "scaling", (None, 1, 2, 5), ids=["unscaled", "scaling 1", "scaling 2", "scaling 5"]
+)
+def test_get_gis_thickness_equivalent_to_old_method(scaling: int | None) -> None:
+    background_lamella_overlap = 20
+    prediction_shape: tuple[int, int] = (200, 250)
+    lamella_bbox: tuple[int, int, int, int] = (10, 50, 70, 150)
+
+    xlims = gm.bbox_to_xlims(
+        lamella_bbox,
+        # Undo the padding to make equivalent (should be only difference)
+        pad=-1,
+        x_bounds=(0, prediction_shape[1] - 1),
+    )
+
+    ylims = gm.bbox_to_ylims(
+        lamella_bbox,
+        pad=0,
+        y_bounds=(0, prediction_shape[0] - 1),
+    )
+    vacuum_bottom_pixels = 3
+
+    image_shape: tuple[int, int] | None
+    if scaling is None:
+        image_shape = None
+    else:
+        image_shape = (prediction_shape[0] * scaling, prediction_shape[1] * scaling)
+
+    prediction, _, _ = _create_mock_prediction_gis_thickness(
+        prediction_shape,
+        lamella_bbox,
+        background_lamella_overlap,
+        vacuum_bottom_pixels,
+        add_crack=True,
+    )
+
+    gis_thickness_old = gm.get_gis_thickness_old(
+        prediction=prediction,
+        lamella_mask_bbox=lamella_bbox,
+        image_shape=image_shape,
+    )
+
+    gis_thickness, xlims_out = gm.get_gis_thickness(
+        prediction=prediction,
+        xlims=xlims,
+        ylims=(ylims[0], None),
+        image_shape=image_shape,
+        clean_edges=False,
+    )
+
+    assert_array_equal(
+        gis_thickness,
+        gis_thickness_old,
+        err_msg="Thicknesses don't match if clean_edges=False",
+    )
+
+    gis_thickness_clean_edges, xlims_out = gm.get_gis_thickness(
+        prediction=prediction,
+        xlims=xlims,
+        ylims=(ylims[0], None),
+        image_shape=image_shape,
+        clean_edges=True,
+    )
+
+    if scaling is None or scaling == 1:
+        assert_array_equal(
+            gis_thickness_clean_edges,
+            gis_thickness_old,
+            err_msg="Thicknesses don't match if clean_edges=True",
+        )
+    else:
+        assert_array_equal(
+            gis_thickness_clean_edges[xlims_out[0] : xlims_out[1] + 1],
+            gis_thickness_old[xlims_out[0] : xlims_out[1] + 1],
+            err_msg="Thicknesses don't match inside xlims if clean_edges=True",
+        )
+
+
 
 @pytest.mark.parametrize("dtype,connectivity", itertools.product([bool, int], [1, 2]))
 def test_keep_only_largest_object(dtype: type, connectivity: int) -> None:
