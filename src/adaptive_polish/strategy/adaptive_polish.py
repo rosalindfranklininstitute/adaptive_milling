@@ -470,15 +470,16 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
 
             statistics.xlims_px = xlims_image_px
 
-            statistics.gis_thickness_um = ap_utils.pixels_to_size(
+            gis_thickness_um = ap_utils.pixels_to_size(
                 gis_thickness_image_px,
-                sem_image.metadata.pixel_size.x * constants.SI_TO_MICRO,
-            ).tolist()
+                sem_image.metadata.pixel_size.y * constants.SI_TO_MICRO,
+            )
+            statistics.gis_thickness_um = gis_thickness_um.tolist()
 
-            gis_thickness_filtered_um = np.zeros_like(gis_thickness_image_px)
+            gis_thickness_filtered_um = np.zeros_like(gis_thickness_um)
             gis_thickness_filtered_um[xlims_image_px[0] : xlims_image_px[1] + 1] = (
                 gm.filter_gis_thickness(
-                    gis_thickness_image_px[xlims_image_px[0] : xlims_image_px[1] + 1],
+                    gis_thickness_um[xlims_image_px[0] : xlims_image_px[1] + 1],
                     window_size_m=(
                         self.config.window_size_px * sem_image.metadata.pixel_size.x
                     ),
