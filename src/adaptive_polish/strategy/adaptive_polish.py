@@ -14,7 +14,6 @@ from fibsem import acquire, constants, utils as fs_utils
 from fibsem.milling import MillingStrategy
 from fibsem.milling import (
     setup_milling,
-    draw_patterns,
     run_milling,
 )
 from fibsem.structures import BeamType
@@ -573,7 +572,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         microscope.setup_milling(mill_settings=stage.milling)
 
         # draw patterns
-        draw_patterns(microscope=microscope, patterns=stage.pattern.define())
+        microscope.draw_patterns(patterns=stage.pattern.define())
 
         try:
             # Log patterns created
