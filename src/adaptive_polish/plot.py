@@ -123,6 +123,25 @@ def create_centring_plot(
     plt.close(fig)
 
 
+def plot_segmentation_overlay(
+    ax: plt.Axes,
+    sem_image: NDArray[typing.Any],
+    prediction: NDArray[np.integer[typing.Any]],
+    alpha: float = 0.4,
+) -> None:
+    _ = ax.imshow(sem_image.data, cmap="Greys_r")
+    extent = _.get_extent()
+    ax.imshow(
+        prediction,
+        alpha=alpha,
+        cmap=LABEL_CMAP,
+        vmin=0,
+        vmax=LABEL_CMAP.N,
+        extent=extent,
+        interpolation="none",
+    )
+
+
 def create_milling_cycle_plot(
     save_path: str | PathLike[str],
     sem_image: FibsemImage,
@@ -150,40 +169,26 @@ def create_milling_cycle_plot(
         fig.suptitle(plot_title)
 
     # SEM
-    _ = axs[0, 0].imshow(sem_image.data, cmap="Greys_r")
-    sem_image_extent = _.get_extent()
+    axs[0, 0].imshow(sem_image.data, cmap="Greys_r")
     axs[0, 0].axis("off")
     axs[0, 0].set_title("SEM")
 
     # SEM + 1st pass prediction
-    axs[0, 1].imshow(sem_image.data, cmap="Greys_r")
-    axs[0, 1].imshow(
-        first_prediction,
-        alpha=0.4,
-        cmap=LABEL_CMAP,
-        vmin=0,
-        vmax=LABEL_CMAP.N,
-        extent=sem_image_extent,
-        interpolation="none",
+    plot_segmentation_overlay(
+        axs[0, 1], sem_image=sem_image.data, prediction=first_prediction
     )
     axs[0, 1].axis("off")
     axs[0, 1].set_title("SEM segmentation")
 
     # SEM + clean prediction
-    axs[0, 2].imshow(sem_image.data, cmap="Greys_r")
-    axs[0, 2].imshow(
-        clean_prediction,
-        alpha=0.4,
-        cmap=LABEL_CMAP,
-        vmin=0,
-        vmax=LABEL_CMAP.N,
-        extent=sem_image_extent,
-        interpolation="none",
+    plot_segmentation_overlay(
+        axs[0, 2], sem_image=sem_image.data, prediction=clean_prediction
     )
+    axs[0, 2].axis("off")
+
     if xlims is not None:
         axs[0, 2].axvline(x=xlims[0], color="C4")
         axs[0, 2].axvline(x=xlims[1], color="C4")
-    axs[0, 2].axis("off")
 
     _crack_title = "SEM cleaned segmentation"
     _crack_subtitle: list[str] = []
