@@ -35,7 +35,7 @@ def pixels_to_size(value: _TMulDiv, pixel_size: float) -> _TMulDiv: ...
 
 def pixels_to_size(value: _TConvertable, pixel_size: float) -> _TConvertable:
     if isinstance(value, (list, tuple)):
-        return type(value)([_ / pixel_size for _ in value])
+        return type(value)([_ * pixel_size for _ in value])
     return value * pixel_size
 
 
