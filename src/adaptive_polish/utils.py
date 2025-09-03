@@ -83,6 +83,7 @@ def setup_results_df() -> tuple[pd.DataFrame, pd.DataFrame]:
             "milling_time_s": [],
             "min_GIS_um": [],
             "crack_area_um2": [],
+            "lamella_area_um2": [],
         }
     )
 
