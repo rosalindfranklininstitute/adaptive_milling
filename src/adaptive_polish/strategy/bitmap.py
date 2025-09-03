@@ -178,10 +178,10 @@ class BitmapAdaptivePolishMillingStrategy(
         pattern: RectanglePattern | TrenchPattern,
         stats: LamellaStatistics,
     ) -> NDArray:
-        if stats.gis_thickness_um is None:
-            raise ValueError('"gis_thickness_um" is not defined')
+        if stats.gis_thickness_filtered_um is None:
+            raise ValueError('"gis_thickness_filtered_um" is not available')
         elif stats.lamella_thickness_um is None:
-            raise ValueError('"lamella_thickness_um" is not defined')
+            raise ValueError('"lamella_thickness_um" is not available')
         elif stats.xlims_image_px is None:
             raise ValueError('"xlims_px" is not defined')
 
