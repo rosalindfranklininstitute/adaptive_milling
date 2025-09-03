@@ -6,9 +6,9 @@ import typing
 from contextlib import contextmanager
 from copy import deepcopy
 from pathlib import Path
+from PIL import Image
 
 import numpy as np
-
 # fibsem
 from fibsem import acquire, constants, utils as fs_utils
 from fibsem.milling import MillingStrategy
@@ -139,7 +139,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             lamella_ap_plots_directory,
             lamella_ap_sem_directory,
             lamella_ap_fib_directory,
-        ) = ap_utils.ensure_subdirectories(lamella_ap_directory, "plots", "sem", "fib")
+            self.lamella_ap_mask_directory,
+        ) = ap_utils.ensure_subdirectories(lamella_ap_directory, "plots", "sem", "fib", "mask")
 
         # load model
         if self.model is None:
@@ -419,6 +420,14 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                 np.sum(crack_thickness), pixel_size=prediction_pixel_area_um2
             ).tolist(),
         )
+
+        # save clean prediction mask
+        try:
+            path = self.lamella_ap_mask_directory / f"{identifier}_mask.tif"
+            im = Image.fromarray(clean_prediction)
+            im.save(path)
+        except Exception as e:
+            _logger.warning("Failed to save clean prediction mask for %s: %s", identifier, str(e))
 
         try:
             if self._get_lamella_too_small(
