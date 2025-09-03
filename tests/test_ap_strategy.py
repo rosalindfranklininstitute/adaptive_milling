@@ -11,7 +11,7 @@ import pandas as pd
 from fibsem import utils as fibsem_utils, acquire
 from fibsem.structures import BeamType, Point, FibsemImage
 from fibsem.milling.base import get_milling_stages
-from autolamella.protocol.validation import validate_protocol
+from fibsem.applications.autolamella.protocol.validation import validate_protocol
 
 from adaptive_polish.strategy import adaptive_polish as ap_strategy
 from adaptive_polish.dl_segmentation.sem_lamella_segmentor import SegmentationLabels
