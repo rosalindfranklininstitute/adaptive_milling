@@ -64,7 +64,6 @@ def keep_only_largest_object(
 
 
 def clean_lamella(prediction: NDArray[np.integer]) -> NDArray[np.bool_]:
-    # TODO: check whether the crack need to be touching lamella to be a crack
     mask_lamella = prediction == sgm.SegmentationLabels.LAMELLA.value
     mask_gis_crack = np.isin(
         prediction,
@@ -98,7 +97,6 @@ def clean_prediction(
     # Doing these all together could be an issue if the model fails too hard
     # (e.g. layers of gis and crack would mess up the GIS reading) but this
     # seems unlikely.
-    # TODO: check whether the crack need to be touching lamella to be a crack
     mask_largest_foreground = keep_only_largest_object(
         masks[sgm.SegmentationLabels.LAMELLA]
         + masks[sgm.SegmentationLabels.GIS]
