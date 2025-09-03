@@ -34,6 +34,14 @@ DEFAULT_SEM_MODEL_GENERATION = sgm._get_newest_generation_key()
 load_sem_model = sgm.load_model
 
 
+def count_objects(
+    mask: NDArray[np.integer[typing.Any] | np.bool_],
+    connectivity: int = 2,
+) -> int:
+    _, num = measure.label(mask, return_num=True, connectivity=connectivity)
+    return num
+
+
 def keep_only_largest_object(
     mask: NDArray[np.integer[typing.Any] | np.bool_],
     connectivity: int = 2,
