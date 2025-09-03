@@ -1,3 +1,11 @@
+from __future__ import annotations
+from typing import TYPE_CHECKING
+
+
+if TYPE_CHECKING:
+    from adaptive_polish.enums import StopReasons
+
+
 class _AdaptivePolishException(Exception):
     """Base class for all adaptive polish specific errors"""
 
@@ -19,7 +27,11 @@ class SegmentationException(_AdaptivePolishException):
 class _AdaptivePolishMillingException(_AdaptivePolishException):
     """Base class for milling specific exceptions"""
 
-    pass
+    def __init__(self, *args, reason: StopReasons | str | None = None) -> None:
+        if reason is None:
+            reason = ", ".join(str(_) for _ in args)
+        self.reason = reason
+        super().__init__(*args)
 
 
 class StopMillingException(_AdaptivePolishMillingException):
