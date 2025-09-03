@@ -202,7 +202,7 @@ class Gen0Model(AbstractAdaptivePolishingModel):
 
         return transform(image=image)["image"].unsqueeze_(0)
 
-    def load(self, model_path: str | PathLike[Any]) -> torch.nn.Module:
+    def load(self, model_path: str | PathLike[str]) -> torch.nn.Module:
         model_path = Path(model_path)
         m = Path(model_path).name.lower()
 
