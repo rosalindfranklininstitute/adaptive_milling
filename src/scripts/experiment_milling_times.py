@@ -47,12 +47,20 @@ def get_statistics_from_time_list(time_list: list[float]) -> dict[str, float]:
     }
 
 
-def process_experiment(experiment_path: str | PathLike[str]) -> None:
+def process_experiment(
+    experiment_path: str | PathLike[str], ignore_lamellae: list[str] | None = None
+) -> None:
     experiment_path = Path(experiment_path)
+    if ignore_lamellae is None:
+        ignore_lamellae = []
+
     id_list: list[str] = []
     time_list: list[float] = []
     for child in experiment_path.iterdir():
         if child.is_dir():
+            if child.name in ignore_lamellae:
+                _logger.warning("Skipping lamella '%s' due to ignore list", child.name)
+                continue
             ap_subdirs = tuple(child.glob("*adaptive_polish_*"))
             if ap_subdirs:
                 for ap_dir in ap_subdirs:
@@ -80,8 +88,11 @@ def process_experiment(experiment_path: str | PathLike[str]) -> None:
 
 
 
-# Set experiment path here
+# Set experiment path here:
 experiment_path = Path(
     r"C:\Users\tpr78264\OneDrive - The Rosalind Franklin Institute\Documents\test data\adaptive milling\20250610_quick_ON_test\AutoLamella-2025-06-10-21-08"
 )
-process_experiment(experiment_path=experiment_path)
+# If there are any lamellae you do not want to include, their names
+# (e.g. "03-fast-swan") can be added to this list:
+ignore_lamellae = []
+process_experiment(experiment_path=experiment_path, ignore_lamellae=ignore_lamellae)
