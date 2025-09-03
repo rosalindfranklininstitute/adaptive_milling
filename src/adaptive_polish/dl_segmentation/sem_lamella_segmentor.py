@@ -182,9 +182,9 @@ class Gen0Model(AbstractAdaptivePolishingModel):
         super().__init__(model_path=model_path, device=device)
 
     def _preprocess(self, image: NDArray[Any]) -> torch.Tensor:
-        smallest_dim = min(*image.shape)
+        smallest_dim = min(image.shape[0], image.shape[1])
         new_size = tuple(
-            int(sz0 / smallest_dim * self._image_size) for sz0 in image.shape
+            int(sz0 / smallest_dim * self._image_size) for sz0 in image.shape[:2]
         )
         _logger.debug(f"imgsize:{image.shape}, new_size:{new_size}")
 
@@ -195,14 +195,14 @@ class Gen0Model(AbstractAdaptivePolishingModel):
                     name="normalize_by_mean_std_with_clip",
                     image=normalize_by_mean_std_with_clip,
                 ),
-                alb.Resize(*new_size),
+                alb.Resize(new_size[0], new_size[1]),
                 ToTensorV2(),
-            ]
+            ]  # type: ignore
         )
 
         return transform(image=image)["image"].unsqueeze_(0)
 
-    def load(self, model_path: str | PathLike[Any]) -> torch.nn.Module:
+    def load(self, model_path: str | PathLike[str]) -> torch.nn.Module:
         model_path = Path(model_path)
         m = Path(model_path).name.lower()
 
