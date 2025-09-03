@@ -23,7 +23,7 @@ def get_total_milling_time_from_gis_thickness_json(
     if not isinstance(times, dict):
         raise ValueError(f"Failed to get 'milling_time_s' from {file_path}")
 
-    last_key = max(times.keys())
+    last_key = sorted(list(times), key=lambda x: int(x), reverse=True)[0]
 
     # Only get the last time, as it was recorded cumulatively
     last_time = times[last_key]
@@ -44,16 +44,24 @@ def get_statistics_from_time_list(time_list: list[float]) -> dict[str, float]:
     }
 
 
+def print_statistics(time_list: list[float]) -> None:
+    stats_dict = get_statistics_from_time_list(time_list)
+
+    print("\tStatistics:")
+    for k, v in stats_dict.items():
+        print(f"\t\t{k} milling time (s):\t{v}")
+
+
 def process_experiment(
-    experiment_path: str | PathLike[str], ignore_lamellae: list[str] | None = None
-) -> None:
-    experiment_path = Path(experiment_path)
+    experiment_directory: str | PathLike[str], ignore_lamellae: list[str] | None = None
+) -> list[float]:
+    experiment_directory = Path(experiment_directory)
     if ignore_lamellae is None:
         ignore_lamellae = []
 
     id_list: list[str] = []
     time_list: list[float] = []
-    for child in experiment_path.iterdir():
+    for child in experiment_directory.iterdir():
         if child.is_dir():
             if child.name in ignore_lamellae:
                 _logger.warning("Skipping lamella '%s' due to ignore list", child.name)
@@ -68,30 +76,50 @@ def process_experiment(
                         )
                         id_list.append(f"{ap_dir.parent.name}/{ap_dir.name}")
                     except (FileNotFoundError, ValueError) as e:
-                        _logger.error(f"Error processing {experiment_path}: {e}")
-    stats_dict = get_statistics_from_time_list(time_list)
-    print(f"Checked {len(time_list)} lamella in {experiment_path}:\n")
+                        _logger.error(f"Error processing {experiment_directory}: {e}")
 
+    print(f"Checked {len(time_list)} lamella in {experiment_directory}:")
+
+    print("\tMilling times (s):")
+    for id_, time in zip(id_list, time_list):
+        print(f"\t\t{id_}:\t{time}")
+
+    print_statistics(time_list=time_list)
+    print()
+
+    return time_list
+
+
+def run(
+    *experiment_directories: str | PathLike[str],
+    ignore_lamellae: list[str] | None = None,
+) -> None:
     print(
-        "!!!Please note these are the total milling times, not the per-pattern milling times!!!\n"
-        "To set the time for a trench pattern based on these times, these values should first be halved."
+        "\n!!!Please note these are the total milling times, not the per-pattern milling times!!!\n"
+        "To set the time for a trench pattern based on these times, these values should first be halved.\n"
     )
 
-    print("\nMilling times (s):")
-    for id_, time in zip(id_list, time_list):
-        print(f"\t{id_}:\t{time}")
+    time_list: list[float] = []
+    for experiment_directory in experiment_directories:
+        time_list.extend(
+            process_experiment(
+                experiment_directory=experiment_directory,
+                ignore_lamellae=ignore_lamellae,
+            )
+        )
 
-    print("\nStatistics:")
-    for k, v in stats_dict.items():
-        print(f"\t{k} milling time (s):\t{v}")
+    if len(experiment_directories) > 1:
+        print("\nAll:")
+        print_statistics(time_list=time_list)
+
+    return
 
 
 if __name__ == "__main__":
-    # Set experiment path here:
-    experiment_path = Path(
-        r""
-    )
-    # If there are any lamellae you do not want to include, their names
-    # (e.g. "03-fast-swan") can be added to this list:
-    ignore_lamellae = []
-    process_experiment(experiment_path=experiment_path, ignore_lamellae=ignore_lamellae)
+    # List experiment directories here:
+    experiment_directories: list[str | Path] = []
+    # If there are any lamellae you do not want to include, their names (e.g.
+    # "03-fast-swan") can be added to this list (they should be unique between
+    # experiments):
+    ignore_lamellae: list[str] = []
+    run(*experiment_directories, ignore_lamellae=ignore_lamellae)
