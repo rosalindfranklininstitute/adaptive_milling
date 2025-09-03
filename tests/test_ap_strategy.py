@@ -310,8 +310,8 @@ def test_max_milling_cycles_not_exceeded(
     ):
         mock_stats = MagicMock()
         # Mock properties
-        mock_stats.gis_filtered_thickness_um = PropertyMock()
-        mock_stats.gis_min_um = PropertyMock()
+        mock_stats.gis_thickness_filtered_um = PropertyMock()
+        mock_stats.gis_thickness_min_um = PropertyMock()
         mock_stats.crack_area_um2 = PropertyMock()
         # Create a new dict each time to_dict is called
         mock_stats.to_dict.side_effect = dict
@@ -380,8 +380,10 @@ def test_max_milling_cycles_not_exceeded(
                     clean_prediction=lamella_infos[i].clean_prediction,
                     gis_thickness_um=lamella_infos[
                         i
-                    ].statistics.gis_filtered_thickness_um,
-                    gis_min_um=lamella_infos[i].statistics.gis_min_um,
+                    ].statistics.gis_thickness_filtered_um,
+                    gis_thickness_min_um=lamella_infos[
+                        i
+                    ].statistics.gis_thickness_min_um,
                     crack_area_um2=lamella_infos[i].statistics.crack_area_um2,
                     gis_stop_threshold_um=strategy.config.gis_stop_um,
                     milling_stage=mock_update_milling_stage.return_value,
@@ -551,11 +553,13 @@ def test_results_saved(
                     ]
                     .astype(np.float_)
                     .tolist(),
-                    "gis_min_image_px": float(expected_min_gis_thicknesses[i]),
-                    "gis_median_image_px": float(
+                    "gis_thickness_min_image_px": float(
+                        expected_min_gis_thicknesses[i]
+                    ),
+                    "gis_thickness_median_image_px": float(
                         np.nanmedian(expected_filtered_gis_thicknesses[i])
                     ),
-                    "gis_mean_image_px": float(
+                    "gis_thickness_mean_image_px": float(
                         np.nanmean(expected_filtered_gis_thicknesses[i])
                     ),
                 },
@@ -754,9 +758,9 @@ def test_check_lamella(
             "xlims_image_px",
             "gis_thickness_image_px",
             "gis_thickness_filtered_image_px",
-            "gis_min_image_px",
-            "gis_median_image_px",
-            "gis_mean_image_px",
+            "gis_thickness_min_image_px",
+            "gis_thickness_median_image_px",
+            "gis_thickness_mean_image_px",
         ):
             assert value is None, f"{key} should be None"
         else:

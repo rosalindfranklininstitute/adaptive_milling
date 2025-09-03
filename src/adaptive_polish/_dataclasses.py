@@ -107,9 +107,9 @@ class LamellaStatistics:
     gis_thickness_filtered_image_px: list[float | int] | None = None
 
     # These can be calculated by calculate_gis_statistics
-    gis_min_image_px: float | None = None
-    gis_median_image_px: float | None = None
-    gis_mean_image_px: float | None = None
+    gis_thickness_min_image_px: float | None = None
+    gis_thickness_median_image_px: float | None = None
+    gis_thickness_mean_image_px: float | None = None
 
     def calculate_gis_statistics(self) -> None:
         if (
@@ -119,9 +119,15 @@ class LamellaStatistics:
             gis_thickness_slice_image_px = self.gis_thickness_filtered_image_px[
                 self.xlims_image_px[0] : self.xlims_image_px[1] + 1
             ]
-            self.gis_min_image_px = float(np.nanmin(gis_thickness_slice_image_px))
-            self.gis_mean_image_px = float(np.nanmean(gis_thickness_slice_image_px))
-            self.gis_median_image_px = float(np.nanmedian(gis_thickness_slice_image_px))
+            self.gis_thickness_min_image_px = float(
+                np.nanmin(gis_thickness_slice_image_px)
+            )
+            self.gis_thickness_mean_image_px = float(
+                np.nanmean(gis_thickness_slice_image_px)
+            )
+            self.gis_thickness_median_image_px = float(
+                np.nanmedian(gis_thickness_slice_image_px)
+            )
 
     @cached_property
     def gis_thickness_um(self) -> NDArray[np.float_] | None:
@@ -132,7 +138,7 @@ class LamellaStatistics:
         )
 
     @cached_property
-    def gis_filtered_thickness_um(self) -> NDArray[np.float_] | None:
+    def gis_thickness_filtered_um(self) -> NDArray[np.float_] | None:
         if self.gis_thickness_filtered_image_px is None:
             return None
         return np.asarray(self.gis_thickness_filtered_image_px, dtype=float) * (
@@ -140,28 +146,34 @@ class LamellaStatistics:
         )
 
     @property
-    def gis_min_um(self) -> float | None:
-        if self.gis_min_image_px is None:
+    def gis_thickness_min_um(self) -> float | None:
+        if self.gis_thickness_min_image_px is None:
             self.calculate_gis_statistics()
-            if self.gis_min_image_px is None:
+            if self.gis_thickness_min_image_px is None:
                 return None
-        return float(self.gis_min_image_px * (self.image_pixel_size_m[1] * 1e6))
+        return float(
+            self.gis_thickness_min_image_px * (self.image_pixel_size_m[1] * 1e6)
+        )
 
     @property
-    def gis_mean_um(self) -> float | None:
-        if self.gis_mean_image_px is None:
+    def gis_thickness_mean_um(self) -> float | None:
+        if self.gis_thickness_mean_image_px is None:
             self.calculate_gis_statistics()
-            if self.gis_mean_image_px is None:
+            if self.gis_thickness_mean_image_px is None:
                 return None
-        return float(self.gis_mean_image_px * (self.image_pixel_size_m[1] * 1e6))
+        return float(
+            self.gis_thickness_mean_image_px * (self.image_pixel_size_m[1] * 1e6)
+        )
 
     @property
-    def gis_median_um(self) -> float | None:
-        if self.gis_median_image_px is None:
+    def gis_thickness_median_um(self) -> float | None:
+        if self.gis_thickness_median_image_px is None:
             self.calculate_gis_statistics()
-            if self.gis_median_image_px is None:
+            if self.gis_thickness_median_image_px is None:
                 return None
-        return float(self.gis_median_image_px * (self.image_pixel_size_m[1] * 1e6))
+        return float(
+            self.gis_thickness_median_image_px * (self.image_pixel_size_m[1] * 1e6)
+        )
 
     @cached_property
     def crack_area_um2(self) -> float:

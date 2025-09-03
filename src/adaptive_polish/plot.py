@@ -149,7 +149,7 @@ def create_milling_cycle_plot(
     first_prediction: NDArray[np.integer[typing.Any]],
     clean_prediction: NDArray[np.integer[typing.Any]],
     gis_thickness_um: ArrayLike | None = None,
-    gis_min_um: float | None = None,
+    gis_thickness_min_um: float | None = None,
     crack_area_um2: float | None = None,
     gis_stop_threshold_um: float | None = None,
     milling_stage: FibsemMillingStage | None = None,
@@ -246,8 +246,8 @@ def create_milling_cycle_plot(
 
     _gis_title = "GIS thickness"
     _gis_subtitle: list[str] = []
-    if gis_min_um is not None:
-        _gis_subtitle.append(rf"Minimum {gis_min_um:.3f} $\mu m$")
+    if gis_thickness_min_um is not None:
+        _gis_subtitle.append(rf"Minimum {gis_thickness_min_um:.3f} $\mu m$")
     if gis_stop_threshold_um is not None:
         _gis_subtitle.append(f"(threshold {gis_stop_threshold_um:.3f})")
     if _gis_subtitle:
@@ -275,9 +275,15 @@ def create_summary_gis_plot(
             median_gis_thicknesses.append(None)
         else:
             milling_times.append(cycle_info.lamella_statistics.estimated_milling_time_s)
-            min_gis_thicknesses.append(cycle_info.lamella_statistics.gis_min_um)
-            mean_gis_thicknesses.append(cycle_info.lamella_statistics.gis_mean_um)
-            median_gis_thicknesses.append(cycle_info.lamella_statistics.gis_median_um)
+            min_gis_thicknesses.append(
+                cycle_info.lamella_statistics.gis_thickness_min_um
+            )
+            mean_gis_thicknesses.append(
+                cycle_info.lamella_statistics.gis_thickness_mean_um
+            )
+            median_gis_thicknesses.append(
+                cycle_info.lamella_statistics.gis_thickness_median_um
+            )
     _logger.debug("Creating GIS summary plot")
     save_path = Path(save_path)
     fig, ax = plt.subplots(1, 1)

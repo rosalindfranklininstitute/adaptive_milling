@@ -359,8 +359,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             fib_image=lamella_info.fib_image,
             first_prediction=lamella_info.prediction,
             clean_prediction=lamella_info.clean_prediction,
-            gis_thickness_um=stats.gis_filtered_thickness_um,
-            gis_min_um=stats.gis_min_um,
+            gis_thickness_um=stats.gis_thickness_filtered_um,
+            gis_thickness_min_um=stats.gis_thickness_min_um,
             crack_area_um2=stats.crack_area_um2,
             gis_stop_threshold_um=self.config.gis_stop_um,
             milling_stage=stage,
@@ -604,9 +604,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                     reason=StopReasons.LAMELLA_DRIFT,
                 )
 
-        if self._get_gis_too_thin(stats.gis_min_um):
+        if self._get_gis_too_thin(stats.gis_thickness_min_um):
             raise StopMillingException(
-                f"Minimum GIS thickness (um) {stats.gis_min_um:.4e} < threshold {self.config.gis_stop_um:.4e} um",
+                f"Minimum GIS thickness (um) {stats.gis_thickness_min_um:.4e} < threshold {self.config.gis_stop_um:.4e} um",
                 reason=StopReasons.MIN_GIS_THICKNESS,
             )
 
