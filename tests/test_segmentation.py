@@ -19,13 +19,14 @@ from adaptive_polish.dl_segmentation import sem_lamella_segmentor
 if typing.TYPE_CHECKING:
     from numpy.typing import NDArray
 
+    from adaptive_polish.dl_segmentation.sem_lamella_segmentor import DeviceLikeType
 
 class MockGen1Model(sem_lamella_segmentor.Gen1Model):
     """Useful to avoid using an actual model"""
 
     def __init__(
         self,
-        device: torch.DeviceLikeType,
+        device: DeviceLikeType,
         max_image_size: int,
         pad: bool = True,
         rgb: bool = True,
@@ -37,18 +38,18 @@ class MockGen1Model(sem_lamella_segmentor.Gen1Model):
         self._pad = pad
         self._normalise_first = normalise_first
         self._image_size = max_image_size
-        self.device = device
+        self.device = torch.device(device)
         self._normalise_function = self._get_normalisation_function(normalise_version)
         self._resize_function = self._get_resize_function(resize_version)
 
 
 def old_model1_preprocessing_function(
-    image: NDArray[typing.Any],
+    image: NDArray[np.integer[typing.Any] | np.float32 | np.float64],
     image_size: tuple[int, int],
     pad_size: int,
     rgb: bool,
     normalise_first: bool,
-    device: torch.DeviceLikeType,
+    device: DeviceLikeType,
 ) -> torch.Tensor:
     # Convert grayscale to 3-channel
     if rgb:
@@ -130,11 +131,14 @@ def test_model1_preprocessing_results_match(
 
     if pad:
         target_image_size = (
-            unpadded_output_image_size[1],
-            unpadded_output_image_size[1],
+            int(unpadded_output_image_size[1]),
+            int(unpadded_output_image_size[1]),
         )
     else:
-        target_image_size = unpadded_output_image_size
+        target_image_size = (
+            int(unpadded_output_image_size[1]),
+            int(unpadded_output_image_size[0]),
+        )
 
     input_image = np.arange(
         500, 500 + np.multiply(*input_image_size), dtype=np.float32
@@ -142,7 +146,7 @@ def test_model1_preprocessing_results_match(
     mock_gen1_model = MockGen1Model(
         device=device,
         max_image_size=max_image_size,
-        pad=pad * scale_multiplier,
+        pad=pad,
         rgb=rgb,
         normalise_first=normalise_first,
     )
