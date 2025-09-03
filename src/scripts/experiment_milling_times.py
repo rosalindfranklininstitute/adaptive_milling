@@ -23,7 +23,7 @@ def get_total_milling_time_from_gis_thickness_json(
     if not isinstance(times, dict):
         raise ValueError(f"Failed to get 'milling_time_s' from {file_path}")
 
-    last_key = max(times.keys())
+    last_key = sorted(list(times), key=lambda x: int(x), reverse=True)[0]
 
     # Only get the last time, as it was recorded cumulatively
     last_time = times[last_key]
@@ -88,9 +88,7 @@ def process_experiment(
 
 if __name__ == "__main__":
     # Set experiment path here:
-    experiment_path = Path(
-        r""
-    )
+    experiment_path = Path(r"")
     # If there are any lamellae you do not want to include, their names
     # (e.g. "03-fast-swan") can be added to this list:
     ignore_lamellae = []
