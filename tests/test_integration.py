@@ -11,8 +11,8 @@ from fibsem import utils
 from fibsem.structures import FibsemImage, BeamType
 from fibsem.milling import get_milling_stages, mill_stages
 
-from autolamella.protocol.validation import validate_protocol
-from autolamella.structures import AutoLamellaProtocol
+from fibsem.applications.autolamella.protocol.validation import validate_protocol
+from fibsem.applications.autolamella.structures import AutoLamellaProtocol
 from adaptive_polish.config.adaptive_polish import AdaptivePolishMillingConfig
 
 from . import setup

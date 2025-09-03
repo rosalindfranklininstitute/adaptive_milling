@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "adaptive_polish"
-description = "Adaptive polishing strategy for OpenFIBSEM"
+description = "Adaptive polishing strategy for fibsemOS"
 license = { file = "LICENSE" }
 dynamic = [
   "version",
@@ -70,7 +70,10 @@ scripts = [
 ]
 ui = [
   "napari[all]",
-  "autolamella@git+https://github.com/rosalindfranklininstitute/autolamella.git",
+  "fibsem[ui]@git+https://github.com/rosalindfranklininstitute/fibsem-os.git",
+]
+reporting = [
+  "fibsem[reporting]@git+https://github.com/rosalindfranklininstitute/fibsem-os.git",
 ]
 
 [tool.setuptools.packages.find]
