@@ -27,6 +27,7 @@ from adaptive_polish.exceptions import (
     StopMillingException,
     SegmentationException,
 )
+from adaptive_polish.enums import StopReasons
 from adaptive_polish.dl_segmentation.sem_lamella_segmentor import SegmentationLabels
 from adaptive_polish.centring import (
     get_bounding_box_scaled_to_image,
@@ -42,12 +43,16 @@ from adaptive_polish.config import (
     AdaptivePolishMillingConfig,
     TAdaptivePolishMillingConfig,
 )
-from adaptive_polish._dataclasses import LamellaInformation, LamellaStatistics
+from adaptive_polish._dataclasses import (
+    LamellaInformation,
+    LamellaStatistics,
+    StrategyRunInformation,
+    CycleInformation,
+)
 
 if typing.TYPE_CHECKING:
     from os import PathLike
     from collections.abc import Generator
-    from pandas import DataFrame
     from numpy.typing import NDArray
     from fibsem.milling import FibsemMillingStage
     from fibsem.microscope import FibsemMicroscope
@@ -62,15 +67,6 @@ if typing.TYPE_CHECKING:
 
 
 _logger = logging.getLogger(__name__)
-
-
-def _results_entry_helper(
-    *dfs: DataFrame, milling_cycle: int, results: dict[str, typing.Any]
-) -> None:
-    for df in dfs:
-        df.loc[milling_cycle] = {  # type: ignore
-            key: results.get(key, None) for key in df.columns.values
-        }
 
 
 @contextmanager
@@ -114,148 +110,169 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             parent_ui (_type_, optional): Napari UI. Defaults to None.
         """
         logging.info("Running %s for %s", self.fullname, stage.name)
-
-        # setup milling
-        setup_milling(microscope=microscope, milling_stage=stage)
-
-        fib_imaging_settings, sem_imaging_settings = self._get_imaging_settings(stage)
-
-        if fib_imaging_settings.path is None:
-            raise ValueError(f"Imaging path has not been set for {stage.name}")
-
-        lamella_directory = Path(fib_imaging_settings.path)
-        lamella_name = lamella_directory.stem
-        lamella_ap_directory = (
-            lamella_directory / f"adaptive_polish_{fs_utils.current_timestamp()}"
+        run_info = StrategyRunInformation(
+            strategy_name=self.name,
+            stage_name=stage.name,
         )
-        if lamella_ap_directory.is_dir():
-            logging.info(
-                "Lamella directory %s already exists, some data may be overwritten",
-                lamella_ap_directory,
-            )
-        else:
-            lamella_ap_directory.mkdir()
+        with run_info.timestamps.strategy:
+            with run_info.timestamps.setup:
+                # setup milling
+                setup_milling(microscope=microscope, milling_stage=stage)
 
-        (
-            lamella_ap_plots_directory,
-            lamella_ap_sem_directory,
-            lamella_ap_fib_directory,
-            lamella_ap_predictions_directory,
-        ) = ap_utils.ensure_subdirectories(
-            lamella_ap_directory, "plots", "sem", "fib", "predictions"
-        )
+                fib_imaging_settings, sem_imaging_settings = self._get_imaging_settings(
+                    stage
+                )
 
-        # load model
-        if self.model is None:
-            self._load_model()
+                if fib_imaging_settings.path is None:
+                    raise ValueError(f"Imaging path has not been set for {stage.name}")
 
-        with _restore_beam_shifts(microscope):
-            # align SEM
-            lamella_centre_m = None
-            if self.config.align_sem:
+                lamella_directory = Path(fib_imaging_settings.path)
+                lamella_name = lamella_directory.stem
+                run_info.lamella_name = lamella_name
+                lamella_ap_directory = (
+                    lamella_directory
+                    / f"adaptive_polish_{fs_utils.current_timestamp()}"
+                )
+                if lamella_ap_directory.is_dir():
+                    logging.info(
+                        "Lamella directory %s already exists, some data may be overwritten",
+                        lamella_ap_directory,
+                    )
+                else:
+                    lamella_ap_directory.mkdir()
+
+                (
+                    lamella_ap_plots_directory,
+                    lamella_ap_sem_directory,
+                    lamella_ap_fib_directory,
+                ) = ap_utils.ensure_subdirectories(
+                    lamella_ap_directory, "plots", "sem", "fib"
+                )
+
+                if self.config.save_predictions:
+                    lamella_ap_predictions_directory = ap_utils.ensure_subdirectories(
+                        lamella_ap_directory, "predictions"
+                    )[0]
+                else:
+                    lamella_ap_predictions_directory = None
+
+                # load model
+                if self.model is None:
+                    self._load_model()
+
+            with _restore_beam_shifts(microscope):
+                # align SEM
+                lamella_centre_m = None
+                if self.config.align_sem:
+                    with run_info.timestamps.centre_lamella:
+                        try:
+                            alignment_sem_imaging_settings = deepcopy(
+                                sem_imaging_settings
+                            )
+                            # Set path and name in case save is set to True
+                            alignment_sem_imaging_settings.path = lamella_ap_directory
+                            alignment_sem_imaging_settings.filename = (
+                                f"{lamella_name}_centring_SEM.tif"
+                            )
+                            lamella_centre_m = self._align_beam(
+                                microscope=microscope,
+                                sem_imaging_settings=alignment_sem_imaging_settings,
+                                plot_path=lamella_ap_directory / "centring.png",
+                            )
+                        except SegmentationException:
+                            _logger.error(
+                                "Exception occurred during segmentation for SEM beam alignment",
+                                exc_info=True,
+                            )
+                        except CentringException:
+                            _logger.error(
+                                "Error occurred calculating the lamella centre",
+                                exc_info=True,
+                            )
+                        except Exception:
+                            _logger.error(
+                                "Unexpected error occurred aligning SEM.",
+                                exc_info=True,
+                            )
+                        finally:
+                            if lamella_centre_m is None:
+                                _logger.info(
+                                    "Failed to align SEM. Attempting to continue..."
+                                )
+
+                # Set lamella directorys for saving images
+                fib_imaging_settings.save = True
+                sem_imaging_settings.save = True
+                fib_imaging_settings.path = lamella_ap_fib_directory
+                sem_imaging_settings.path = lamella_ap_sem_directory
+
+                # run adaptive polishing
                 try:
-                    alignment_sem_imaging_settings = deepcopy(sem_imaging_settings)
-                    # Set path and name in case save is set to True
-                    alignment_sem_imaging_settings.path = lamella_ap_directory
-                    alignment_sem_imaging_settings.filename = (
-                        f"{lamella_name}_centring_SEM.tif"
-                    )
-                    lamella_centre_m = self._align_beam(
-                        microscope=microscope,
-                        sem_imaging_settings=alignment_sem_imaging_settings,
-                        plot_path=lamella_ap_directory / "centring.png",
-                    )
-                except SegmentationException:
-                    _logger.error(
-                        "Exception occurred during segmentation for SEM beam alignment",
-                        exc_info=True,
-                    )
-                except CentringException:
-                    _logger.error(
-                        "Error occurred calculating the lamella centre",
-                        exc_info=True,
-                    )
-                except Exception:
-                    _logger.error(
-                        "Unexpected error occurred aligning SEM.",
-                        exc_info=True,
-                    )
-                finally:
-                    if lamella_centre_m is None:
-                        _logger.info("Failed to align SEM. Attempting to continue...")
-
-            results_dataframes = self._setup_results_dataframes()
-
-            # Set lamella directorys for saving images
-            fib_imaging_settings.save = True
-            sem_imaging_settings.save = True
-            fib_imaging_settings.path = lamella_ap_fib_directory
-            sem_imaging_settings.path = lamella_ap_sem_directory
-
-            # run adaptive polishing
-            try:
-                # Do one extra cycle without milling to run checks and get stats
-                for milling_cycle in range(self.config.max_milling_cycles + 1):
-                    identifier = f"{lamella_name}_AP_img_{milling_cycle:03}"
-                    results_dict: dict[str, typing.Any] = {}
-                    try:
-                        self._run_milling_cycle(
+                    # Do one extra cycle without milling to run checks and get stats
+                    for milling_cycle in range(self.config.max_milling_cycles + 1):
+                        cycle_info = CycleInformation(
                             milling_cycle=milling_cycle,
-                            identifier=identifier,
-                            fib_imaging_settings=fib_imaging_settings,
-                            sem_imaging_settings=sem_imaging_settings,
-                            plots_directory=lamella_ap_plots_directory,
-                            predictions_directory=lamella_ap_predictions_directory,
-                            results_dict=results_dict,
-                            microscope=microscope,
-                            stage=stage,
-                            expected_lamella_centre_m=lamella_centre_m,
-                            # Don't mill on the final cycle, just run checks
-                            mill=milling_cycle < self.config.max_milling_cycles,
-                            asynch=asynch,
-                            parent_ui=parent_ui,
+                            identifier=f"{lamella_name}_AP_img_{milling_cycle:03}",
                         )
-                    finally:
-                        self._handle_results(
-                            milling_cycle,
-                            results_dict,
-                            *results_dataframes,
+                        run_info.cycle_information.append(cycle_info)
+                        with cycle_info.timestamps.cycle:
+                            try:
+                                self._run_milling_cycle(
+                                    cycle_info=cycle_info,
+                                    fib_imaging_settings=fib_imaging_settings,
+                                    sem_imaging_settings=sem_imaging_settings,
+                                    plots_directory=lamella_ap_plots_directory,
+                                    predictions_directory=lamella_ap_predictions_directory,
+                                    microscope=microscope,
+                                    stage=stage,
+                                    expected_lamella_centre_m=lamella_centre_m,
+                                    # Don't mill on the final cycle, just run checks
+                                    mill=milling_cycle < self.config.max_milling_cycles,
+                                    asynch=asynch,
+                                    parent_ui=parent_ui,
+                                )
+                            finally:
+                                self._save_results(
+                                    run_info=run_info,
+                                    save_directory=lamella_ap_directory,
+                                )
+                    _logger.info(
+                        "%s complete (ended due to maximum milling cycles)", self.name
+                    )
+                    run_info.set_end_reason(StopReasons.MAX_CYCLES)
+                except StopMillingException as e:
+                    run_info.set_end_reason(e.reason)
+                    _logger.info("Stopping %s due to: %s", self.name, str(e))
+                except StopEarlyError as e:
+                    # Likely due to something not working correctly (e.g.
+                    # segmentation issues)
+                    run_info.set_end_reason(e.reason)
+                    _logger.warning("Stopping %s early due to: %s", self.name, str(e))
+                except Exception as e:
+                    run_info.set_end_reason(f"{e.__class__.__name__}({e})")
+                    _logger.error(
+                        "Stopping %s due to unexpected exception",
+                        self.name,
+                        exc_info=True,
+                    )
+                    raise
+                finally:
+                    # Always try to create a summary plot(s) and finish milling
+                    try:
+                        self._create_summary_plots(
+                            run_info,
                             save_directory=lamella_ap_directory,
                         )
-                _logger.info(
-                    "%s complete (ended due to maximum milling cycles)", self.name
-                )
-            except StopMillingException as e:
-                _logger.info("Stopping %s due to: %s", self.name, str(e))
-            except StopEarlyError as e:
-                # Likely due to something not working correctly (e.g.
-                # segmentation issues)
-                _logger.warning("Stopping %s early due to: %s", self.name, str(e))
-            except Exception:
-                _logger.error(
-                    "Stopping %s due to unexpected exception", self.name, exc_info=True
-                )
-                raise
-            finally:
-                # Always try to create a summary plot(s) and finish milling
-                try:
-                    self._create_summary_plots(
-                        *results_dataframes,
-                        lamella_name=lamella_name,
-                        save_directory=lamella_ap_directory,
-                    )
-                except Exception:
-                    _logger.error("Failed to create summary plot(s)", exc_info=True)
+                    except Exception:
+                        _logger.error("Failed to create summary plot(s)", exc_info=True)
 
     def _run_milling_cycle(
         self,
-        milling_cycle: int,
-        identifier: str,
+        cycle_info: CycleInformation,
         fib_imaging_settings: ImageSettings,
         sem_imaging_settings: ImageSettings,
         plots_directory: Path,
-        predictions_directory: Path,
-        results_dict: dict[str, typing.Any],
+        predictions_directory: Path | None,
         microscope: FibsemMicroscope,
         stage: FibsemMillingStage,
         expected_lamella_centre_m: Point | None,
@@ -267,45 +284,55 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         _logger.info(
             "Acquiring images for %s milling cycle %i/%i",
             self.name,
-            milling_cycle,
+            cycle_info.milling_cycle,
             self.config.max_milling_cycles,
         )
+        with cycle_info.timestamps.image:
+            sem_imaging_settings.filename = f"{cycle_info.identifier}_SEM.tif"
+            sem_image = self._acquire_image(microscope, sem_imaging_settings)
+            fib_imaging_settings.filename = f"{cycle_info.identifier}_FIB.tif"
+            fib_image = self._acquire_image(microscope, fib_imaging_settings)
 
-        sem_imaging_settings.filename = f"{identifier}_SEM.tif"
-        sem_image = self._acquire_image(microscope, sem_imaging_settings)
-        fib_imaging_settings.filename = f"{identifier}_FIB.tif"
-        fib_image = self._acquire_image(microscope, fib_imaging_settings)
-
-        lamella_info = self._get_lamella_info(
-            milling_cycle=milling_cycle,
-            identifier=identifier,
-            sem_image=sem_image,
-            fib_image=fib_image,
-            milling_stage=stage,
-            lamella_pad_x=self.config.lamella_pad_x,
-        )
-        try:
-            self._check_lamella(
-                lamella_info=lamella_info,
-                expected_lamella_centre_m=expected_lamella_centre_m,
-                plots_directory=plots_directory,
+        with cycle_info.timestamps.process:
+            lamella_info = self._get_lamella_info(
+                cycle_info=cycle_info,
+                sem_image=sem_image,
+                fib_image=fib_image,
+                lamella_pad_x=self.config.lamella_pad_x,
             )
-        finally:
-            results_dict["image"] = identifier
-            results_dict.update(lamella_info.statistics.to_dict())
+        try:
+            with cycle_info.timestamps.update_stage:
+                stage = self._update_milling_stage(
+                    stage=stage, lamella_info=lamella_info
+                )
 
-            # Make a copy of the milling stage before updating the pattern
-            stage = self._update_milling_stage(stage=stage, lamella_info=lamella_info)
-
-            try:
-                self._save_predictions(
-                    directory=predictions_directory,
+            with cycle_info.timestamps.check_lamella:
+                self._check_lamella(
                     lamella_info=lamella_info,
+                    expected_lamella_centre_m=expected_lamella_centre_m,
+                    plots_directory=plots_directory,
                 )
-            except Exception:
-                _logger.error(
-                    "Exception occurred saving the predictions", exc_info=True
-                )
+
+            if mill:
+                with cycle_info.timestamps.mill:
+                    self._mill(
+                        cycle_info.milling_cycle,
+                        microscope=microscope,
+                        stage=stage,
+                        asynch=asynch,
+                        parent_ui=parent_ui,
+                    )
+        finally:
+            if predictions_directory is not None:
+                try:
+                    self._save_predictions(
+                        directory=predictions_directory,
+                        lamella_info=lamella_info,
+                    )
+                except Exception:
+                    _logger.error(
+                        "Exception occurred saving the predictions", exc_info=True
+                    )
 
             try:
                 self._create_milling_cycle_plot(
@@ -317,15 +344,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                 _logger.error(
                     "Exception occurred creating the milling cycle plot", exc_info=True
                 )
-
-        if mill:
-            self._mill(
-                milling_cycle,
-                microscope=microscope,
-                stage=stage,
-                asynch=asynch,
-                parent_ui=parent_ui,
-            )
 
     def _create_milling_cycle_plot(
         self,
@@ -341,13 +359,12 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             fib_image=lamella_info.fib_image,
             first_prediction=lamella_info.prediction,
             clean_prediction=lamella_info.clean_prediction,
-            gis_thickness_um=stats.gis_thickness_filtered_um,
+            gis_thickness_um=stats.gis_filtered_thickness_um,
+            gis_min_um=stats.gis_min_um,
             crack_area_um2=stats.crack_area_um2,
-            min_gis_um=stats.min_GIS_um,
             gis_stop_threshold_um=self.config.gis_stop_um,
             milling_stage=stage,
-            xlims=stats.xlims_px,
-            total_milling_time=stats.milling_time_s,
+            image_xlims=stats.xlims_image_px,
             max_crack_area_um2=self.config.max_crack_area_um2,
             img_name=lamella_info.identifier,
         )
@@ -370,6 +387,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
     def _update_milling_stage(
         self, stage: FibsemMillingStage, lamella_info: LamellaInformation
     ) -> FibsemMillingStage:
+        # Make a copy of the milling stage before updating the pattern
         return deepcopy(stage)
 
     def _get_imaging_settings(
@@ -402,27 +420,28 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
 
     def _get_lamella_info(
         self,
-        milling_cycle: int,
-        identifier: str,
+        cycle_info: CycleInformation,
         sem_image: FibsemImage,
         fib_image: FibsemImage,
-        milling_stage: FibsemMillingStage | None,
         lamella_pad_x: float = 0.1,
     ) -> LamellaInformation:
         if sem_image.metadata is None:
             raise ValueError("Unable to get pixel size from SEM image with no metadata")
-        prediction = self._segment_sem_image(sem_image.data)
+
+        with cycle_info.timestamps.predict:
+            prediction = self._segment_sem_image(sem_image.data)
 
         clean_prediction = gm.clean_prediction(prediction)
 
-        prediction_pixel_size_m = float(
-            sem_image.metadata.pixel_size.x
-            * (sem_image.data.shape[1] / prediction.shape[1])
+        image_pixel_size_m = (
+            sem_image.metadata.pixel_size.x,
+            sem_image.metadata.pixel_size.y,
         )
 
-        prediction_pixel_size_um = prediction_pixel_size_m * 1e6
-
-        prediction_pixel_area_um2 = prediction_pixel_size_um**2
+        prediction_pixel_size_m = (
+            image_pixel_size_m[0] * (sem_image.data.shape[1] / prediction.shape[1]),
+            image_pixel_size_m[1] * (sem_image.data.shape[0] / prediction.shape[0]),
+        )
 
         mask_lamella_clean = clean_prediction == SegmentationLabels.LAMELLA.value
 
@@ -432,46 +451,45 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
 
         crack_thickness = np.sum(mask_crack_clean, axis=0)
 
-        if milling_stage is None:
-            milling_time_s = 0
-        else:
-            milling_time_s = float(getattr(milling_stage.pattern, "time", 0))
+        crack_count = gm.count_objects(mask_crack_clean)
+
+        # TODO: Save pixels and pixel sizes instead (allows for back calculating based on angle later but will be annoying for plotting)
+        # Also, specify prediction vs image pixels in the name.
 
         # Save guaranteed values
         statistics = LamellaStatistics(
-            milling_cycle=milling_cycle,
-            milling_time_s=milling_time_s * milling_cycle,
-            lamella_thickness_um=ap_utils.pixels_to_size(
-                lamella_thickness, pixel_size=prediction_pixel_size_um
-            ).tolist(),
-            lamella_area_um2=ap_utils.pixels_to_size(
-                np.sum(lamella_thickness), pixel_size=prediction_pixel_area_um2
-            ).tolist(),
-            crack_thickness_um=ap_utils.pixels_to_size(
-                crack_thickness, pixel_size=prediction_pixel_size_um
-            ).tolist(),
-            crack_area_um2=ap_utils.pixels_to_size(
-                np.sum(crack_thickness), pixel_size=prediction_pixel_area_um2
-            ).tolist(),
+            image_pixel_size_m=image_pixel_size_m,
+            prediction_pixel_size_m=prediction_pixel_size_m,
+            crack_count=crack_count,
+            lamella_thickness_prediction_px=lamella_thickness.tolist(),
+            crack_thickness_prediction_px=crack_thickness.tolist(),
         )
+        cycle_info.lamella_statistics = statistics
 
         try:
-            if self._get_lamella_too_small(
-                lamella_area_um2=statistics.lamella_area_um2
-            ):
+            lamella_area_um2 = ap_utils.pixels_to_size(
+                np.sum(statistics.lamella_thickness_prediction_px),
+                pixel_size=(statistics.prediction_pixel_size_m[0] * 1e-6)
+                * (statistics.prediction_pixel_size_m[1] * 1e-6),
+            )
+            if self._get_lamella_too_small(lamella_area_um2=lamella_area_um2):
                 raise StopEarlyError(
-                    f"Lamella found was only {statistics.lamella_area_um2:.4e} um2, below the threshold of {self.config.minimum_lamella_area_um2:.4e} um2"
+                    f"Lamella found was only {lamella_area_um2:.4e} um2, below the threshold of {self.config.minimum_lamella_area_um2:.4e} um2",
+                    reason=StopReasons.LAMELLA_AREA,
                 )
 
             try:
                 # Get lamella position
-                lamella_bbox, lamella_mask_bbox = get_bounding_box_scaled_to_image(
-                    image=sem_image.data,
-                    mask=mask_lamella_clean,
-                    edge_finding="percentile",
-                    percentile=90,
+                lamella_image_bbox, lamella_prediction_bbox = (
+                    get_bounding_box_scaled_to_image(
+                        image=sem_image.data,
+                        mask=mask_lamella_clean,
+                        edge_finding="percentile",
+                        percentile=90,
+                    )
                 )
-                statistics.lamella_bounding_box_px = lamella_bbox
+                statistics.lamella_bounding_box_prediction_px = lamella_prediction_bbox
+                statistics.lamella_bounding_box_image_px = lamella_image_bbox
             except CentringException as e:
                 _logger.warning(
                     "Failed to get lamella centre, drift check will be skipped: %s",
@@ -480,56 +498,57 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
 
             # Apply lamella_pad_x padding to each side in X
             x_pad = int(
-                round((lamella_mask_bbox[3] - lamella_mask_bbox[1]) * lamella_pad_x)
+                round(
+                    (lamella_prediction_bbox[3] - lamella_prediction_bbox[1])
+                    * lamella_pad_x
+                )
             )
 
             # Measure GIS
             # Note the returned values are scaled to the image, not the prediction
             ylims_px = gm.bbox_to_ylims(
-                lamella_mask_bbox,
+                lamella_prediction_bbox,
                 y_bounds=(0, clean_prediction.shape[0] - 1),
                 pad=0,
             )
+            statistics.xlims_prediction_px = gm.bbox_to_xlims(
+                lamella_prediction_bbox,
+                x_bounds=(0, clean_prediction.shape[1] - 1),
+                pad=x_pad,
+            )
             gis_thickness_image_px, xlims_image_px = gm.get_gis_thickness(
                 clean_prediction,
-                xlims=gm.bbox_to_xlims(
-                    lamella_mask_bbox,
-                    x_bounds=(0, clean_prediction.shape[1] - 1),
-                    pad=x_pad,
-                ),
+                xlims=statistics.xlims_prediction_px,
                 ylims=(ylims_px[0], None),
                 image_shape=(sem_image.data.shape[0], sem_image.data.shape[1]),
             )
 
-            statistics.xlims_px = xlims_image_px
+            statistics.xlims_image_px = xlims_image_px
+            statistics.gis_thickness_image_px = gis_thickness_image_px.tolist()
 
-            gis_thickness_um = ap_utils.pixels_to_size(
-                gis_thickness_image_px,
-                sem_image.metadata.pixel_size.y * constants.SI_TO_MICRO,
+            # Filter GIS thickness within xlims to a avoid edge artifacts
+            gis_thickness_filtered_image_px = np.zeros_like(
+                gis_thickness_image_px, dtype=float
             )
-            statistics.gis_thickness_um = gis_thickness_um.tolist()
+            gis_thickness_filtered_image_px[
+                xlims_image_px[0] : xlims_image_px[1] + 1
+            ] = gm.filter_gis_thickness(
+                gis_thickness_image_px[xlims_image_px[0] : xlims_image_px[1] + 1],
+                window_size_m=(
+                    self.config.window_size_px * sem_image.metadata.pixel_size.x
+                ),
+                pixel_size_m=sem_image.metadata.pixel_size.x,
+            )
 
-            gis_thickness_filtered_um = np.zeros_like(gis_thickness_um)
-            gis_thickness_filtered_um[xlims_image_px[0] : xlims_image_px[1] + 1] = (
-                gm.filter_gis_thickness(
-                    gis_thickness_um[xlims_image_px[0] : xlims_image_px[1] + 1],
-                    window_size_m=(
-                        self.config.window_size_px * sem_image.metadata.pixel_size.x
-                    ),
-                    pixel_size_m=sem_image.metadata.pixel_size.x,
-                )
+            statistics.gis_thickness_filtered_image_px = (
+                gis_thickness_filtered_image_px.tolist()
             )
-            statistics.gis_thickness_filtered_um = gis_thickness_filtered_um.tolist()
-
-            statistics.min_GIS_um = float(
-                np.nanmin(
-                    gis_thickness_filtered_um[xlims_image_px[0] : xlims_image_px[1] + 1]
-                )
-            )
+            # Calculate GIS min, median, etc.
+            statistics.calculate_gis_statistics()
 
         finally:
             return LamellaInformation(
-                identifier=identifier,
+                identifier=cycle_info.identifier,
                 sem_image=sem_image,
                 fib_image=fib_image,
                 prediction=prediction,
@@ -551,10 +570,10 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         if (
             self.config.align_sem
             and expected_lamella_centre_m is not None
-            and stats.lamella_bounding_box_px is not None
+            and stats.lamella_bounding_box_image_px is not None
         ):
             centre_m, centre_px = get_centre_points_from_bounding_box(
-                stats.lamella_bounding_box_px,
+                stats.lamella_bounding_box_image_px,
                 image=lamella_info.sem_image.data,
                 pixel_size_m=lamella_info.sem_image.metadata.pixel_size.x,
             )
@@ -578,20 +597,23 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                         centre_m=centre_m,
                         plot_path=Path(plots_directory)
                         / f"{lamella_info.identifier}_centring_problem.png",
-                        bounding_box=stats.lamella_bounding_box_px,
+                        bounding_box=stats.lamella_bounding_box_image_px,
                     )
                 raise StopEarlyError(
-                    f"Total drift (um) {centre_drift_um:.4e} > threshold {self.config.maximum_drift_um:.4e} (might be a segmentation problem)"
+                    f"Total drift (um) {centre_drift_um:.4e} > threshold {self.config.maximum_drift_um:.4e} (might be a segmentation problem)",
+                    reason=StopReasons.LAMELLA_DRIFT,
                 )
 
-        if self._get_gis_too_thin(stats.min_GIS_um):
+        if self._get_gis_too_thin(stats.gis_min_um):
             raise StopMillingException(
-                f"Minimum GIS thickness (um) {stats.min_GIS_um:.4e} < threshold {self.config.gis_stop_um:.4e} um"
+                f"Minimum GIS thickness (um) {stats.gis_min_um:.4e} < threshold {self.config.gis_stop_um:.4e} um",
+                reason=StopReasons.MIN_GIS_THICKNESS,
             )
 
         if self._get_crack_too_large(stats.crack_area_um2):
             raise StopMillingException(
-                f"Crack area (um2) {stats.crack_area_um2:.4e} > threshold {self.config.max_crack_area_um2:.4e} um2"
+                f"Crack area (um2) {stats.crack_area_um2:.4e} > threshold {stats.crack_area_um2:.4e} um2",
+                reason=StopReasons.CRACK_AREA,
             )
 
     def _mill(
@@ -601,7 +623,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         stage: FibsemMillingStage,
         asynch: bool = False,
         parent_ui=None,
-    ) -> None:
+    ) -> float | None:
         # ensure milling settings are still correctly set
         microscope.setup_milling(mill_settings=stage.milling)
 
@@ -641,12 +663,14 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                 asynch=asynch,
             )
             _logger.info("Completed milling cycle %i", milling_cycle)
+            return estimated_time
         except Exception:
             _logger.error(
                 "An error occurred during milling cycle %i",
                 milling_cycle,
                 exc_info=True,
             )
+            return None
         finally:
             microscope.stop_milling()  # dont use milling.finish_milling as it would clear patterns
 
@@ -724,7 +748,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
 
     def _get_gis_too_thin(self, min_gis_um: float | None) -> bool:
         if min_gis_um is None:
-            raise StopEarlyError("No minimum gis measurement found")
+            raise StopEarlyError("No minimum GIS measurement")
         # Minumum GIS thickness check
         return min_gis_um < float(self.config.gis_stop_um)
 
@@ -732,36 +756,22 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         # Total crack area check
         return crack_area_um2 > float(self.config.max_crack_area_um2)
 
-    def _setup_results_dataframes(self) -> tuple[DataFrame, DataFrame]:
-        return ap_utils.setup_results_df()
-
-    def _save_results_dataframes(self, *dfs: DataFrame, directory: Path) -> None:
-        results, gis_results_detailed = dfs
-        results.to_json(directory / "GIS_thickness.json")
-        gis_results_detailed.to_json(directory / "GIS_thickness_detailed.json")
-
-    def _handle_results(
+    def _save_results(
         self,
-        milling_cycle: int,
-        results_dict: dict[str, typing.Any],
-        *results_dataframes: DataFrame,
+        run_info: StrategyRunInformation,
         save_directory: Path,
     ) -> None:
-        # Ensure results are always added and saved
-        _results_entry_helper(
-            *results_dataframes,
-            milling_cycle=milling_cycle,
-            results=results_dict,
+        ap_utils.save_dict_as_json(
+            run_info.to_dict(), save_directory / "AP_metadata.json"
         )
-        self._save_results_dataframes(*results_dataframes, directory=save_directory)
 
     def _create_summary_plots(
-        self, *results_dataframes: DataFrame, lamella_name: str, save_directory: Path
+        self, run_info: StrategyRunInformation, save_directory: Path
     ) -> None:
-        """Creates any summary plots from the results dataframes"""
+        """Creates any summary plots from the strategy run information"""
         create_summary_gis_plot(
-            results=results_dataframes[0],
-            save_path=save_directory / f"{lamella_name}_GIS_thickness.png",
+            run_info=run_info,
+            save_path=save_directory / "AP_summary_plots.png",
         )
 
     def _segment_sem_image(
