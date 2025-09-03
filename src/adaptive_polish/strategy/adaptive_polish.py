@@ -469,8 +469,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         try:
             lamella_area_um2 = ap_utils.pixels_to_size(
                 np.sum(statistics.lamella_thickness_prediction_px),
-                pixel_size=(statistics.prediction_pixel_size_m[0] * 1e-6)
-                * (statistics.prediction_pixel_size_m[1] * 1e-6),
+                pixel_size=(statistics.prediction_pixel_size_m[0] * 1e6)
+                * (statistics.prediction_pixel_size_m[1] * 1e6),
             )
             if self._get_lamella_too_small(lamella_area_um2=lamella_area_um2):
                 raise StopEarlyError(
