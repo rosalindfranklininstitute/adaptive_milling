@@ -91,5 +91,5 @@ if __name__ == "__main__":
     experiment_path = Path(r"")
     # If there are any lamellae you do not want to include, their names
     # (e.g. "03-fast-swan") can be added to this list:
-    ignore_lamellae = []
+    ignore_lamellae: list[str] = []
     process_experiment(experiment_path=experiment_path, ignore_lamellae=ignore_lamellae)
