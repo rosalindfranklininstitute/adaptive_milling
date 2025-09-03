@@ -152,9 +152,9 @@ class BitmapAdaptivePolishMillingStrategy(
             fib_image=lamella_info.fib_image,
             first_prediction=lamella_info.prediction,
             clean_prediction=lamella_info.clean_prediction,
-            gis_thickness_um=stats.gis_filtered_thickness_um,
+            gis_thickness_um=stats.gis_thickness_filtered_um,
             crack_area_um2=stats.crack_area_um2,
-            gis_min_um=stats.gis_min_um,
+            gis_thickness_min_um=stats.gis_thickness_min_um,
             gis_stop_threshold_um=self.config.gis_stop_um,
             gis_min_threshold_um=self.config.gis_min_um,
             gis_max_threshold_um=self.config.gis_max_um,
@@ -178,8 +178,8 @@ class BitmapAdaptivePolishMillingStrategy(
         pattern: RectanglePattern | TrenchPattern,
         stats: LamellaStatistics,
     ) -> NDArray:
-        if stats.gis_filtered_thickness_um is None:
-            raise ValueError('"gis_filtered_thickness_um" is not available')
+        if stats.gis_thickness_filtered_um is None:
+            raise ValueError('"gis_thickness_filtered_um" is not available')
         elif stats.lamella_thickness_um is None:
             raise ValueError('"lamella_thickness_um" is not available')
         elif stats.xlims_image_px is None:
@@ -193,7 +193,7 @@ class BitmapAdaptivePolishMillingStrategy(
 
         lamella_width_px = int(round(pattern.width / stats.image_pixel_size_m[0]))
 
-        gis_thickness_um = np.asarray(stats.gis_filtered_thickness_um, dtype=np.float32)
+        gis_thickness_um = np.asarray(stats.gis_thickness_filtered_um, dtype=np.float32)
         lamella_thickness_um = np.asarray(stats.lamella_thickness_um, dtype=np.float32)
 
         new_x_lims = self._refine_xlims(
