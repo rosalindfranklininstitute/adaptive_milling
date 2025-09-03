@@ -80,11 +80,18 @@ def process_experiment(
 
     print(f"Checked {len(time_list)} lamella in {experiment_directory}:")
 
+    if not time_list:
+        print("No lamellae found")
+        return []
+
     print("\tMilling times (s):")
     for id_, time in zip(id_list, time_list):
         print(f"\t\t{id_}:\t{time}")
 
-    print_statistics(time_list=time_list)
+    if len(time_list) > 1:
+        print_statistics(time_list=time_list)
+    else:
+        print("No statistics for single lamella experiment")
     print()
 
     return time_list
@@ -108,7 +115,7 @@ def run(
             )
         )
 
-    if len(experiment_directories) > 1:
+    if len(experiment_directories) > 1 and len(time_list) > 1:
         print("\nAll:")
         print_statistics(time_list=time_list)
 
