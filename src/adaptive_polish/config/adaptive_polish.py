@@ -20,6 +20,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
     maximum_drift_um: float = 0.1
     lamella_pad_x: float = 0.0  # fraction of lamella width to pad by on each side
     model_generation: str = DEFAULT_SEM_MODEL_GENERATION
+    save_predictions: bool = True
 
     def get_model_generation(self) -> typing.Optional[str]:
         model_generation = self.model_generation.strip()
