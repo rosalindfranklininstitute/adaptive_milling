@@ -6,9 +6,10 @@ import typing
 from contextlib import contextmanager
 from copy import deepcopy
 from pathlib import Path
-from PIL import Image
 
 import numpy as np
+from PIL import Image
+
 # fibsem
 from fibsem import acquire, constants, utils as fs_utils
 from fibsem.milling import MillingStrategy
@@ -139,8 +140,10 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             lamella_ap_plots_directory,
             lamella_ap_sem_directory,
             lamella_ap_fib_directory,
-            self.lamella_ap_mask_directory,
-        ) = ap_utils.ensure_subdirectories(lamella_ap_directory, "plots", "sem", "fib", "mask")
+            lamella_ap_predictions_directory,
+        ) = ap_utils.ensure_subdirectories(
+            lamella_ap_directory, "plots", "sem", "fib", "predictions"
+        )
 
         # load model
         if self.model is None:
@@ -202,6 +205,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                             fib_imaging_settings=fib_imaging_settings,
                             sem_imaging_settings=sem_imaging_settings,
                             plots_directory=lamella_ap_plots_directory,
+                            predictions_directory=lamella_ap_predictions_directory,
                             results_dict=results_dict,
                             microscope=microscope,
                             stage=stage,
@@ -250,6 +254,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         fib_imaging_settings: ImageSettings,
         sem_imaging_settings: ImageSettings,
         plots_directory: Path,
+        predictions_directory: Path,
         results_dict: dict[str, typing.Any],
         microscope: FibsemMicroscope,
         stage: FibsemMillingStage,
@@ -291,6 +296,16 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
 
             # Make a copy of the milling stage before updating the pattern
             stage = self._update_milling_stage(stage=stage, lamella_info=lamella_info)
+
+            try:
+                self._save_predictions(
+                    directory=predictions_directory,
+                    lamella_info=lamella_info,
+                )
+            except Exception:
+                _logger.error(
+                    "Exception occurred saving the predictions", exc_info=True
+                )
 
             try:
                 self._create_milling_cycle_plot(
@@ -336,6 +351,21 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             max_crack_area_um2=self.config.max_crack_area_um2,
             img_name=lamella_info.identifier,
         )
+
+    def _save_predictions(
+        self, directory: Path, lamella_info: LamellaInformation
+    ) -> None:
+        filename = f"{lamella_info.identifier}_SEM.tif"
+
+        clean_prediction_dir = directory / "clean"
+        clean_prediction_dir.mkdir(exist_ok=True)
+        Image.fromarray(lamella_info.clean_prediction).save(
+            clean_prediction_dir / filename
+        )
+
+        prediction_dir = directory / "raw"
+        prediction_dir.mkdir(exist_ok=True)
+        Image.fromarray(lamella_info.prediction).save(prediction_dir / filename)
 
     def _update_milling_stage(
         self, stage: FibsemMillingStage, lamella_info: LamellaInformation
@@ -420,14 +450,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                 np.sum(crack_thickness), pixel_size=prediction_pixel_area_um2
             ).tolist(),
         )
-
-        # save clean prediction mask
-        try:
-            path = self.lamella_ap_mask_directory / f"{identifier}_mask.tif"
-            im = Image.fromarray(clean_prediction)
-            im.save(path)
-        except Exception as e:
-            _logger.warning("Failed to save clean prediction mask for %s: %s", identifier, str(e))
 
         try:
             if self._get_lamella_too_small(
