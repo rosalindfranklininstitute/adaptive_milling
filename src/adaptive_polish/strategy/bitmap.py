@@ -118,6 +118,7 @@ class BitmapAdaptivePolishMillingStrategy(
             )
 
         return TrenchBitmapPattern(
+            point=pattern.point,
             width=pattern.width,
             spacing=pattern.spacing,
             depth=pattern.depth,
@@ -155,6 +156,7 @@ class BitmapAdaptivePolishMillingStrategy(
             )
 
         return BitmapPattern(
+            point=pattern.point,
             width=pattern.width,
             height=pattern.height,
             depth=pattern.depth,
