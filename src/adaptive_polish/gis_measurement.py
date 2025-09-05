@@ -363,3 +363,20 @@ def get_gis_thickness(
     )
 
     return sliced_gis_thickness, xlims_out
+
+
+def find_milling_edges(
+    lamella_thickness: NDArray[np.float32],
+    gis_thickness: NDArray[np.float32],
+    lamella_width: int,
+) -> tuple[int, int]:
+    mean_lamella_thickness = lamella_thickness.mean()
+    clipped_gis = np.clip(gis_thickness, 0, mean_lamella_thickness)
+    return _get_minimum_area(clipped_gis - lamella_thickness, width=lamella_width)
+
+
+def _get_minimum_area(data: NDArray[np.float32], width: int):
+    cumsum = np.concatenate(([0], np.cumsum(data)))
+    window_sums = cumsum[width:] - cumsum[:-width]
+    idx = int(np.argmin(window_sums))
+    return (idx, idx + width)
