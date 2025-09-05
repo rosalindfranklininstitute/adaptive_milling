@@ -41,7 +41,7 @@ from adaptive_polish.config import (
     AdaptivePolishMillingConfig,
     TAdaptivePolishMillingConfig,
 )
-from adaptive_polish.dataclasses import LamellaInformation, LamellaStatistics
+from adaptive_polish._dataclasses import LamellaInformation, LamellaStatistics
 
 if typing.TYPE_CHECKING:
     from os import PathLike
@@ -335,7 +335,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             max_crack_area_um2=self.config.max_crack_area_um2,
             img_name=lamella_info.identifier,
         )
-
 
     def _update_milling_stage(
         self, stage: FibsemMillingStage, lamella_info: LamellaInformation
