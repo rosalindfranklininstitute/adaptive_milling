@@ -375,7 +375,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         identifier: str,
         sem_image: FibsemImage,
         fib_image: FibsemImage,
-        milling_stage: FibsemMillingStage,
+        milling_stage: FibsemMillingStage | None,
         lamella_pad_x: float = 0.1,
     ) -> LamellaInformation:
         if sem_image.metadata is None:
@@ -401,11 +401,15 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
 
         crack_thickness = np.sum(mask_crack_clean, axis=0)
 
+        if milling_stage is None:
+            milling_time_s = 0
+        else:
+            milling_time_s = float(getattr(milling_stage.pattern, "time", 0))
+
         # Save guaranteed values
         statistics = LamellaStatistics(
             milling_cycle=milling_cycle,
-            milling_time_s=float(getattr(milling_stage.pattern, "time", 0))
-            * milling_cycle,
+            milling_time_s=milling_time_s * milling_cycle,
             lamella_thickness_um=ap_utils.pixels_to_size(
                 lamella_thickness, pixel_size=prediction_pixel_size_um
             ).tolist(),
