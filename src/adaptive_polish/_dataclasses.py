@@ -181,12 +181,10 @@ class LamellaStatistics:
             np.sum(self.crack_thickness_prediction_px)
             * (self.prediction_pixel_size_m[0] * self.prediction_pixel_size_m[1] * 1e12)
         )
-
     @cached_property
-    def lamella_thickness_um(self) -> float:
-        return float(
-            np.sum(self.lamella_thickness_prediction_px)
-            * (self.prediction_pixel_size_m[0] * self.prediction_pixel_size_m[1] * 1e12)
+    def lamella_thickness_um(self) -> NDArray[np.float_] | None:
+        return np.asarray(self.lamella_thickness_prediction_px, dtype=float) * (
+            self.prediction_pixel_size_m[0] * self.prediction_pixel_size_m[1] * 1e12
         )
 
     @cached_property
