@@ -1,12 +1,15 @@
 from __future__ import annotations
 import pytest
-from unittest.mock import patch, MagicMock, call, ANY
+from unittest.mock import patch, MagicMock, PropertyMock, call, ANY
 from numpy.testing import assert_array_equal
 
+import json
 import typing
+from copy import deepcopy
 from pathlib import Path
+from uuid import uuid4
+
 import numpy as np
-import pandas as pd
 
 from fibsem import utils as fibsem_utils, acquire
 from fibsem.structures import BeamType, Point, FibsemImage
@@ -14,6 +17,7 @@ from fibsem.milling.base import get_milling_stages
 from fibsem.applications.autolamella.protocol.validation import validate_protocol
 
 from adaptive_polish.strategy import adaptive_polish as ap_strategy
+from adaptive_polish._dataclasses import CycleInformation
 from adaptive_polish.dl_segmentation.sem_lamella_segmentor import SegmentationLabels
 
 from . import setup, utils
@@ -47,6 +51,57 @@ def setup_protocol_and_milling_stages(
     milling_stages = get_milling_stages("mill_polishing", protocol["milling"])
 
     return protocol, milling_stages
+
+
+def assert_results_dicts_equal(
+    results: dict[str, typing.Any],
+    expected_results: dict[str, typing.Any],
+    allow_missing_expected: bool = True,
+) -> None:
+    """Used to check whether results dicts match, including nested dicts and tuples/lists and allowing for ANY"""
+
+    def compare(value: typing.Any, expected: typing.Any) -> None:
+        if expected is ANY:
+            return
+        elif type(value) is not type(expected):
+            raise TypeError(
+                f"types do not match: expected {type(expected)} got {type(value)}"
+            )
+        elif isinstance(expected, dict):
+            return assert_results_dicts_equal(
+                value, expected, allow_missing_expected=allow_missing_expected
+            )
+        elif isinstance(expected, (list, tuple)):
+            expected_num = len(expected)
+            num = len(value)
+            assert num == expected_num, (
+                f"different lengths: expected {expected_num}, got {num}"
+            )
+            for i in range(expected_num):
+                try:
+                    compare(value=value[i], expected=expected[i])
+                except Exception as e:
+                    raise type(e)(f"index {i} {e}") from e
+        else:
+            assert value == expected, (
+                f"does not match: expected {expected}, got {value}"
+            )
+
+    all_keys = set(results.keys()) | set(expected_results.keys())
+    for k in all_keys:
+        if k not in results:
+            raise KeyError(f"{k} is missing from results")
+        elif k not in expected_results:
+            if allow_missing_expected:
+                continue
+            raise KeyError(f"{k} is missing from expected results")
+
+        value = results[k]
+        expected = expected_results[k]
+        try:
+            compare(value=value, expected=expected)
+        except Exception as e:
+            raise AssertionError(f"Mismatch: {k} {e}") from e
 
 
 def test_default_config() -> None:
@@ -115,9 +170,9 @@ def test_ap_folders_created(
         )
 
 
-@patch.object(ap_strategy.ap_utils, "setup_results_df")
+@patch.object(ap_strategy, "_restore_beam_shifts")
 def test_loads_sem_model_on_first_run(
-    mock_setup_results_df,
+    mock_restore_beam_shifts,
     protocol_template_path: Path,
     microscope_config_path: Path,
     tmp_path: Path,
@@ -136,12 +191,12 @@ def test_loads_sem_model_on_first_run(
     stage.imaging.path = tmp_path
 
     with patch.object(strategy, "_load_model") as mock_load_model:
-        mock_setup_results_df.side_effect = utils.ExceptionForMocking
+        mock_restore_beam_shifts.side_effect = utils.ExceptionForMocking
         with pytest.raises(utils.ExceptionForMocking):
             strategy.run(microscope, stage)
 
         mock_load_model.assert_called_once()
-        assert mock_setup_results_df.call_count == 1, "Should have been called once"
+        assert mock_restore_beam_shifts.call_count == 1, "Should have been called once"
 
         strategy.model = "model"  # type: ignore
 
@@ -150,7 +205,7 @@ def test_loads_sem_model_on_first_run(
 
         # Check it wasn't called again after model is set
         mock_load_model.assert_called_once()
-        assert mock_setup_results_df.call_count == 2, "Should have been called twice"
+        assert mock_restore_beam_shifts.call_count == 2, "Should have been called twice"
 
 
 @patch.object(
@@ -223,7 +278,7 @@ def test_max_milling_cycles_not_exceeded(
     ap_config = ap_strategy.AdaptivePolishMillingConfig(
         model_path=model_path,
         align_sem=False,
-        **pass_checks_kwargs,
+        **pass_checks_kwargs,  # type: ignore[arg-type]
     )
     _, stages = setup_protocol_and_milling_stages(
         ap_config.to_dict(), protocol_template_path, tmp_path
@@ -250,12 +305,19 @@ def test_max_milling_cycles_not_exceeded(
         ) as mock_get_lamella_info,
         patch.object(strategy, "_check_lamella", autospec=True) as mock_check_lamella,
         patch.object(strategy, "_update_milling_stage") as mock_update_milling_stage,
+        patch.object(strategy, "_save_predictions") as mock_save_predictions,
         patch.object(strategy, "_mill") as mock_mill,
     ):
         mock_stats = MagicMock()
+        # Mock properties
+        mock_stats.gis_thickness_filtered_um = PropertyMock()
+        mock_stats.gis_thickness_min_um = PropertyMock()
+        mock_stats.crack_area_um2 = PropertyMock()
+        # Create a new dict each time to_dict is called
         mock_stats.to_dict.side_effect = dict
+        # Create LamellaInformation mocks with statistics set
         lamella_infos = [
-            MagicMock(stats=mock_stats) for _ in range(max_milling_cycles + 1)
+            MagicMock(statistics=mock_stats) for _ in range(max_milling_cycles + 1)
         ]
         mock_get_lamella_info.side_effect = lamella_infos
         mock_update_milling_stage.return_value = "stage"
@@ -264,20 +326,19 @@ def test_max_milling_cycles_not_exceeded(
 
         mock_load_model.assert_called_once()
 
-        mock_get_lamella_info.assert_has_calls(
-            [
-                call(
-                    milling_cycle=i,
-                    identifier=f"{lamella_directory.stem}_AP_img_{i:03}",
-                    sem_image=ANY,
-                    fib_image=ANY,
-                    milling_stage=stage,
-                    lamella_pad_x=strategy.config.lamella_pad_x,
-                )
-                for i in range(max_milling_cycles + 1)
-            ],
-            any_order=True,
+        assert mock_get_lamella_info.call_count == max_milling_cycles + 1, (
+            "An incorrect number of cycles were run"
         )
+        for i in range(max_milling_cycles + 1):
+            call = mock_get_lamella_info.call_args_list[i]
+            assert not call.args, "No positional args expected"
+            cycle_info = call.kwargs.get("cycle_info")
+            assert cycle_info, "cycle_info argument was not given"
+            assert cycle_info.milling_cycle == i
+            assert cycle_info.identifier == f"{lamella_directory.stem}_AP_img_{i:03}"
+
+            lamella_pad_x = call.kwargs.get("lamella_pad_x")
+            assert lamella_pad_x == strategy.config.lamella_pad_x
 
         # One extra round of checks should be run
         mock_check_lamella.assert_has_calls(
@@ -298,6 +359,16 @@ def test_max_milling_cycles_not_exceeded(
             ]
         )
 
+        mock_save_predictions.assert_has_calls(
+            [
+                call(
+                    directory=lamella_ap_folder / "predictions",
+                    lamella_info=lamella_infos[i],
+                )
+                for i in range(max_milling_cycles + 1)
+            ]
+        )
+
         mock_create_milling_cycle_plot.assert_has_calls(
             [
                 call(
@@ -310,17 +381,18 @@ def test_max_milling_cycles_not_exceeded(
                     gis_thickness_um=lamella_infos[
                         i
                     ].statistics.gis_thickness_filtered_um,
+                    gis_thickness_min_um=lamella_infos[
+                        i
+                    ].statistics.gis_thickness_min_um,
                     crack_area_um2=lamella_infos[i].statistics.crack_area_um2,
-                    min_gis_um=lamella_infos[i].statistics.min_GIS_um,
                     gis_stop_threshold_um=strategy.config.gis_stop_um,
                     milling_stage=mock_update_milling_stage.return_value,
-                    xlims=lamella_infos[i].statistics.xlims_px,
-                    total_milling_time=lamella_infos[i].statistics.milling_time_s,
+                    image_xlims=lamella_infos[i].statistics.xlims_image_px,
                     max_crack_area_um2=strategy.config.max_crack_area_um2,
                     img_name=lamella_infos[i].identifier,
                 )
                 for i in range(max_milling_cycles + 1)
-            ]
+            ],
         )
 
         # Ensure no extra rounds of milling are run
@@ -363,16 +435,17 @@ def test_results_saved(
     ap_config = ap_strategy.AdaptivePolishMillingConfig(
         model_path=model_path,
         align_sem=False,
-        **pass_checks_kwargs,
+        **pass_checks_kwargs,  # type: ignore[arg-type]
     )
     _, stages = setup_protocol_and_milling_stages(
         ap_config.to_dict(), protocol_template_path, tmp_path
     )
     stage = stages[0]
 
-    lamella_directory = tmp_path / "lamella"
+    lamella_name = f"lamella_{uuid4()}"
+    lamella_directory = tmp_path / lamella_name
     lamella_directory.mkdir()
-    adaptive_polish_dir = lamella_directory / f"adaptive_polish_{TIMESTAMP}"  #
+    adaptive_polish_dir = lamella_directory / f"adaptive_polish_{TIMESTAMP}"
 
     stage.imaging.path = lamella_directory
 
@@ -422,7 +495,7 @@ def test_results_saved(
         patch.object(strategy, "_mill") as mock_mill,
     ):
         mock_model.predict.return_value = prediction
-        mock_update_milling_stage.return_value = "stage"
+        mock_update_milling_stage.return_value = deepcopy(stage)
 
         strategy.run(microscope, stage)
 
@@ -446,70 +519,60 @@ def test_results_saved(
             ]
         )
     # Results (csv)
-    results_path = adaptive_polish_dir / "GIS_thickness.json"
-    detailed_results_path = adaptive_polish_dir / "GIS_thickness_detailed.json"
+    results_path = adaptive_polish_dir / "AP_metadata.json"
     assert results_path.is_file(), "Results file does not exist"
-    assert detailed_results_path.is_file(), "Detailed results file does not exist"
 
-    images_names = [
-        f"{lamella_directory.stem}_AP_img_{i:03}" for i in range(max_checks)
-    ]
-    milling_times = [stage.pattern.time * i for i in range(max_checks)]
-
-    expected_results_df = pd.DataFrame(
-        {
-            "image": images_names,
-            "milling_time_s": milling_times,
-            "min_GIS_um": expected_min_gis_thicknesses,
-            "crack_area_um2": [0] * max_checks,
-        }
-    )
-
-    # results_df = pd.read_csv(results_path, index_col=0)
-    results_df = pd.read_json(results_path)
-    pd.testing.assert_frame_equal(
-        results_df, expected_results_df, check_dtype=False, obj="Results DataFrame"
-    )
-
-    expected_detailed_results_df = pd.DataFrame(
-        {
-            "image": images_names,
-            "milling_time_s": milling_times,
-            "gis_thickness_um": pd.Series(
-                [
-                    [
-                        _ * sem_image.metadata.pixel_size.x * 1e6
-                        for _ in expected_gis_thickness
+    expected_results = {
+        "strategy_name": strategy.name,
+        "stage_name": mock_update_milling_stage.return_value.name,
+        "lamella_name": lamella_name,
+        "timestamps": ANY,
+        "strategy_end_reason": None,
+        "cycle_information": [
+            {
+                "milling_cycle": i,
+                "identifier": f"{lamella_directory.stem}_AP_img_{i:03}",
+                "timestamps": ANY,
+                "lamella_statistics": {
+                    "image_pixel_size_m": [
+                        sem_image.metadata.pixel_size.x,
+                        sem_image.metadata.pixel_size.y,
+                    ],
+                    "prediction_pixel_size_m": ANY,
+                    "crack_count": 0,
+                    "lamella_thickness_prediction_px": ANY,
+                    "crack_thickness_prediction_px": ANY,
+                    "estimated_milling_time_s": ANY,
+                    "lamella_bounding_box_prediction_px": ANY,
+                    "xlims_prediction_px": ANY,
+                    "lamella_bounding_box_image_px": ANY,
+                    "xlims_image_px": ANY,
+                    "gis_thickness_image_px": expected_gis_thickness.tolist(),
+                    "gis_thickness_filtered_image_px": expected_filtered_gis_thicknesses[
+                        i
                     ]
-                ]
-                * max_checks,
-                dtype=object,
-            ),
-            "gis_thickness_filtered_um": pd.Series(
-                [_.tolist() for _ in expected_filtered_gis_thicknesses], dtype=object
-            ),
-            "xlims_px": pd.Series(
-                [
-                    (0, len(expected_gis_thickness) - 1)
-                    for _ in range(len(expected_filtered_gis_thicknesses))
-                ],
-                dtype=object,
-            ),
-        }
-    )
+                    .astype(np.float_)
+                    .tolist(),
+                    "gis_thickness_min_image_px": float(
+                        expected_min_gis_thicknesses[i]
+                    ),
+                    "gis_thickness_median_image_px": float(
+                        np.nanmedian(expected_filtered_gis_thicknesses[i])
+                    ),
+                    "gis_thickness_mean_image_px": float(
+                        np.nanmean(expected_filtered_gis_thicknesses[i])
+                    ),
+                },
+            }
+            for i in range(max_checks)
+        ],
+    }
 
-    detailed_results_df = pd.read_csv(detailed_results_path, index_col=0)
-    detailed_results_df = pd.read_json(detailed_results_path)
-    first_gis_thicknesses = detailed_results_df.loc[0, "gis_thickness_um"]
-    assert isinstance(first_gis_thicknesses, list), "gis_thickness_um is not a list"
-    assert len(first_gis_thicknesses) == sem_res[0], (
-        "Unexpected length of gis_thickness_um"
-    )
-    pd.testing.assert_frame_equal(
-        detailed_results_df,
-        expected_detailed_results_df,
-        check_dtype=False,
-        obj="Detailed results DataFrame",
+    with results_path.open("r") as f:
+        results_dict = json.loads(f.read())
+
+    assert_results_dicts_equal(
+        results_dict, expected_results, allow_missing_expected=False
     )
 
 
@@ -651,7 +714,7 @@ def test_check_lamella(
     ap_config = ap_strategy.AdaptivePolishMillingConfig(
         model_generation=latest_sem_segmentation_model[0],
         model_path=str(latest_sem_segmentation_model[1]),
-        **pass_checks_kwargs,
+        **pass_checks_kwargs,  # type: ignore[arg-type]
     )
 
     strategy = ap_strategy.AdaptivePolishMillingStrategy(config=ap_config)
@@ -668,11 +731,11 @@ def test_check_lamella(
 
     with utils.assert_raises(info_exception):
         lamella_info = strategy._get_lamella_info(
-            milling_cycle=milling_cycle,
-            identifier=image_name,
+            cycle_info=CycleInformation(
+                milling_cycle=milling_cycle, identifier=image_name
+            ),
             sem_image=sem_image,
             fib_image=fib_image,
-            milling_stage=stage,
             lamella_pad_x=0,
         )
 
@@ -684,12 +747,20 @@ def test_check_lamella(
         )
 
     for key, value in lamella_info.statistics.to_dict().items():
-        if not saves_results and key in (
-            "lamella_bounding_box_px",
-            "gis_thickness_um",
-            "xlims_px",
-            "gis_thickness_filtered_um",
-            "min_GIS_um",
+        if key == "estimated_milling_time_s":
+            # Not set in this test, as that is done by _mill
+            assert value is None, f"{key} should be None"
+        elif not saves_results and key in (
+            "lamella_bounding_box_prediction_px",
+            "lamella_bounding_box_image_px",
+            "gis_thickness_image_px",
+            "xlims_prediction_px",
+            "xlims_image_px",
+            "gis_thickness_image_px",
+            "gis_thickness_filtered_image_px",
+            "gis_thickness_min_image_px",
+            "gis_thickness_median_image_px",
+            "gis_thickness_mean_image_px",
         ):
             assert value is None, f"{key} should be None"
         else:

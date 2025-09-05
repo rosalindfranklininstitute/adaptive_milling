@@ -132,7 +132,7 @@ def test_runs(
     )
 
     # Set stage imaging settings
-    milling_stages[0].imaging.resolution = [3072, 2048]
+    milling_stages[0].imaging.resolution = (3072, 2048)
     milling_stages[0].imaging.hfw = 4e-5
     milling_stages[0].imaging.dwell_time = 2e-7
     milling_stages[0].imaging.frame_integration = 2
@@ -178,7 +178,7 @@ def test_runs(
     # Plots (png)
     centring_plot_path = adaptive_polish_dir / "centring.png"
     assert centring_plot_path.is_file(), f"{centring_plot_path.name} was not created"
-    gis_thickness_plot_path = adaptive_polish_dir / "lamella_GIS_thickness.png"
+    gis_thickness_plot_path = adaptive_polish_dir / "AP_summary_plots.png"
     assert gis_thickness_plot_path.is_file(), (
         f"{gis_thickness_plot_path.name} plot was not created"
     )
@@ -192,14 +192,9 @@ def test_runs(
     )
 
     # Results (csv)
-    results_paths = set(adaptive_polish_dir.glob("*.json"))
-    assert len(results_paths), "No results have been created"
-    expected_results_file_names = ("GIS_thickness.json", "GIS_thickness_detailed.json")
-    expected_results_paths = set(
-        (adaptive_polish_dir / _ for _ in expected_results_file_names)
-    )
-    assert results_paths == expected_results_paths, (
-        "Expected results file paths do not match found .csv paths"
+    expected_results_file_name = adaptive_polish_dir / "AP_metadata.json"
+    assert expected_results_file_name.is_file(), (
+        f"{expected_results_file_name.name} plot was not created"
     )
 
     # FIB and SEM images (tif)

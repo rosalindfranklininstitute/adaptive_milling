@@ -17,9 +17,9 @@ from adaptive_polish.dl_segmentation.sem_lamella_segmentor import SegmentationLa
 
 if typing.TYPE_CHECKING:
     from os import PathLike
-    from pandas import DataFrame
     from numpy.typing import NDArray, ArrayLike
     from fibsem.structures import FibsemImage
+    from adaptive_polish._dataclasses import StrategyRunInformation
 
 _logger = logging.getLogger(__name__)
 
@@ -149,13 +149,13 @@ def create_milling_cycle_plot(
     first_prediction: NDArray[np.integer[typing.Any]],
     clean_prediction: NDArray[np.integer[typing.Any]],
     gis_thickness_um: ArrayLike | None = None,
+    gis_thickness_min_um: float | None = None,
     crack_area_um2: float | None = None,
-    min_gis_um: float | None = None,
     gis_stop_threshold_um: float | None = None,
     milling_stage: FibsemMillingStage | None = None,
     total_milling_time: float | None = None,
     max_crack_area_um2: float | None = None,
-    xlims: tuple[int, int] | None = None,
+    image_xlims: tuple[int, int] | None = None,
     img_name: str | None = None,
     gis_ymax_um: float = 2,
 ) -> None:
@@ -184,11 +184,10 @@ def create_milling_cycle_plot(
     plot_segmentation_overlay(
         axs[0, 2], sem_image=sem_image.data, prediction=clean_prediction
     )
+    if image_xlims is not None:
+        axs[0, 2].axvline(x=image_xlims[0], color="C4")
+        axs[0, 2].axvline(x=image_xlims[1], color="C4")
     axs[0, 2].axis("off")
-
-    if xlims is not None:
-        axs[0, 2].axvline(x=xlims[0], color="C4")
-        axs[0, 2].axvline(x=xlims[1], color="C4")
 
     _crack_title = "SEM cleaned segmentation"
     _crack_subtitle: list[str] = []
@@ -241,14 +240,14 @@ def create_milling_cycle_plot(
                 colors="red",
             )
 
-        if xlims is not None:
-            axs[1, 2].axvline(x=xlims[0], color="C4")
-            axs[1, 2].axvline(x=xlims[1], color="C4")
+        if image_xlims is not None:
+            axs[1, 2].axvline(x=image_xlims[0], color="C4")
+            axs[1, 2].axvline(x=image_xlims[1], color="C4")
 
     _gis_title = "GIS thickness"
     _gis_subtitle: list[str] = []
-    if min_gis_um is not None:
-        _gis_subtitle.append(rf"Minimum {min_gis_um:.3f} $\mu m$")
+    if gis_thickness_min_um is not None:
+        _gis_subtitle.append(rf"Minimum {gis_thickness_min_um:.3f} $\mu m$")
     if gis_stop_threshold_um is not None:
         _gis_subtitle.append(f"(threshold {gis_stop_threshold_um:.3f})")
     if _gis_subtitle:
@@ -261,16 +260,52 @@ def create_milling_cycle_plot(
     plt.close(fig)
 
 
-def create_summary_gis_plot(results: DataFrame, save_path: typing.Union[str, PathLike]):
+def create_summary_gis_plot(
+    run_info: StrategyRunInformation, save_path: str | PathLike[str]
+):
+    milling_times: list[float | None] = []
+    min_gis_thicknesses: list[float | None] = []
+    mean_gis_thicknesses: list[float | None] = []
+    median_gis_thicknesses: list[float | None] = []
+    for cycle_info in run_info.cycle_information:
+        if cycle_info.lamella_statistics is None:
+            milling_times.append(None)
+            min_gis_thicknesses.append(None)
+            mean_gis_thicknesses.append(None)
+            median_gis_thicknesses.append(None)
+        else:
+            milling_times.append(cycle_info.lamella_statistics.estimated_milling_time_s)
+            min_gis_thicknesses.append(
+                cycle_info.lamella_statistics.gis_thickness_min_um
+            )
+            mean_gis_thicknesses.append(
+                cycle_info.lamella_statistics.gis_thickness_mean_um
+            )
+            median_gis_thicknesses.append(
+                cycle_info.lamella_statistics.gis_thickness_median_um
+            )
     _logger.debug("Creating GIS summary plot")
     save_path = Path(save_path)
     fig, ax = plt.subplots(1, 1)
+    cumulative_milling_time = np.nancumsum(np.asarray(milling_times, dtype=np.float_))
     ax.plot(
-        results.milling_time_s,
-        results.min_GIS_um,
-        label=r"Minimum GIS thickness $\mu m$",
+        cumulative_milling_time,
+        np.asarray(min_gis_thicknesses, dtype=np.float_),
+        label="Minimum",
     )
-    ax.set_xlabel(r"Milling Time $s$")
+    ax.plot(
+        cumulative_milling_time,
+        np.asarray(median_gis_thicknesses, dtype=np.float_),
+        label="Mean",
+        linestyle=":",
+    )
+    ax.plot(
+        cumulative_milling_time,
+        np.asarray(median_gis_thicknesses, dtype=np.float_),
+        label="Median",
+        linestyle="--",
+    )
+    ax.set_xlabel(r"Estimated Milling Time $s$")
     ax.set_ylabel(r"GIS Thickness $\mu m$")
     fig.suptitle(save_path.stem)
     fig.tight_layout()

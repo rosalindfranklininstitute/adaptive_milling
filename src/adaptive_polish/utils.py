@@ -1,7 +1,10 @@
 from __future__ import annotations
+import json
 from pathlib import Path
-import pandas as pd
-from typing import Protocol, TypeVar, overload
+from typing import Protocol, TypeVar, overload, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from os import PathLike
 
 _TMulDiv = TypeVar("_TMulDiv", bound="_SupportsMulDiv")
 
@@ -76,23 +79,6 @@ def ensure_subdirectories(directory: Path, *subdirectory_names: str) -> list[Pat
     return directories
 
 
-def setup_results_df() -> tuple[pd.DataFrame, pd.DataFrame]:
-    results = pd.DataFrame(
-        {
-            "image": [],
-            "milling_time_s": [],
-            "min_GIS_um": [],
-            "crack_area_um2": [],
-        }
-    )
-
-    gis_results_detailed = pd.DataFrame(
-        {
-            "image": [],
-            "milling_time_s": [],
-            "gis_thickness_um": pd.Series([], dtype=object),
-            "gis_thickness_filtered_um": pd.Series([], dtype=object),
-            "xlims_px": pd.Series([], dtype=object),
-        }
-    )
-    return results, gis_results_detailed
+def save_dict_as_json(d: dict[str, Any], path: str | PathLike[str]) -> None:
+    with Path(path).open("w+") as f:
+        f.write(json.dumps(d))
