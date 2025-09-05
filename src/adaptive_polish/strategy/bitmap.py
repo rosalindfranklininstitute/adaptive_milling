@@ -24,7 +24,6 @@ if TYPE_CHECKING:
     from pathlib import Path
     from numpy.typing import NDArray
     from fibsem.milling import FibsemMillingStage
-    from fibsem.structures import Point
     from adaptive_polish._dataclasses import LamellaInformation, LamellaStatistics
 
 _logger = logging.getLogger(__name__)
@@ -51,23 +50,16 @@ class BitmapAdaptivePolishMillingStrategy(
         elif sem_image.metadata is None:
             raise ValueError("SEM image has no metadata")
 
-        fib_pixel_size = fib_image.metadata.pixel_size
-        sem_pixel_size = sem_image.metadata.pixel_size
-
         pattern = stage.pattern
 
         if isinstance(pattern, TrenchPattern):
             new_pattern = self._convert_trench_pattern(
                 pattern,
-                fib_pixel_size=fib_pixel_size,
-                sem_pixel_size=sem_pixel_size,
                 stats=stats,
             )
         elif isinstance(pattern, RectanglePattern):
             new_pattern = self._convert_rectangle_pattern(
                 pattern,
-                fib_pixel_size=fib_pixel_size,
-                sem_pixel_size=sem_pixel_size,
                 stats=stats,
             )
         else:
@@ -89,27 +81,10 @@ class BitmapAdaptivePolishMillingStrategy(
     def _convert_trench_pattern(
         self,
         pattern: TrenchPattern,
-        fib_pixel_size: Point,
-        sem_pixel_size: Point,
         stats: LamellaStatistics,
     ) -> TrenchBitmapPattern:
-        upper_dimensions_px = (
-            BitmapAdaptivePolishMillingStrategy._get_milling_pixel_dimensions(
-                (pattern.upper_trench_height, pattern.width),
-                (fib_pixel_size.y, fib_pixel_size.x),
-            )
-        )
-        lower_dimensions_px = (
-            BitmapAdaptivePolishMillingStrategy._get_milling_pixel_dimensions(
-                (pattern.lower_trench_height, pattern.width),
-                (fib_pixel_size.y, fib_pixel_size.x),
-            )
-        )
-
         bitmap_array = self.create_bitmap_array(
             pattern=pattern,
-            fib_pixel_size_x=fib_pixel_size.x,
-            sem_pixel_size_x=sem_pixel_size.x,
             stats=stats,
         )
         if pattern.time != 0:
@@ -125,28 +100,16 @@ class BitmapAdaptivePolishMillingStrategy(
             upper_trench_height=pattern.upper_trench_height,
             lower_trench_height=pattern.lower_trench_height,
             time=pattern.time,
-            array=np.tile(bitmap_array, (upper_dimensions_px[0], 1, 1)),
-            array_lower=np.tile(bitmap_array, (lower_dimensions_px[0], 1, 1)),
+            array=bitmap_array,
         )
 
     def _convert_rectangle_pattern(
         self,
         pattern: RectanglePattern,
-        fib_pixel_size: Point,
-        sem_pixel_size: Point,
         stats: LamellaStatistics,
     ) -> BitmapPattern:
-        dimensions_px = (
-            BitmapAdaptivePolishMillingStrategy._get_milling_pixel_dimensions(
-                (pattern.height, pattern.width),
-                (fib_pixel_size.y, fib_pixel_size.x),
-            )
-        )
-
         bitmap_array = self.create_bitmap_array(
             pattern=pattern,
-            fib_pixel_size_x=fib_pixel_size.x,
-            sem_pixel_size_x=sem_pixel_size.x,
             stats=stats,
         )
 
@@ -164,9 +127,8 @@ class BitmapAdaptivePolishMillingStrategy(
             time=pattern.time,
             passes=pattern.passes,
             scan_direction=pattern.scan_direction,
-            array=np.tile(bitmap_array, (dimensions_px[0], 1, 1)),
+            array=bitmap_array,
         )
-
 
     @staticmethod
     def _get_milling_pixel_dimensions(
@@ -220,8 +182,6 @@ class BitmapAdaptivePolishMillingStrategy(
     def create_bitmap_array(
         self,
         pattern: RectanglePattern | TrenchPattern,
-        fib_pixel_size_x: float,
-        sem_pixel_size_x: float,
         stats: LamellaStatistics,
     ) -> NDArray:
         if stats.gis_thickness_um is None:
@@ -237,7 +197,7 @@ class BitmapAdaptivePolishMillingStrategy(
             else self.config.gis_min_um
         )
 
-        lamella_width_px = int(round(pattern.width / fib_pixel_size_x))
+        lamella_width_px = int(round(pattern.width / stats.image_pixel_size_m[0]))
 
         gis_thickness_um = np.asarray(stats.gis_thickness_filtered_um, dtype=np.float32)
         lamella_thickness_um = np.asarray(stats.lamella_thickness_um, dtype=np.float32)
@@ -252,8 +212,6 @@ class BitmapAdaptivePolishMillingStrategy(
         bitmap_array = create_bitmap_array(
             gis_thickness_m=gis_thickness_um * 1e-6,
             xlims=new_x_lims,
-            gis_resolution_m=sem_pixel_size_x,
-            bitmap_resolution_m=fib_pixel_size_x,
             min_dwell_thickness_m=min_dwell_thickness_um * 1e-6,
             max_dwell_thickness_m=self.config.gis_max_um * 1e-6,
             as_image=False,
