@@ -15,9 +15,11 @@ from adaptive_polish.strategy import AdaptivePolishMillingStrategy
 from adaptive_polish.config import BitmapAdaptivePolishMillingConfig
 from adaptive_polish.processing.bitmap import create_bitmap_array
 from adaptive_polish.processing.lamella import find_milling_edges
+from adaptive_polish.plot import create_milling_cycle_plot
 
 if TYPE_CHECKING:
     from typing import ClassVar
+    from pathlib import Path
     from fibsem.milling import FibsemMillingStage
 
     from adaptive_polish._dataclasses import LamellaInformation
@@ -168,4 +170,31 @@ class BitmapAdaptivePolishMillingStrategy(
         return (
             int(round(dimensions[0] / fib_pixel_size_m[0])),
             int(round(dimensions[1] / fib_pixel_size_m[1])),
+        )
+
+    def _create_milling_cycle_plot(
+        self,
+        plots_directory: Path,
+        lamella_info: LamellaInformation,
+        stage: FibsemMillingStage | None,
+    ) -> None:
+        stats = lamella_info.statistics
+        # Create plots
+        create_milling_cycle_plot(
+            save_path=plots_directory / f"{lamella_info.identifier}_plot.png",
+            sem_image=lamella_info.sem_image,
+            fib_image=lamella_info.fib_image,
+            first_prediction=lamella_info.prediction,
+            clean_prediction=lamella_info.clean_prediction,
+            gis_thickness_um=stats.gis_thickness_filtered_um,
+            crack_area_um2=stats.crack_area_um2,
+            min_gis_um=stats.min_GIS_um,
+            gis_stop_threshold_um=self.config.gis_stop_um,
+            gis_min_threshold_um=self.config.gis_min_um,
+            gis_max_threshold_um=self.config.gis_max_um,
+            milling_stage=stage,
+            xlims=stats.xlims_px,
+            total_milling_time=stats.milling_time_s,
+            max_crack_area_um2=self.config.max_crack_area_um2,
+            img_name=lamella_info.identifier,
         )
