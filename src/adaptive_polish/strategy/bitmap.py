@@ -1,6 +1,5 @@
 from __future__ import annotations
 import logging
-import math
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -15,7 +14,7 @@ from fibsem.milling.patterning import (
 from adaptive_polish.strategy import AdaptivePolishMillingStrategy
 from adaptive_polish.config import BitmapAdaptivePolishMillingConfig
 from adaptive_polish.processing.bitmap import create_bitmap_array
-from adaptive_polish.processing.lamella import find_milling_edges
+from adaptive_polish.processing.lamella import crop_xlims_centre
 from adaptive_polish.plot import create_milling_cycle_plot
 from adaptive_polish.exceptions import StopMillingException
 
@@ -173,11 +172,7 @@ class BitmapAdaptivePolishMillingStrategy(
         lamella_thickness: NDArray[np.float32 | np.float64],
         xlims: tuple[int, int],
     ) -> tuple[int, int]:
-        crop_amount = (1 + xlims[1] - xlims[0] - lamella_width) / 2
-        return (
-            xlims[0] + math.floor(crop_amount),
-            xlims[1] - math.ceil(crop_amount),
-        )
+        return crop_xlims_centre(lamella_width=lamella_width, xlims=xlims)
 
     def create_bitmap_array(
         self,
