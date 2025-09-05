@@ -359,7 +359,7 @@ def get_gis_thickness(
     return sliced_gis_thickness, xlims_out
 
 
-def find_milling_edges(
+def crop_xlims_minimum(
     lamella_thickness: NDArray[np.float32],
     gis_thickness: NDArray[np.float32],
     lamella_width: int,
@@ -374,3 +374,14 @@ def _get_minimum_area(data: NDArray[np.float32], width: int):
     window_sums = cumsum[width:] - cumsum[:-width]
     idx = int(np.argmin(window_sums))
     return (idx, idx + width)
+
+
+def crop_xlims_centre(
+    lamella_width: float,
+    xlims: tuple[int, int],
+) -> tuple[int, int]:
+    crop_amount = round((1 + xlims[1] - xlims[0] - lamella_width) / 2)
+    return (
+        xlims[0] + floor(crop_amount),
+        xlims[1] - ceil(crop_amount),
+    )
