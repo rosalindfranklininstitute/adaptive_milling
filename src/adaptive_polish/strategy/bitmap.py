@@ -183,7 +183,7 @@ class BitmapAdaptivePolishMillingStrategy(
         elif stats.lamella_thickness_um is None:
             raise ValueError('"lamella_thickness_um" is not available')
         elif stats.xlims_image_px is None:
-            raise ValueError('"xlims_px" is not defined')
+            raise ValueError('"xlims_image_px" is not defined')
 
         min_dwell_thickness_um = (
             self.config.gis_stop_um
