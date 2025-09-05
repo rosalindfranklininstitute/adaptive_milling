@@ -1,6 +1,7 @@
 from __future__ import annotations
 import logging
-import typing
+from typing import TYPE_CHECKING
+
 import numpy as np
 
 from fibsem.milling.patterning import (
@@ -15,10 +16,9 @@ from adaptive_polish.config import BitmapAdaptivePolishMillingConfig
 from adaptive_polish.bitmaps import create_bitmap_array
 from adaptive_polish.gis_measurement import find_milling_edges
 
-if typing.TYPE_CHECKING:
+if TYPE_CHECKING:
+    from typing import ClassVar
     from fibsem.milling import FibsemMillingStage
-    from fibsem.microscope import FibsemMicroscope
-    from fibsem.structures import FibsemImage, ImageSettings, Point
 
     from adaptive_polish._dataclasses import LamellaInformation
 
@@ -31,71 +31,13 @@ class BitmapAdaptivePolishMillingStrategy(
 ):
     name: str = "BitmapAdaptivePolishing"
     fullname: str = "Adaptive polishing using bitmap milling"
-    config_class: typing.ClassVar[typing.Type[BitmapAdaptivePolishMillingConfig]] = (
+    config_class: ClassVar[type[BitmapAdaptivePolishMillingConfig]] = (
         BitmapAdaptivePolishMillingConfig
     )
 
-    def _run_milling_cycle(
-        self,
-        milling_cycle: int,
-        identifier: str,
-        fib_imaging_settings: ImageSettings,
-        sem_imaging_settings: ImageSettings,
-        plots_directory: Path,
-        results_dict: dict[str, typing.Any],
-        microscope: FibsemMicroscope,
-        stage: FibsemMillingStage,
-        expected_lamella_centre_m: Point | None,
-        mill: bool = True,
-        asynch: bool = False,
-        parent_ui=None,
-    ) -> None:
-        # Acquire images
-        _logger.info(
-            "Acquiring images for milling cycle %i/%i",
-            milling_cycle,
-            self.config.max_milling_cycles,
-        )
-
-        sem_imaging_settings.filename = f"{identifier}_SEM.tif"
-        sem_image = self._acquire_image(microscope, sem_imaging_settings)
-        fib_imaging_settings.filename = f"{identifier}_FIB.tif"
-        fib_image = self._acquire_image(microscope, fib_imaging_settings)
-
-        lamella_info = self._get_lamella_info(
-            milling_cycle=milling_cycle,
-            identifier=identifier,
-            sem_image=sem_image,
-            fib_image=fib_image,
-            milling_stage=stage,
-        )
-        self._check_lamella(
-            lamella_info=lamella_info,
-            plots_directory=plots_directory,
-            expected_lamella_centre_m=expected_lamella_centre_m,
-        )
-
-        results_dict["image"] = identifier
-        results_dict.update(lamella_info.statistics.to_dict())
-
-        if mill:
-            patterns = self._create_bitmap_patterns(
-                lamella_info=lamella_info, milling_stage=stage
-            )
-            self._mill(
-                milling_cycle,
-                microscope=microscope,
-                stage=stage,
-                patterns=patterns,
-                asynch=asynch,
-                parent_ui=parent_ui,
-            )
-
-    def _create_bitmap_patterns(
-        self,
-        lamella_info: LamellaInformation,
-        milling_stage: FibsemMillingStage,
-    ) -> list[FibsemBitmapSettings]:
+    def _update_milling_stage(
+        self, stage: FibsemMillingStage, lamella_info: LamellaInformation
+    ) -> FibsemMillingStage:
         fib_image = lamella_info.fib_image
         sem_image = lamella_info.sem_image
         stats = lamella_info.statistics
@@ -116,7 +58,7 @@ class BitmapAdaptivePolishMillingStrategy(
         gis_thickness_um = np.asarray(stats.gis_thickness_um, dtype=np.float32)
         lamella_thickness_um = np.asarray(stats.lamella_thickness_um, dtype=np.float32)
 
-        pattern = milling_stage.pattern
+        pattern = stage.pattern
         min_dwell_thickness_um = (
             self.config.gis_stop_um
             if self.config.gis_min_um is None
@@ -208,7 +150,16 @@ class BitmapAdaptivePolishMillingStrategy(
                 f"Invalid pattern type {pattern.name}, only {TrenchPattern.name} and {RectanglePattern.name} are supported"
             )
 
-        return new_pattern.define()
+        stage = super()._update_milling_stage(stage=stage, lamella_info=lamella_info)
+        stage.pattern = new_pattern
+
+        _logger.info(
+            "Created new %s for %s",
+            new_pattern.name,
+            stage.name,
+        )
+
+        return stage
 
     @staticmethod
     def _get_milling_pixel_dimensions(
