@@ -403,3 +403,43 @@ def test_clean_prediction() -> None:
         prediction,
         err_msg="Prediction cleaning has not worked as expected",
     )
+
+@pytest.mark.parametrize("with_crack", [True, False], ids=["crack", "no crack"])
+def test_find_lamella_edges_area(with_crack: bool) -> None:
+    background_lamella_overlap = 20
+    image_shape: tuple[int, int] = (200, 250)
+    lamella_bbox: tuple[int, int, int, int] = (10, 50, 70, 150)
+    vacuum_bottom_pixels = 3
+
+    prediction, _, _ = _create_mock_prediction_gis_thickness(
+        image_shape,
+        lamella_bbox,
+        background_lamella_overlap,
+        vacuum_bottom_pixels,
+        add_crack=with_crack,
+    )
+
+    expected_lamella_edges: tuple[int, int] = (lamella_bbox[1], lamella_bbox[3])
+    lamella_width: int = lamella_bbox[3] - lamella_bbox[1]
+
+    gis_thickness, xlims = gm.get_gis_thickness(
+        prediction,
+        xlims=gm.bbox_to_xlims(lamella_bbox, x_bounds=(0, image_shape[1]), pad=10),
+        ylims=gm.bbox_to_ylims(lamella_bbox, y_bounds=(0, image_shape[0]), pad=0),
+    )
+
+    cropped_lamella_edges = gm.find_milling_edges(
+        lamella_thickness=np.sum(prediction == SegmentationLabels.LAMELLA, axis=0)[
+            xlims[0] : xlims[1] + 1
+        ],
+        gis_thickness=gis_thickness[xlims[0] : xlims[1] + 1],
+        lamella_width=lamella_width,
+    )
+    lamella_edges = (
+        cropped_lamella_edges[0] + xlims[0],
+        cropped_lamella_edges[1] + xlims[0],
+    )
+
+    assert lamella_edges == expected_lamella_edges, (
+        f"Edges don't match, expected {expected_lamella_edges} but got {lamella_edges}"
+    )
