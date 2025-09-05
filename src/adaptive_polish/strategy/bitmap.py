@@ -57,7 +57,7 @@ class BitmapAdaptivePolishMillingStrategy(
 
         fib_pixel_size = fib_image.metadata.pixel_size
         sem_pixel_size = sem_image.metadata.pixel_size
-        gis_thickness_um = np.asarray(stats.gis_thickness_um, dtype=np.float32)
+        gis_thickness_um = np.asarray(stats.gis_thickness_filtered_um, dtype=np.float32)
         lamella_thickness_um = np.asarray(stats.lamella_thickness_um, dtype=np.float32)
 
         pattern = stage.pattern
