@@ -2,14 +2,12 @@ from __future__ import annotations
 import logging
 import typing
 import numpy as np
-from pathlib import Path
 
-from fibsem.milling.patterning.patterns2 import (
+from fibsem.milling.patterning import (
     TrenchPattern,
     RectanglePattern,
-    # TrenchBitmapPattern,
+    TrenchBitmapPattern,
     BitmapPattern,
-    FibsemBitmapSettings,
 )
 
 from adaptive_polish.strategy import AdaptivePolishMillingStrategy
@@ -157,16 +155,17 @@ class BitmapAdaptivePolishMillingStrategy(
                 as_image=False,
             )
 
-            new_pattern = BitmapTrenchPattern(
+            new_pattern = TrenchBitmapPattern(
                 width=pattern.width,
                 spacing=pattern.spacing,
                 depth=pattern.depth,
                 upper_trench_height=pattern.upper_trench_height,
                 lower_trench_height=pattern.lower_trench_height,
                 time=pattern.time,
-                lower_bitmap=np.tile(bitmap_array, (lower_dimensions_px[0], 0)),
-                upper_bitmap=np.tile(bitmap_array, (upper_dimensions_px[0], 0)),
+                array=np.tile(bitmap_array, (upper_dimensions_px[0], 0)),
+                array_lower=np.tile(bitmap_array, (lower_dimensions_px[0], 0)),
             )
+
         elif isinstance(pattern, RectanglePattern):
             dimensions_px = (
                 BitmapAdaptivePolishMillingStrategy._get_milling_pixel_dimensions(
@@ -201,8 +200,9 @@ class BitmapAdaptivePolishMillingStrategy(
                 time=pattern.time,
                 passes=pattern.passes,
                 scan_direction=pattern.scan_direction,
-                bitmap=np.tile(bitmap_array, (dimensions_px[0], 0)),
+                array=np.tile(bitmap_array, (dimensions_px[0], 0)),
             )
+
         else:
             raise TypeError(
                 f"Invalid pattern type {pattern.name}, only {TrenchPattern.name} and {RectanglePattern.name} are supported"
