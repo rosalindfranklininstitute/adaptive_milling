@@ -23,7 +23,6 @@ if TYPE_CHECKING:
     from pathlib import Path
     from numpy.typing import NDArray
     from fibsem.milling import FibsemMillingStage
-    from fibsem.structures import Point
     from adaptive_polish._dataclasses import LamellaInformation, LamellaStatistics
 
 _logger = logging.getLogger(__name__)
