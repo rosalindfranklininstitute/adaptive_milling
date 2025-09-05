@@ -144,7 +144,7 @@ class BitmapAdaptivePolishMillingStrategy(
                 time=pattern.time,
                 passes=pattern.passes,
                 scan_direction=pattern.scan_direction,
-                array=np.tile(bitmap_array, (dimensions_px[0], 0)),
+                array=np.tile(bitmap_array, (dimensions_px[0], 1, 1)),
             )
 
         else:
