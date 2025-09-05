@@ -101,7 +101,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         parent_ui=None,  # what does this do
     ) -> None:
         """Run adaptive polishing
-        #TODO: improve docs
 
         Args:
             microscope (FibsemMicroscope): See `fibsem.microscope.FibsemMicroscope`
@@ -393,7 +392,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
     def _get_imaging_settings(
         self, stage: FibsemMillingStage
     ) -> tuple[ImageSettings, ImageSettings]:
-        # TODO: Figure out how to get lamella directory without assuming previous image's path was correct
         fib_imaging_settings = deepcopy(stage.imaging)
         sem_imaging_settings = deepcopy(stage.imaging)
 
@@ -452,9 +450,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         crack_thickness = np.sum(mask_crack_clean, axis=0)
 
         crack_count = gm.count_objects(mask_crack_clean)
-
-        # TODO: Save pixels and pixel sizes instead (allows for back calculating based on angle later but will be annoying for plotting)
-        # Also, specify prediction vs image pixels in the name.
 
         # Save guaranteed values
         statistics = LamellaStatistics(
