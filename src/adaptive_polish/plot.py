@@ -152,6 +152,8 @@ def create_milling_cycle_plot(
     gis_thickness_min_um: float | None = None,
     crack_area_um2: float | None = None,
     gis_stop_threshold_um: float | None = None,
+    gis_min_threshold_um: float | None = None,
+    gis_max_threshold_um: float | None = None,
     milling_stage: FibsemMillingStage | None = None,
     total_milling_time: float | None = None,
     max_crack_area_um2: float | None = None,
@@ -230,6 +232,24 @@ def create_milling_cycle_plot(
         axs[1, 2].set_xlim(0, len(gis_thickness_um))
         axs[1, 2].set_ylim(0, gis_ymax_um)
 
+        if gis_min_threshold_um is not None:
+            axs[1, 2].hlines(
+                y=gis_min_threshold_um,
+                xmin=0,
+                xmax=len(gis_thickness_um),
+                label="Minimum dwell threshold",
+                linestyles="dashed",
+                colors="orange",
+            )
+        if gis_max_threshold_um is not None:
+            axs[1, 2].hlines(
+                y=gis_max_threshold_um,
+                xmin=0,
+                xmax=len(gis_thickness_um),
+                label="Full dwell threshold",
+                linestyles="dashed",
+                colors="green",
+            )
         if gis_stop_threshold_um is not None:
             axs[1, 2].hlines(
                 y=gis_stop_threshold_um,
