@@ -1,19 +1,21 @@
 from __future__ import annotations
 import time
+from dataclasses import asdict, dataclass, field, fields
 from functools import cached_property
-from dataclasses import dataclass, asdict, field
 from types import TracebackType
 from typing import TYPE_CHECKING
 
 import numpy as np
+import pandas as pd
 
 from adaptive_polish.enums import StopReasons
 
 if TYPE_CHECKING:
     from typing import Any
+
     import numpy as np
-    from numpy.typing import NDArray
     from fibsem.structures import FibsemImage
+    from numpy.typing import NDArray
 
 
 @dataclass
@@ -21,6 +23,12 @@ class ProcessTimestamps:
     start: float | None = None
     end: float | None = None
     exception: str | None = None
+
+    @property
+    def duration(self) -> float | None:
+        if self.start is None or self.end is None:
+            return None
+        return self.end - self.start
 
     def __enter__(self) -> None:
         self.start = time.time()
@@ -35,6 +43,10 @@ class ProcessTimestamps:
         if exc_val is not None:
             self.exception = f"{exc_val.__class__.__name__}({exc_val})"
 
+    def to_dict(self) -> dict[str, Any]:
+        ddict = asdict(self)
+        ddict["duration"] = self.duration
+        return ddict
 
 @dataclass
 class CycleTimestamps:
@@ -82,6 +94,113 @@ class StrategyRunInformation:
             reason = reason.value
         self.strategy_end_reason = reason
 
+    def to_dataframe(self) -> pd.DataFrame:
+        """Convert strategy run information into a pandas DataFrame."""
+
+        base_data: dict[str, Any] = {
+            "strategy_name": self.strategy_name,
+            "stage_name": self.stage_name,
+            "lamella_name": self.lamella_name,
+            "strategy_end_reason": self.strategy_end_reason,
+        }
+
+        # Add strategy timestamps
+        for field_info in fields(self.timestamps):
+            process_timestamps: ProcessTimestamps = getattr(self.timestamps, field_info.name)
+            for key, val in process_timestamps.to_dict().items():
+                base_data[f"strategy_{field_info.name}_{key}"] = val
+        # return df
+        records = []
+        for cycle_info in self.cycle_information:
+            record = base_data.copy()
+            record["milling_cycle"] = cycle_info.milling_cycle
+            record["identifier"] = cycle_info.identifier
+            # Add cycle timestamps
+            for field_info in fields(cycle_info.timestamps):
+                process_timestamps: ProcessTimestamps = getattr(cycle_info.timestamps, field_info.name)
+                for key, val in process_timestamps.to_dict().items():
+                    record[f"cycle_{field_info.name}_{key}"] = val
+            # Add lamella statistics if available
+            if cycle_info.lamella_statistics:
+                for key, val in cycle_info.lamella_statistics.to_summary_dict().items():
+                    record[f"lamella_stat_{key}"] = val
+            records.append(record)
+
+        return pd.DataFrame(records)
+
+    def to_summary_dataframe(self) -> pd.DataFrame:
+        """Return a subset of the dataframe containing duration and summary metrics."""
+
+        df = self.to_dataframe()
+
+        core_columns = [
+            "strategy_name",
+            "stage_name",
+            "lamella_name",
+            "strategy_end_reason",
+        ]
+
+        strategy_duration_columns = [
+            f"strategy_{field_info.name}_duration" for field_info in fields(self.timestamps)
+        ]
+        cycle_duration_columns = [
+            f"cycle_{field_info.name}_duration" for field_info in fields(CycleTimestamps)
+        ]
+        summary_columns = [
+            "lamella_stat_lamella_area_um2",
+            "lamella_stat_gis_thickness_min_um",
+            "lamella_stat_gis_thickness_mean_um",
+            "lamella_stat_crack_count",
+        ]
+
+        desired_columns = (
+            core_columns
+            + strategy_duration_columns
+            + cycle_duration_columns
+            + summary_columns
+        )
+
+        rename_map: dict[str, str] = {
+            "strategy_name": "Strategy Name",
+            "stage_name": "Stage Name",
+            "lamella_name": "Lamella Name",
+            "strategy_end_reason": "Strategy End Reason",
+            "lamella_stat_lamella_area_um2": "Lamella Area (um2)",
+            "lamella_stat_crack_count": "Crack Count",
+            "lamella_stat_gis_thickness_min_um": "GIS Thickness Min (um)",
+            "lamella_stat_gis_thickness_mean_um": "GIS Thickness Mean (um)",
+        }
+
+        for field_info in fields(self.timestamps):
+            col_name = f"strategy_{field_info.name}_duration"
+            label = field_info.name.replace("_", " ").title()
+            rename_map[col_name] = f"Strategy {label} Duration"
+
+        for field_info in fields(CycleTimestamps):
+            col_name = f"cycle_{field_info.name}_duration"
+            label = field_info.name.replace("_", " ").title()
+            rename_map[col_name] = f"Cycle {label} Duration"
+
+        available_columns = [col for col in desired_columns if col in df.columns]
+
+        if not available_columns:
+            renamed_columns = [rename_map.get(col, col) for col in desired_columns]
+            return pd.DataFrame(columns=renamed_columns)
+
+        df = df.loc[:, available_columns]
+
+        df = df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns})
+
+        return df
+
+    def to_final_dataframe(self) -> pd.DataFrame:
+        """Return only the final row of the summary dataframe."""
+
+        summary_df = self.to_summary_dataframe()
+        if summary_df.empty:
+            return summary_df
+        return summary_df.tail(1).reset_index(drop=True)
+
 
 @dataclass
 class LamellaStatistics:
@@ -110,6 +229,38 @@ class LamellaStatistics:
     gis_thickness_min_image_px: float | None = None
     gis_thickness_median_image_px: float | None = None
     gis_thickness_mean_image_px: float | None = None
+
+    def to_summary_dict(self) -> dict[str, Any]:
+        data = {}
+
+        lamella_thickness_um = self.lamella_thickness_um
+        if lamella_thickness_um is None or lamella_thickness_um.size == 0:
+            data["lamella_thickness_um"] = None
+        else:
+            data["lamella_thickness_um"] = float(np.nanmean(lamella_thickness_um))
+
+        gis_thickness_um = self.gis_thickness_um
+        if gis_thickness_um is None or gis_thickness_um.size == 0:
+            data["gis_thickness_um"] = None
+        else:
+            data["gis_thickness_um"] = float(np.nanmean(gis_thickness_um))
+
+        gis_thickness_filtered_um = self.gis_thickness_filtered_um
+        if gis_thickness_filtered_um is None or gis_thickness_filtered_um.size == 0:
+            data["gis_thickness_filtered_um"] = None
+        else:
+            data["gis_thickness_filtered_um"] = float(
+                np.nanmean(gis_thickness_filtered_um)
+            )
+
+        data["crack_area_um2"] = self.crack_area_um2
+        data["lamella_area_um2"] = self.lamella_area_um2
+        data["gis_thickness_min_um"] = self.gis_thickness_min_um
+        data["gis_thickness_mean_um"] = self.gis_thickness_mean_um
+        data["gis_thickness_median_um"] = self.gis_thickness_median_um
+        data["crack_count"] = self.crack_count
+
+        return data
 
     def calculate_gis_statistics(self) -> None:
         if (
