@@ -367,7 +367,7 @@ def get_gis_thickness(
 
 def crop_xlims_minimum(
     lamella_thickness: NDArray[np.float32],
-    gis_thickness: NDArray[np.float32],
+    gis_thickness: NDArray[np.float32 | np.float64],
     lamella_width: int,
 ) -> tuple[int, int]:
     mean_lamella_thickness = lamella_thickness.mean()
