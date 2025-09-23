@@ -364,109 +364,24 @@ def get_gis_thickness(
 
     return sliced_gis_thickness, xlims_out
 
-def crop_xlims_minimum2(
+
+def crop_xlims_convolve(
     gis_thickness: NDArray[np.float32 | np.float64],
     xlims: tuple[int, int],
     lamella_width: int,
-) -> tuple[int, int]:
-    min_diffs = _get_minimum_area(
-        gis_thickness[xlims[0] : xlims[1] + 1], width=lamella_width
-    )
-    return (xlims[0] + min_diffs[0], xlims[0] + min_diffs[1])
-
-
-def crop_xlims_minimum_log(
-    gis_thickness: NDArray[np.float32 | np.float64],
-    xlims: tuple[int, int],
-    lamella_width: int,
-) -> tuple[int, int]:
-    min_diffs = _get_minimum_area(
-        np.log(gis_thickness[xlims[0] : xlims[1] + 1]),
-        width=lamella_width,
-    )
-    return (xlims[0] + min_diffs[0], xlims[0] + min_diffs[1])
-
-def _get_minimum_area(data: NDArray[np.float32 | np.float64], width: int):
-    cumsum = np.concatenate(([0], np.cumsum(data)))
-    window_sums = cumsum[width:] - cumsum[:-width]
-    idx = int(np.argmin(window_sums))
-    return (idx, idx + width)
-
-
-def crop_xlims_milled_log_convolve(
-    gis_thickness: NDArray[np.float32 | np.float64],
-    xlims: tuple[int, int],
-    lamella_width: int,
-    fill_value: float = 0.9,
     edge_size: int = 10,
+    sigma: float = 0.4,
 ) -> tuple[int, int]:
     min_diffs = _get_milled_area_convolve_gaussian(
         np.log(gis_thickness[xlims[0] : xlims[1] + 1]),
         width=lamella_width,
-        fill_value=fill_value,
         edge_size=edge_size,
+        sigma=sigma,
     )
     return (xlims[0] + min_diffs[0], xlims[0] + min_diffs[1])
 
 
 def _get_milled_area_convolve_gaussian(
-    data: NDArray[np.float32 | np.float64],
-    width: int,
-    fill_value: float = 0.9,
-    edge_size: int = 10,
-):
-    kernel = np.full((width,), fill_value=fill_value)
-
-    if edge_size > 0:
-        window_size_px = edge_size
-        if window_size_px % 2 == 0:
-            # An even window size means we won't get central point of the curve
-            window_size_px += 1
-        sigma = window_size_px / 6
-        gaussian_curve = gaussian(window_size_px, std=sigma)
-        gaussian_curve /= gaussian_curve.sum()
-
-        kernel[:window_size_px] = gaussian_curve
-        kernel[-window_size_px:] = gaussian_curve
-
-    conv = np.convolve(data, kernel, mode="valid")
-    idx = int(np.argmin(conv))
-    return (idx, idx + width)
-
-
-def crop_xlims_milled_convolve2(
-    gis_thickness: NDArray[np.float32 | np.float64],
-    xlims: tuple[int, int],
-    lamella_width: int,
-    edge_size: int = 10,
-    sigma: float = 0.4,
-) -> tuple[int, int]:
-    min_diffs = _get_milled_area_convolve_gaussian2(
-        gis_thickness[xlims[0] : xlims[1] + 1],
-        width=lamella_width,
-        edge_size=edge_size,
-        sigma=sigma,
-    )
-    return (xlims[0] + min_diffs[0], xlims[0] + min_diffs[1])
-
-
-def crop_xlims_milled_log_convolve2(
-    gis_thickness: NDArray[np.float32 | np.float64],
-    xlims: tuple[int, int],
-    lamella_width: int,
-    edge_size: int = 10,
-    sigma: float = 0.4,
-) -> tuple[int, int]:
-    min_diffs = _get_milled_area_convolve_gaussian2(
-        np.log(gis_thickness[xlims[0] : xlims[1] + 1]),
-        width=lamella_width,
-        edge_size=edge_size,
-        sigma=sigma,
-    )
-    return (xlims[0] + min_diffs[0], xlims[0] + min_diffs[1])
-
-
-def _get_milled_area_convolve_gaussian2(
     data: NDArray[np.float32 | np.float64],
     width: int,
     edge_size: int = 17,
@@ -482,60 +397,6 @@ def _get_milled_area_convolve_gaussian2(
         trim = ceil((window_size_px - 1) / 2 + sigma * sigma_trim)
         kernel = np.concatenate(
             [gaussian_curve, kernel[trim : width - trim], gaussian_curve],
-            axis=0,
-        )
-
-    conv = np.convolve(data, kernel, mode="valid")
-    idx = int(np.argmin(conv))
-    idx += trim - window_size_px
-    return (idx, idx + width)
-
-
-def crop_xlims_milled_log_convolve3(
-    gis_thickness: NDArray[np.float32 | np.float64],
-    xlims: tuple[int, int],
-    lamella_width: int,
-    fill_value: float = 0.0,
-    edge_size: int = 10,
-    sigma: float = 0.4,
-    sigma_trim: float = 6,
-) -> tuple[int, int]:
-    min_diffs = _get_milled_area_convolve_gaussian3(
-        np.log(gis_thickness[xlims[0] : xlims[1] + 1]),
-        width=lamella_width,
-        fill_value=fill_value,
-        edge_size=edge_size,
-        sigma=sigma,
-        sigma_trim=sigma_trim,
-    )
-    return (xlims[0] + min_diffs[0], xlims[0] + min_diffs[1])
-
-
-def _get_milled_area_convolve_gaussian3(
-    data: NDArray[np.float32 | np.float64],
-    width: int,
-    fill_value: float = 0.9,
-    edge_size: int = 10,
-    sigma: float = 0.4,
-    sigma_trim: float = 6,
-):
-    kernel = np.full((width,), fill_value=fill_value)
-
-    if edge_size > 0:
-        window_size_px = edge_size
-        if window_size_px % 2 == 0:
-            # An even window size means we won't get central point of the curve
-            window_size_px += 1
-        # sigma = window_size_px / 6
-        gaussian_curve = gaussian(window_size_px, std=sigma)
-        gaussian_curve /= gaussian_curve.sum()
-        trim = ceil(window_size_px / 2 + sigma * sigma_trim)
-        kernel = np.concatenate(
-            [
-                gaussian_curve[window_size_px - trim :],
-                kernel[trim : width - trim],
-                gaussian_curve[:trim],
-            ],
             axis=0,
         )
 
