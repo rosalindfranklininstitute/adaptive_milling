@@ -386,19 +386,19 @@ def _get_milled_area_convolve_gaussian(
     width: int,
     edge_size: int = 17,
     sigma: float = 0.7,
-    sigma_trim: float = 6,
 ):
     kernel = np.zeros((width,))
+    if edge_size <= 0:
+        raise ValueError("edge_size must be above 0")
 
-    if edge_size > 0:
-        window_size_px = edge_size
-        gaussian_curve = gaussian(window_size_px, std=sigma)
-        # The gaussian peaks should be 6 sigma pixels inside kernel
-        trim = ceil((window_size_px - 1) / 2 + sigma * sigma_trim)
-        kernel = np.concatenate(
-            [gaussian_curve, kernel[trim : width - trim], gaussian_curve],
-            axis=0,
-        )
+    window_size_px = edge_size
+    gaussian_curve = gaussian(window_size_px, std=sigma)
+    # The gaussian peaks should be 6 sigma pixels inside kernel
+    trim = ceil((window_size_px - 1) / 2 + sigma * 6)
+    kernel = np.concatenate(
+        [gaussian_curve, kernel[trim : width - trim], gaussian_curve],
+        axis=0,
+    )
 
     conv = np.convolve(data, kernel, mode="valid")
     idx = int(np.argmin(conv))
