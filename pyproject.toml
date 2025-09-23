@@ -75,6 +75,7 @@ ui = [
 reporting = [
   "fibsem[reporting]@git+https://github.com/rosalindfranklininstitute/fibsem-os.git",
 ]
+all = ["adaptive_polish[test,dev,scripts,ui,reporting]"]
 
 [tool.setuptools.packages.find]
 where = [
