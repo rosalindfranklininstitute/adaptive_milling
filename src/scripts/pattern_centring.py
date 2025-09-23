@@ -19,17 +19,10 @@ from adaptive_polish.strategy import BitmapAdaptivePolishMillingStrategy
 from adaptive_polish._dataclasses import CycleInformation, CycleTimestamps
 from adaptive_polish.gis_measurement import (
     crop_xlims_centre,
-    crop_xlims_minimum,
     crop_xlims_minimum2,
     crop_xlims_minimum_log,
-    crop_xlims_minimum_log2,
-    crop_xlims_minimum_log10,
-    crop_xlims_minimum_log1p,
-    crop_xlims_minimum_sigmoid,
-    crop_xlims_milled_log,
     crop_xlims_milled_log_convolve,
     crop_xlims_milled_log_convolve2,
-    crop_xlims_milled_log_convolve3,
 )
 
 if typing.TYPE_CHECKING:
@@ -145,13 +138,6 @@ def get_xlims(
         lamella_width=lamella_width_px,
         xlims=lamella_info.statistics.xlims_image_px,
     )
-    # run_and_store_method(
-    #     results,
-    #     crop_xlims_minimum,
-    #     lamella_thickness=lamella_thickness_um,
-    #     gis_thickness=gis_thickness_um,
-    #     lamella_width=lamella_width_px,
-    # )
     run_and_store_method(
         results,
         crop_xlims_minimum2,
@@ -166,39 +152,6 @@ def get_xlims(
         xlims=lamella_info.statistics.xlims_image_px,
         lamella_width=lamella_width_px,
     )
-
-    # run_and_store_method(
-    #     results,
-    #     crop_xlims_minimum_log2,
-    #     gis_thickness=gis_thickness_um,
-    #     xlims=lamella_info.statistics.xlims_image_px,
-    #     lamella_width=lamella_width_px,
-    # )
-
-    # run_and_store_method(
-    #     results,
-    #     crop_xlims_minimum_log10,
-    #     gis_thickness=gis_thickness_um,
-    #     xlims=lamella_info.statistics.xlims_image_px,
-    #     lamella_width=lamella_width_px,
-    # )
-
-    # for fv in np.arange(0.0, 0.3, 0.1):
-    #     for es in range(14, 15, 1):
-    #         fn = partial(
-    #             crop_xlims_milled_log,
-    #             fill_value=fv,
-    #             edge_size=es,
-    #         )
-    #         fn.__name__ = f"crop_xlims_milled_log_{fv=:.1f}_{es=}"
-
-    #         run_and_store_method(
-    #             results,
-    #             fn,
-    #             gis_thickness=gis_thickness_um,
-    #             xlims=lamella_info.statistics.xlims_image_px,
-    #             lamella_width=lamella_width_px,
-    #         )
 
     for fv in np.arange(0.0, 0.1, 0.1):
         for es in range(3, 4, 2):
@@ -235,106 +188,41 @@ def get_xlims(
                 lamella_width=lamella_width_px_odd,
             )
 
-            # fn = partial(
-            #     crop_xlims_milled_log_convolve2,
-            #     edge_size=12,
-            #     sigma=0.2,
-            # )
-            # fn.__name__ = (
-            #     "crop_xlims_milled_log_convolve2_sigma=0.2_es=12"
-            # )
+    fn = partial(
+        crop_xlims_milled_log_convolve2,
+        edge_size=12,
+        sigma=0.2,
+    )
+    fn.__name__ = "crop_xlims_milled_log_convolve2_sigma=0.2_es=12"
 
-            # run_and_store_method(
-            #     results,
-            #     fn,
-            #     gis_thickness=gis_thickness_um,
-            #     xlims=lamella_info.statistics.xlims_image_px,
-            #     lamella_width=lamella_width_px_odd,
-            # )
+    run_and_store_method(
+        results,
+        fn,
+        gis_thickness=gis_thickness_um,
+        xlims=lamella_info.statistics.xlims_image_px,
+        lamella_width=lamella_width_px_odd,
+    )
 
-            # fn = partial(
-            #     crop_xlims_milled_log_convolve2,
-            #     edge_size=17,
-            #     sigma=0.7,
-            # )
-            # fn.__name__ = (
-            #     "crop_xlims_milled_log_convolve2_sigma=0.7_es=17"
-            # )
+    fn = partial(
+        crop_xlims_milled_log_convolve2,
+        edge_size=17,
+        sigma=0.7,
+    )
+    fn.__name__ = "crop_xlims_milled_log_convolve2_sigma=0.7_es=17"
 
-            # run_and_store_method(
-            #     results,
-            #     fn,
-            #     gis_thickness=gis_thickness_um,
-            #     xlims=lamella_info.statistics.xlims_image_px,
-            #     lamella_width=lamella_width_px_odd,
-            # )
-
-    # for es in range(12, 18, 5):
-    #     for sigma in np.arange(0.2, 0.8, 0.5):
-    #         for sigma_trim in np.arange(5.3, 6.5, 0.1):
-    #             fn = partial(
-    #                 crop_xlims_milled_log_convolve3,
-    #                 fill_value=fv,
-    #                 edge_size=es,
-    #                 sigma=sigma,
-    #             )
-    #             fn.__name__ = (
-    #                 f"crop_xlims_milled_log_convolve3_{sigma=:.1f}_{es=}_{sigma_trim=:.1f}"
-    #             )
-
-    #             run_and_store_method(
-    #                 results,
-    #                 fn,
-    #                 gis_thickness=gis_thickness_um,
-    #                 xlims=lamella_info.statistics.xlims_image_px,
-    #                 lamella_width=lamella_width_px_odd,
-    #             )
-
-    # for fv in np.arange(0.0, 0.1, 0.2):
-    #     for es in range(12, 13, 1):
-    #         for sigma in np.arange(0.2, 0.3, 0.1):
-    #             # This is basically convolving with 0s so what's the point?
-    #             fn = partial(
-    #                 crop_xlims_milled_log_correlate,
-    #                 fill_value=fv,
-    #                 edge_size=es,
-    #                 sigma=sigma,
-    #             )
-    #             fn.__name__ = (
-    #                 f"crop_xlims_milled_log_correlate_{fv=:.1f}_{sigma=:.1f}_{es=}"
-    #             )
-
-    #             run_and_store_method(
-    #                 results,
-    #                 fn,
-    #                 gis_thickness=gis_thickness_um,
-    #                 xlims=lamella_info.statistics.xlims_image_px,
-    #                 lamella_width=lamella_width_px_odd,
-    #             )
-
-    # TODO: Combine methods. Crop centrally with a bit of buffer room then apply one of the the other methods?
-
-    # run_and_store_method(
-    #     results,
-    #     crop_xlims_minimum_log1p,
-    #     gis_thickness=gis_thickness_um,
-    #     xlims=lamella_info.statistics.xlims_image_px,
-    #     lamella_width=lamella_width_px,
-    # )
-
-    # run_and_store_method(
-    #     results,
-    #     crop_xlims_minimum_sigmoid,
-    #     gis_thickness=gis_thickness_um,
-    #     xlims=lamella_info.statistics.xlims_image_px,
-    #     lamella_width=lamella_width_px,
-    # )
+    run_and_store_method(
+        results,
+        fn,
+        gis_thickness=gis_thickness_um,
+        xlims=lamella_info.statistics.xlims_image_px,
+        lamella_width=lamella_width_px_odd,
+    )
 
     return results
 
 
 def display_diff_stats(
-    function_diffs: dict[str, list[float]], plot: bool = True
+    function_diffs: dict[str, list[float]], plot_path: str | PathLike[str] | None = None
 ) -> None:
     names = list(function_diffs.keys())
     diffs = np.asarray(list(function_diffs.values()))
@@ -367,7 +255,7 @@ def display_diff_stats(
 """
         )
 
-    if plot:
+    if plot_path is not None:
         width = 2 + 4 * len(names)
         fig, axs = plt.subplots(2, 1, sharex=True, squeeze=True, figsize=(width, 12))
         axs[0].violinplot(
@@ -445,7 +333,6 @@ def display_diff_stats(
         axs[1].set_ylabel("Relative difference (px)")
         fig.tight_layout()
 
-        plot_path = Path(__file__).parent / "centring_plot.png"
         fig.savefig(plot_path)
 
 
@@ -477,7 +364,10 @@ def run(
             if name not in function_diffs:
                 function_diffs[name] = []
             function_diffs[name].append(diff)
-    display_diff_stats(function_diffs=function_diffs)
+    display_diff_stats(
+        function_diffs=function_diffs,
+        plot_path=csv_path.with_name(f"{csv_path.stem}_plot.png"),
+    )
 
 
 if __name__ == "__main__":

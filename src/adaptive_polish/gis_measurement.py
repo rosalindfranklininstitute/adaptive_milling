@@ -364,17 +364,6 @@ def get_gis_thickness(
 
     return sliced_gis_thickness, xlims_out
 
-
-def crop_xlims_minimum(
-    lamella_thickness: NDArray[np.float32],
-    gis_thickness: NDArray[np.float32 | np.float64],
-    lamella_width: int,
-) -> tuple[int, int]:
-    mean_lamella_thickness = lamella_thickness.mean()
-    clipped_gis = np.clip(gis_thickness, 0, mean_lamella_thickness)
-    return _get_minimum_area(clipped_gis - lamella_thickness, width=lamella_width)
-
-
 def crop_xlims_minimum2(
     gis_thickness: NDArray[np.float32 | np.float64],
     xlims: tuple[int, int],
@@ -397,97 +386,10 @@ def crop_xlims_minimum_log(
     )
     return (xlims[0] + min_diffs[0], xlims[0] + min_diffs[1])
 
-
-def crop_xlims_minimum_log1p(
-    gis_thickness: NDArray[np.float32 | np.float64],
-    xlims: tuple[int, int],
-    lamella_width: int,
-) -> tuple[int, int]:
-    min_diffs = _get_minimum_area(
-        np.log1p(gis_thickness[xlims[0] : xlims[1] + 1]),
-        width=lamella_width,
-    )
-    return (xlims[0] + min_diffs[0], xlims[0] + min_diffs[1])
-
-
-def crop_xlims_minimum_log10(
-    gis_thickness: NDArray[np.float32 | np.float64],
-    xlims: tuple[int, int],
-    lamella_width: int,
-) -> tuple[int, int]:
-    min_diffs = _get_minimum_area(
-        np.log10(gis_thickness[xlims[0] : xlims[1] + 1]),
-        width=lamella_width,
-    )
-    return (xlims[0] + min_diffs[0], xlims[0] + min_diffs[1])
-
-
-def crop_xlims_minimum_log2(
-    gis_thickness: NDArray[np.float32 | np.float64],
-    xlims: tuple[int, int],
-    lamella_width: int,
-) -> tuple[int, int]:
-    min_diffs = _get_minimum_area(
-        np.log2(gis_thickness[xlims[0] : xlims[1] + 1]),
-        width=lamella_width,
-    )
-    return (xlims[0] + min_diffs[0], xlims[0] + min_diffs[1])
-
-
-def _sigmoid(x: NDArray[np.float32 | np.float64]):
-    return 1 / (1 + np.exp(-x))
-
-
-def crop_xlims_minimum_sigmoid(
-    gis_thickness: NDArray[np.float32 | np.float64],
-    xlims: tuple[int, int],
-    lamella_width: int,
-) -> tuple[int, int]:
-    cropped_gis_thickness = gis_thickness[xlims[0] : xlims[1] + 1]
-    min_ = np.min(cropped_gis_thickness)
-    mean = np.mean(cropped_gis_thickness)
-    std = np.std(cropped_gis_thickness)
-    min_diffs = _get_minimum_area(
-        _sigmoid(np.interp(cropped_gis_thickness, (min_, mean + 3 * std), (-1, 1))),
-        width=lamella_width,
-    )
-    return (xlims[0] + min_diffs[0], xlims[0] + min_diffs[1])
-
-
 def _get_minimum_area(data: NDArray[np.float32 | np.float64], width: int):
     cumsum = np.concatenate(([0], np.cumsum(data)))
     window_sums = cumsum[width:] - cumsum[:-width]
     idx = int(np.argmin(window_sums))
-    return (idx, idx + width)
-
-
-def crop_xlims_milled_log(
-    gis_thickness: NDArray[np.float32 | np.float64],
-    xlims: tuple[int, int],
-    lamella_width: int,
-    fill_value: float = 0.9,
-    edge_size: int = 10,
-) -> tuple[int, int]:
-    min_diffs = _get_milled_area_convolve(
-        np.log(gis_thickness[xlims[0] : xlims[1] + 1]),
-        width=lamella_width,
-        fill_value=fill_value,
-        edge_size=edge_size,
-    )
-    return (xlims[0] + min_diffs[0], xlims[0] + min_diffs[1])
-
-
-def _get_milled_area_convolve(
-    data: NDArray[np.float32 | np.float64],
-    width: int,
-    fill_value: float = 0.9,
-    edge_size: int = 10,
-):
-    kernel = np.full((width,), fill_value=fill_value)
-    kernel[:edge_size] = 1
-    kernel[-edge_size:] = 1
-    conv = np.convolve(data, kernel, mode="valid")
-    idx = int(np.argmin(conv))
     return (idx, idx + width)
 
 
