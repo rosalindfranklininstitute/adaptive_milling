@@ -42,6 +42,17 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+all = [
+    { name = "fibsem", extra = ["reporting", "ui"] },
+    { name = "ipywidgets" },
+    { name = "jupyter" },
+    { name = "microsoft-python-type-stubs" },
+    { name = "mypy" },
+    { name = "napari", extra = ["all"] },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
+]
 dev = [
     { name = "microsoft-python-type-stubs" },
     { name = "mypy" },
@@ -67,6 +78,7 @@ ui = [
 
 [package.metadata]
 requires-dist = [
+    { name = "adaptive-polish", extras = ["dev", "reporting", "scripts", "test", "ui"], marker = "extra == 'all'" },
     { name = "adaptive-polish", extras = ["ui"], marker = "extra == 'test'" },
     { name = "albumentations" },
     { name = "fibsem", git = "https://github.com/rosalindfranklininstitute/fibsem-os.git" },
@@ -93,7 +105,7 @@ requires-dist = [
     { name = "segmentation-models-pytorch", specifier = ">=0.4.0" },
     { name = "tifffile" },
 ]
-provides-extras = ["test", "dev", "scripts", "ui", "reporting"]
+provides-extras = ["test", "dev", "scripts", "ui", "reporting", "all"]
 
 [[package]]
 name = "alabaster"
