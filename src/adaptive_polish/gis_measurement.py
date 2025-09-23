@@ -369,8 +369,8 @@ def crop_xlims_convolve(
     gis_thickness: NDArray[np.float32 | np.float64],
     xlims: tuple[int, int],
     lamella_width: int,
-    edge_size: int = 10,
-    sigma: float = 0.4,
+    edge_size: int = 17,
+    sigma: float = 0.7,
 ) -> tuple[int, int]:
     min_diffs = _get_milled_area_convolve_gaussian(
         np.log(gis_thickness[xlims[0] : xlims[1] + 1]),
