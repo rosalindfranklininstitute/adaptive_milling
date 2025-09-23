@@ -372,6 +372,16 @@ def crop_xlims_convolve(
     edge_size: int = 17,
     sigma: float = 0.7,
 ) -> tuple[int, int]:
+    """This function uses convolution to search for indents caused by the beam
+    stopping briefly at the edges of the milling pattern. As such, it assumes a
+    pattern with the same width has previously been milled in the position
+    being searched for.
+
+    After testing using the pattern_centring.py script, the following were
+    found to be optimal:
+    edge_size=17
+    sigma=0.7
+    """
     min_diffs = _get_milled_area_convolve_gaussian(
         np.log(gis_thickness[xlims[0] : xlims[1] + 1]),
         width=lamella_width,
