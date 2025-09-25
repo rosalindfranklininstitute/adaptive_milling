@@ -18,7 +18,7 @@ from math import ceil, floor
 
 import numpy as np
 from scipy.signal.windows import gaussian
-from scipy.ndimage import gaussian_filter1d
+from scipy.ndimage import median_filter, gaussian_filter1d
 
 from adaptive_polish.processing.image import (
     resize_image,
@@ -342,6 +342,27 @@ def crop_xlims_convolve(
     """
     min_diffs = _get_milled_area_convolve_gaussian(
         np.log(gis_thickness[xlims[0] : xlims[1] + 1]),
+        width=lamella_width,
+        edge_size=edge_size,
+        sigma=sigma,
+    )
+    return (xlims[0] + min_diffs[0], xlims[0] + min_diffs[1])
+
+
+def crop_xlims_convolve_filtered(
+    gis_thickness: NDArray[np.float32 | np.float64],
+    xlims: tuple[int, int],
+    lamella_width: int,
+    edge_size: int = 15,
+    sigma: float = 0.8,
+    filter_size: int = 136,
+) -> tuple[int, int]:
+    trimmed_thickness = gis_thickness[xlims[0] : xlims[1] + 1]
+    trimmed_filtered_thickness = median_filter(gis_thickness, size=filter_size)[
+        xlims[0] : xlims[1] + 1
+    ]
+    min_diffs = _get_milled_area_convolve_gaussian(
+        np.log(trimmed_thickness / trimmed_filtered_thickness),
         width=lamella_width,
         edge_size=edge_size,
         sigma=sigma,

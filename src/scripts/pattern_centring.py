@@ -3,7 +3,6 @@ from __future__ import annotations
 import csv
 import logging
 import typing
-from functools import partial
 from pathlib import Path
 
 import numpy as np
@@ -20,6 +19,7 @@ from adaptive_polish._dataclasses import CycleInformation, CycleTimestamps
 from adaptive_polish.gis_measurement import (
     crop_xlims_centre,
     crop_xlims_convolve,
+    crop_xlims_convolve_filtered,
 )
 
 if typing.TYPE_CHECKING:
@@ -132,12 +132,14 @@ def get_xlims(
         results[result_name] = function(*args, **kwargs)
 
     results: dict[str, tuple[int, int]] = {}
+
     run_and_store_method(
         results,
         crop_xlims_centre,
         lamella_width_px,
         lamella_info.statistics.xlims_image_px,
     )
+
     run_and_store_method(
         results,
         crop_xlims_convolve,
@@ -156,6 +158,28 @@ def get_xlims(
         lamella_width_px_odd,
         edge_size=17,
         sigma=0.7,
+    )
+
+    run_and_store_method(
+        results,
+        crop_xlims_convolve_filtered,
+        gis_thickness_um,
+        lamella_info.statistics.xlims_image_px,
+        lamella_width_px_odd,
+        edge_size=10,
+        sigma=0.4,
+        filter_size=133,
+    )
+
+    run_and_store_method(
+        results,
+        crop_xlims_convolve_filtered,
+        gis_thickness_um,
+        lamella_info.statistics.xlims_image_px,
+        lamella_width_px_odd,
+        edge_size=15,
+        sigma=0.8,
+        filter_size=136,
     )
 
     return results
