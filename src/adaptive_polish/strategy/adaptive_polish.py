@@ -620,6 +620,14 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         asynch: bool = False,
         parent_ui: FibsemMillingWidget | None = None,
     ) -> float | None:
+        # Process UI stop after checks to ensure reporting isn't skipped
+        if parent_ui is not None and hasattr(parent_ui, "_milling_stop_event"):
+            if parent_ui._milling_stop_event.is_set():
+                raise StopEarlyError(
+                    "Stop milling requested via the UI",
+                    reason=StopReasons.USER,
+                )
+
         # ensure milling settings are still correctly set
         microscope.setup_milling(mill_settings=stage.milling)
 

@@ -8,3 +8,4 @@ class StopReasons(enum.Enum):
     CRACK_AREA = "crack area is above the threshold"
     LAMELLA_AREA = "lamella area is below the threshold"
     MAX_CYCLES = "run maximum milling cycles"
+    USER = "milling stopped by user"
