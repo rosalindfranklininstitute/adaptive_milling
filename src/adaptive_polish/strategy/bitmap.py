@@ -153,14 +153,13 @@ class BitmapAdaptivePolishMillingStrategy(
             first_prediction=lamella_info.prediction,
             clean_prediction=lamella_info.clean_prediction,
             gis_thickness_um=stats.gis_thickness_filtered_um,
+            gis_thickness_min_um=stats.gis_thickness_min_um,
             crack_area_um2=stats.crack_area_um2,
-            min_gis_um=stats.min_GIS_um,
             gis_stop_threshold_um=self.config.gis_stop_um,
             gis_min_threshold_um=self.config.gis_min_um,
             gis_max_threshold_um=self.config.gis_max_um,
             milling_stage=stage,
-            xlims=stats.xlims_px,
-            total_milling_time=stats.milling_time_s,
+            image_xlims=stats.xlims_image_px,
             max_crack_area_um2=self.config.max_crack_area_um2,
             img_name=lamella_info.identifier,
         )
@@ -179,12 +178,12 @@ class BitmapAdaptivePolishMillingStrategy(
         pattern: RectanglePattern | TrenchPattern,
         stats: LamellaStatistics,
     ) -> NDArray:
-        if stats.gis_thickness_um is None:
-            raise ValueError('"gis_thickness_um" is not defined')
+        if stats.gis_thickness_filtered_um is None:
+            raise ValueError('"gis_thickness_filtered_um" is not available')
         elif stats.lamella_thickness_um is None:
-            raise ValueError('"lamella_thickness_um" is not defined')
-        elif stats.xlims_px is None:
-            raise ValueError('"xlims_px" is not defined')
+            raise ValueError('"lamella_thickness_um" is not available')
+        elif stats.xlims_image_px is None:
+            raise ValueError('"xlims_image_px" is not defined')
 
         min_dwell_thickness_um = (
             self.config.gis_stop_um
@@ -201,7 +200,7 @@ class BitmapAdaptivePolishMillingStrategy(
             lamella_width=lamella_width_px,
             gis_thickness=gis_thickness_um,
             lamella_thickness=lamella_thickness_um,
-            xlims=stats.xlims_px,
+            xlims=stats.xlims_image_px,
         )
 
         bitmap_array = create_bitmap_array(
