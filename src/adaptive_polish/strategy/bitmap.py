@@ -14,7 +14,10 @@ from fibsem.milling.patterning import (
 from adaptive_polish.strategy import AdaptivePolishMillingStrategy
 from adaptive_polish.config import BitmapAdaptivePolishMillingConfig
 from adaptive_polish.bitmaps import create_bitmap_array
-from adaptive_polish.gis_measurement import crop_xlims_centre
+from adaptive_polish.gis_measurement import (
+    crop_xlims_centre,
+    crop_xlims_convolve_filtered,
+)
 from adaptive_polish.plot import create_milling_cycle_plot
 from adaptive_polish.exceptions import StopMillingException
 
@@ -168,9 +171,20 @@ class BitmapAdaptivePolishMillingStrategy(
         self,
         lamella_width,
         gis_thickness: NDArray[np.float32 | np.float64],
-        lamella_thickness: NDArray[np.float32 | np.float64],
         xlims: tuple[int, int],
     ) -> tuple[int, int]:
+        if self.config.pattern_alignment == "centre":
+            return crop_xlims_centre(
+                xlims=xlims,
+                lamella_width=lamella_width,
+            )
+        elif self.config.pattern_alignment == "convolve":
+            return crop_xlims_convolve_filtered(
+                xlims=xlims,
+                lamella_width=lamella_width,
+                gis_thickness=gis_thickness,
+            )
+
         return crop_xlims_centre(lamella_width=lamella_width, xlims=xlims)
 
     def create_bitmap_array(
@@ -192,14 +206,11 @@ class BitmapAdaptivePolishMillingStrategy(
         )
 
         lamella_width_px = int(round(pattern.width / stats.image_pixel_size_m[0]))
-
         gis_thickness_um = np.asarray(stats.gis_thickness_filtered_um, dtype=np.float32)
-        lamella_thickness_um = np.asarray(stats.lamella_thickness_um, dtype=np.float32)
 
         new_x_lims = self._refine_xlims(
             lamella_width=lamella_width_px,
             gis_thickness=gis_thickness_um,
-            lamella_thickness=lamella_thickness_um,
             xlims=stats.xlims_image_px,
         )
 
