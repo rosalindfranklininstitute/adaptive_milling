@@ -86,6 +86,36 @@ class StrategyRunInformation:
     strategy_end_reason: str | None = None
     cycle_information: list[CycleInformation] = field(default_factory=list)
 
+    def to_cycle_information_dataframe(self):
+        return pd.json_normalize([asdict(_) for _ in self.cycle_information])
+
+    def to_dataframe2(self) -> pd.DataFrame:
+        return pd.json_normalize(asdict(self))
+
+    def to_full_dataframe(self) -> pd.DataFrame:
+        df = self.to_dataframe2()
+
+        # drop cycle_information column
+        df = df.drop(columns=["cycle_information"])
+
+        # # join df to each row of df_cycles on index
+        df_cycles = self.to_cycle_information_dataframe()
+        df_full = df_cycles.join(df, how="outer").ffill()
+
+        # compute duration columns for all .start/.end pairs
+        columns = df_full.columns.tolist()
+        for c in columns:
+            if ".start" not in c:
+                continue
+            # find the matching .end column
+            end_col = c.replace(".start", ".end")
+            if end_col not in columns:
+                continue
+            # compute the duration in seconds
+            df_full[f"{c.replace('.start', '')}_duration"] = (df_full[end_col] - df_full[c])
+
+        return df_full
+
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
