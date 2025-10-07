@@ -48,6 +48,7 @@ class ProcessTimestamps:
         ddict["duration"] = self.duration
         return ddict
 
+
 @dataclass
 class CycleTimestamps:
     cycle: ProcessTimestamps = field(default_factory=ProcessTimestamps)
@@ -86,150 +87,43 @@ class StrategyRunInformation:
     strategy_end_reason: str | None = None
     cycle_information: list[CycleInformation] = field(default_factory=list)
 
-    def to_cycle_information_dataframe(self):
-        return pd.json_normalize([asdict(_) for _ in self.cycle_information])
-
-    def to_dataframe2(self) -> pd.DataFrame:
-        return pd.json_normalize(asdict(self))
-
-    def to_full_dataframe(self) -> pd.DataFrame:
-        df = self.to_dataframe2()
-
-        # drop cycle_information column
-        df = df.drop(columns=["cycle_information"])
-
-        # # join df to each row of df_cycles on index
-        df_cycles = self.to_cycle_information_dataframe()
-        df_full = df_cycles.join(df, how="outer").ffill()
-
-        # compute duration columns for all .start/.end pairs
-        columns = df_full.columns.tolist()
-        for c in columns:
-            if ".start" not in c:
-                continue
-            # find the matching .end column
-            end_col = c.replace(".start", ".end")
-            if end_col not in columns:
-                continue
-            # compute the duration in seconds
-            df_full[f"{c.replace('.start', '')}_duration"] = (df_full[end_col] - df_full[c])
-
-        return df_full
-
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
-
     def set_end_reason(self, reason: StopReasons | str | None) -> None:
         if isinstance(reason, StopReasons):
             reason = reason.value
         self.strategy_end_reason = reason
 
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
     def to_dataframe(self) -> pd.DataFrame:
         """Convert strategy run information into a pandas DataFrame."""
 
-        base_data: dict[str, Any] = {
-            "strategy_name": self.strategy_name,
-            "stage_name": self.stage_name,
-            "lamella_name": self.lamella_name,
-            "strategy_end_reason": self.strategy_end_reason,
-        }
+        ddict = asdict(self)
+        cycle_info = ddict.pop("cycle_information")
+        df_cycles = pd.json_normalize(cycle_info)
 
-        # Add strategy timestamps
-        for field_info in fields(self.timestamps):
-            process_timestamps: ProcessTimestamps = getattr(self.timestamps, field_info.name)
-            for key, val in process_timestamps.to_dict().items():
-                base_data[f"strategy_{field_info.name}_{key}"] = val
-        # return df
-        records = []
-        for cycle_info in self.cycle_information:
-            record = base_data.copy()
-            record["milling_cycle"] = cycle_info.milling_cycle
-            record["identifier"] = cycle_info.identifier
-            # Add cycle timestamps
-            for field_info in fields(cycle_info.timestamps):
-                process_timestamps: ProcessTimestamps = getattr(cycle_info.timestamps, field_info.name)
-                for key, val in process_timestamps.to_dict().items():
-                    record[f"cycle_{field_info.name}_{key}"] = val
-            # Add lamella statistics if available
-            if cycle_info.lamella_statistics:
-                for key, val in cycle_info.lamella_statistics.to_summary_dict().items():
-                    record[f"lamella_stat_{key}"] = val
-            records.append(record)
+        df = df_cycles.join(pd.json_normalize(ddict), how="outer").ffill()
 
-        return pd.DataFrame(records)
-
-    def to_summary_dataframe(self) -> pd.DataFrame:
-        """Return a subset of the dataframe containing duration and summary metrics."""
-
-        df = self.to_dataframe()
-
-        core_columns = [
-            "strategy_name",
-            "stage_name",
-            "lamella_name",
-            "strategy_end_reason",
-        ]
-
-        strategy_duration_columns = [
-            f"strategy_{field_info.name}_duration" for field_info in fields(self.timestamps)
-        ]
-        cycle_duration_columns = [
-            f"cycle_{field_info.name}_duration" for field_info in fields(CycleTimestamps)
-        ]
-        summary_columns = [
-            "lamella_stat_lamella_area_um2",
-            "lamella_stat_gis_thickness_min_um",
-            "lamella_stat_gis_thickness_mean_um",
-            "lamella_stat_crack_count",
-        ]
-
-        desired_columns = (
-            core_columns
-            + strategy_duration_columns
-            + cycle_duration_columns
-            + summary_columns
-        )
-
-        rename_map: dict[str, str] = {
-            "strategy_name": "Strategy Name",
-            "stage_name": "Stage Name",
-            "lamella_name": "Lamella Name",
-            "strategy_end_reason": "Strategy End Reason",
-            "lamella_stat_lamella_area_um2": "Lamella Area (um2)",
-            "lamella_stat_crack_count": "Crack Count",
-            "lamella_stat_gis_thickness_min_um": "GIS Thickness Min (um)",
-            "lamella_stat_gis_thickness_mean_um": "GIS Thickness Mean (um)",
-        }
-
-        for field_info in fields(self.timestamps):
-            col_name = f"strategy_{field_info.name}_duration"
-            label = field_info.name.replace("_", " ").title()
-            rename_map[col_name] = f"Strategy {label} Duration"
-
-        for field_info in fields(CycleTimestamps):
-            col_name = f"cycle_{field_info.name}_duration"
-            label = field_info.name.replace("_", " ").title()
-            rename_map[col_name] = f"Cycle {label} Duration"
-
-        available_columns = [col for col in desired_columns if col in df.columns]
-
-        if not available_columns:
-            renamed_columns = [rename_map.get(col, col) for col in desired_columns]
-            return pd.DataFrame(columns=renamed_columns)
-
-        df = df.loc[:, available_columns]
-
-        df = df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns})
+        # compute duration columns for all .start/.end pairs
+        for c in df.columns[df.columns.str.contains(r"timestamps\.[\w_]+\.start")]:
+            # find the matching .end column
+            col_base = c.rsplit(".", maxsplit=1)[0]
+            end_col = col_base + ".end"
+            if end_col not in df.columns:
+                continue
+            duration_col = col_base + ".duration"
+            # compute the duration in seconds
+            df[duration_col] = df[end_col] - df[c]
 
         return df
 
     def to_final_dataframe(self) -> pd.DataFrame:
         """Return only the final row of the summary dataframe."""
 
-        summary_df = self.to_summary_dataframe()
-        if summary_df.empty:
-            return summary_df
-        return summary_df.tail(1).reset_index(drop=True)
+        df = self.to_dataframe()
+        if df.empty:
+            return df
+        return df.tail(1).reset_index(drop=True)
 
 
 @dataclass
@@ -362,6 +256,7 @@ class LamellaStatistics:
             np.sum(self.crack_thickness_prediction_px)
             * (self.prediction_pixel_size_m[0] * self.prediction_pixel_size_m[1] * 1e12)
         )
+
     @cached_property
     def lamella_thickness_um(self) -> NDArray[np.float_] | None:
         return np.asarray(self.lamella_thickness_prediction_px, dtype=float) * (
