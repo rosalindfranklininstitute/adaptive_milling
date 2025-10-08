@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from adaptive_polish.bitmaps import bitmap_to_points
+from adaptive_polish.processing.bitmap import bitmap_to_points
 
 
 def test_bitmap_to_points():

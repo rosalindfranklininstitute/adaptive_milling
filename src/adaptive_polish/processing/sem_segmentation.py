@@ -677,7 +677,7 @@ MODEL_GENERATIONS_DICT: dict[str, type[AbstractAdaptivePolishingModel]] = {
 }
 
 
-def _get_newest_generation_key() -> str:
+def get_latest_generation_key() -> str:
     # If no generation is specified, get the last one specified
     return str(tuple(MODEL_GENERATIONS_DICT.keys())[-1])
 
@@ -692,7 +692,7 @@ def load_model(
 
     if generation is None:
         # If no generation is specified, get the latest generation one
-        generation = _get_newest_generation_key()
+        generation = get_latest_generation_key()
 
     generation = str(generation)
     if generation not in MODEL_GENERATIONS_DICT:

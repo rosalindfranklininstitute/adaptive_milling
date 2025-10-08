@@ -12,16 +12,15 @@ import albumentations.pytorch
 import tifffile
 import numpy as np
 
-
-from adaptive_polish import gis_measurement as gm
-from adaptive_polish.dl_segmentation import sem_lamella_segmentor
+from adaptive_polish.processing import sem_segmentation
 
 if typing.TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from adaptive_polish.dl_segmentation.sem_lamella_segmentor import DeviceLikeType
+    from adaptive_polish.processing.sem_segmentation import DeviceLikeType
 
-class MockGen1Model(sem_lamella_segmentor.Gen1Model):
+
+class MockGen1Model(sem_segmentation.Gen1Model):
     """Useful to avoid using an actual model"""
 
     def __init__(
@@ -65,7 +64,13 @@ def old_model1_preprocessing_function(
 
     # Crop to (3072x3072)
     image = cv2.copyMakeBorder(
-        image, pad_size, pad_size, 0, 0, cv2.BORDER_CONSTANT, value=0
+        image,
+        pad_size,
+        pad_size,
+        0,
+        0,
+        cv2.BORDER_CONSTANT,
+        value=0,  # type: ignore
     )
 
     if not normalise_first:
@@ -90,7 +95,7 @@ def old_model1_preprocessing_function(
 def test_segmentation_model_loads(sem_segmentation_model: tuple[str, Path]):
     generation, model_path = sem_segmentation_model
     """Test that the segmentation model produces a prediction"""
-    gm.load_sem_model(model_path, generation=generation)
+    sem_segmentation.load_model(model_path, generation=generation)
 
 
 @pytest.mark.usefixtures("skip_if_no_models")
@@ -100,7 +105,7 @@ def test_segmentation_model_runs(
 ):
     """Test that the segmentation model produces a prediction"""
     generation, model_path = sem_segmentation_model
-    model = gm.load_sem_model(model_path, generation=generation)
+    model = sem_segmentation.load_model(model_path, generation=generation)
     image_path = next(sem_image_dir.glob("*.tif"))
     if as_array:
         image = tifffile.imread(image_path)

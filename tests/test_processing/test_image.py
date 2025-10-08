@@ -6,15 +6,46 @@ from typing import Literal
 
 import numpy as np
 
-from fibsem.detection.detection import AdaptiveLamellaCentre
-from adaptive_polish.centring import (
+from adaptive_polish.processing.image import (
     get_mask_bounding_box,
-    get_lamella_centre,
     get_bounding_box_from_edges,
     get_centre_from_bounding_box,
+    get_mask_edges,
 )
 
-from .setup import SimpleRectangleLamellaMask
+from ..setup import SimpleRectangleLamellaMask
+
+
+def test_get_mask_edges() -> None:
+    test_lamella = SimpleRectangleLamellaMask((100, 200), 20)
+    edges = get_mask_edges(test_lamella.array)
+    y_range = np.arange(test_lamella.bounding_box[0], test_lamella.bounding_box[2] + 1)
+    x_range = np.arange(test_lamella.bounding_box[1], test_lamella.bounding_box[3] + 1)
+    expected_edges = [
+        [
+            np.stack(
+                ([test_lamella.bounding_box[0]] * len(x_range), x_range), axis=-1
+            ).astype(np.uint16),
+            np.stack(
+                ([test_lamella.bounding_box[2]] * len(x_range), x_range), axis=-1
+            ).astype(np.uint16),
+        ],
+        [
+            np.stack(
+                (y_range, [test_lamella.bounding_box[1]] * len(y_range)), axis=-1
+            ).astype(np.uint16),
+            np.stack(
+                (y_range, [test_lamella.bounding_box[3]] * len(y_range)), axis=-1
+            ).astype(np.uint16),
+        ],
+    ]
+    for i, axis in enumerate(edges):
+        for j, edge in enumerate(axis):
+            assert_array_equal(
+                edge,
+                expected_edges[i][j],
+                err_msg=f"Edge {['X', 'Y'][i]} {['min', 'max'][j]} do not match",
+            )
 
 
 @pytest.mark.parametrize("edge_finding", ["median", "mean", "min", "max"])
@@ -72,18 +103,6 @@ def test_get_centre_from_bounding_box(subpixel_accuracy: bool):
         expected_centre,
         err_msg="Failed to find correct centre",
     )
-
-
-def test_methods_equivalent_for_simple_rectangle() -> None:
-    # Required to be fairly big due to `detect_centre_point` threshold defaulting to 500
-    test_lamella = SimpleRectangleLamellaMask((1000, 2000))
-    centre_point = AdaptiveLamellaCentre().detect(
-        test_lamella.array, mask=test_lamella.array.astype(np.uint8) * 2
-    )
-    centre_1 = (centre_point.y, centre_point.x)
-    # get_lamella_centre returns (y, x), whereas Point is (x, y)
-    centre_2 = get_lamella_centre(array=test_lamella.array, edge_finding="median")
-    assert centre_1 == centre_2, "Centres do not match"
 
 
 @pytest.mark.parametrize("edge_finding", ["median", "mean", "min", "max"])
@@ -151,14 +170,4 @@ def test_get_lamella_bounding_box_mean() -> None:
         found_bounding_box,
         expected_bounding_box,
         err_msg="The found bounding box does not match the expected bounding box",
-    )
-
-
-def test_get_lamella_centre() -> None:
-    test_lamella = SimpleRectangleLamellaMask((100, 200), 20)
-    found_centre = get_lamella_centre(test_lamella.array)
-    np.testing.assert_array_equal(
-        found_centre,
-        test_lamella.centre,
-        err_msg="The found centre does not match the actual centre",
     )

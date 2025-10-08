@@ -2,10 +2,8 @@
 from __future__ import annotations
 import typing
 
-# for display
-from scipy import ndimage as ndi
 import numpy as np
-
+from scipy import ndimage as ndi
 
 if typing.TYPE_CHECKING:
     from numpy.typing import NDArray

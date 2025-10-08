@@ -61,9 +61,9 @@ def create_dummy_acquire_image_function(
 
     def dummy_acquire_image(image_settings: ImageSettings) -> FibsemImage:
         if image_settings.beam_type == BeamType.ELECTRON:
-            return FibsemImage.load(next(sem_image_paths))
+            return FibsemImage.load(str(next(sem_image_paths)))
         elif image_settings.beam_type == BeamType.ION:
-            return FibsemImage.load(next(fib_image_paths))
+            return FibsemImage.load(str(next(fib_image_paths)))
         raise ValueError(f"Invalid beam time {image_settings.beam_type}")
 
     return dummy_acquire_image

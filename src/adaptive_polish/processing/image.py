@@ -1,18 +1,129 @@
 from __future__ import annotations
-from functools import partial
 import typing
+from functools import partial
+from math import ceil, floor
 
 import numpy as np
+from skimage import measure, transform
 
 from fibsem import conversions
 from fibsem.structures import Point
 
-from adaptive_polish.edges import get_mask_edges
 from adaptive_polish.exceptions import CentringException
 
 if typing.TYPE_CHECKING:
     from numpy.typing import NDArray
     from collections.abc import Callable, Sequence
+
+
+def count_objects(
+    mask: NDArray[np.integer[typing.Any] | np.bool_],
+    connectivity: int = 2,
+) -> int:
+    _, num = measure.label(mask, return_num=True, connectivity=connectivity)
+    return num
+
+
+def keep_only_largest_object(
+    mask: NDArray[np.integer[typing.Any] | np.bool_],
+    connectivity: int = 2,
+) -> NDArray[np.bool_]:
+    """Find the largest object in a mask and sets everything in that object to
+    `fill_value`, background is 0.
+
+    Args:
+        mask (NDArray[typing.Union[np.integer[typing.Any], np.bool_]]): Segmentation mask
+        connectivity (int): connectivity when finding objects (1 is edges only, 2 includes corners)
+
+    Returns:
+        NDArray[np.bool_]: Boolean mask with all but the largest object set to False
+    """
+    labels, num = measure.label(mask, return_num=True, connectivity=connectivity)
+    if num == 1:
+        return labels.astype(np.bool_)
+    prop = max(measure.regionprops(labels), key=lambda x: x.area)
+    return labels == prop.label
+
+
+def resize_image(
+    image: NDArray[typing.Any], new_shape: typing.Tuple[int, int]
+) -> NDArray[np.float_]:
+    if not isinstance(image.dtype, np.floating):
+        # Needs to be floating type if we want interpolation
+        image = image.astype(np.float_)
+    return transform.resize(
+        image,
+        output_shape=new_shape,
+        preserve_range=True,
+    )
+
+
+def get_mask_edge(
+    mask_2d: NDArray[np.bool_],
+    axis: int,
+    side: typing.Literal["min", "max"] = "min",
+    filter_valid: bool = True,
+) -> NDArray[np.uint16]:
+    """Get the edge along an axis of a 2D mask
+
+    Args:
+        mask_2d (NDArray[np.bool_]): boolean array
+        axis (int): which axis to check along (NumPy indexing)
+        side (typing.Literal["min", "max"], optional): Whether to get the
+            minimum or maximum side along an axis. Defaults to "min".
+        filter_valid (bool, optional): Whether to filter out values that aren't
+            connected to an object. Warning: if False, "min" may return the
+            final index of the axis, and "max" may return 0s but gains a small
+            performance improvement. Defaults to True.
+
+    Raises:
+        ValueError: Invalid argument for side
+
+    Returns:
+        NDArray[np.uint16]: Array of (y, x) coordinates
+    """
+    if side == "max":
+        indexes = (
+            slice(None, None, -1 if axis == 0 else None),
+            slice(None, None, -1 if axis == 1 else None),
+        )
+        edge = (
+            mask_2d.shape[axis]
+            - np.argmax(mask_2d[indexes[0], indexes[1]], axis=axis)
+            - 1
+        )
+    elif side == "min":
+        edge = np.argmax(mask_2d, axis=axis)
+    else:
+        raise ValueError(f"Invalid argument for side '{side}'")
+
+    other_axis_range = np.arange(mask_2d.shape[1 - axis], dtype=edge.dtype)
+
+    coordinates = np.stack([edge, other_axis_range], axis=-1)
+    if axis != 0:
+        coordinates = coordinates[:, ::-1]
+
+    if filter_valid:
+        # Only include edge values that are True
+        # This filters out any rows/columns that were all False
+        valid_idxs = mask_2d[coordinates[:, 0], coordinates[:, 1]]
+        coordinates = coordinates[valid_idxs]
+    return coordinates.astype(np.uint16)
+
+
+def get_mask_edges(
+    mask: NDArray[np.bool_],
+) -> typing.List[typing.List[NDArray[np.uint16]]]:
+    return [
+        [
+            get_mask_edge(mask, axis=0, side="min"),
+            get_mask_edge(mask, axis=0, side="max"),
+        ],
+        [
+            get_mask_edge(mask, axis=1, side="min"),
+            get_mask_edge(mask, axis=1, side="max"),
+        ],
+    ]
 
 
 def get_bounding_box_from_edges(
@@ -101,16 +212,26 @@ def get_centre_from_bounding_box(
     return (cy, cx)
 
 
-def get_lamella_centre(
-    array: NDArray[np.bool_],
-    subpixel_accuracy: bool = False,
-    edge_finding: typing.Literal["median", "mean", "percentile"] = "median",
-    percentile: float | None = None,
-) -> tuple[int, int] | tuple[float, float]:
-    bbox = get_bounding_box_from_edges(
-        get_mask_edges(mask=array), edge_finding=edge_finding, percentile=percentile
+def bbox_to_ylims(
+    bbox: tuple[float, float, float, float],
+    y_bounds: tuple[int, int],
+    pad: int = 0,
+) -> tuple[int, int]:
+    return (
+        max(int(floor(bbox[0])) - pad, y_bounds[0]),
+        min(int(ceil(bbox[2])) + pad, y_bounds[1]),
     )
-    return get_centre_from_bounding_box(bbox, subpixel_accuracy=subpixel_accuracy)
+
+
+def bbox_to_xlims(
+    bbox: tuple[float, float, float, float],
+    x_bounds: tuple[int, int],
+    pad: int = 0,
+) -> tuple[int, int]:
+    return (
+        int(max(floor(bbox[1]) - pad, x_bounds[0])),
+        int(min(ceil(bbox[3]) + pad, x_bounds[1])),
+    )
 
 
 def get_bounding_box_scaled_to_image(
