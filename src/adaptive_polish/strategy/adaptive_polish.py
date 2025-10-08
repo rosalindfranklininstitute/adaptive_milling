@@ -20,20 +20,17 @@ from fibsem.milling import (
 from fibsem.structures import BeamType
 
 # Adaptive polish
-import adaptive_polish.gis_measurement as gm
 import adaptive_polish.utils as ap_utils
 from adaptive_polish.exceptions import (
     StopEarlyError,
     StopMillingException,
     SegmentationException,
-)
-from adaptive_polish.enums import StopReasons
-from adaptive_polish.dl_segmentation.sem_lamella_segmentor import SegmentationLabels
-from adaptive_polish.centring import (
-    get_bounding_box_scaled_to_image,
-    get_centre_points_from_bounding_box,
     CentringException,
 )
+from adaptive_polish.enums import StopReasons
+from adaptive_polish.processing import sem_segmentation as sem_seg_proc
+from adaptive_polish.processing import image as image_proc
+from adaptive_polish.processing import lamella as lamella_proc
 from adaptive_polish.plot import (
     create_centring_plot,
     create_milling_cycle_plot,
@@ -62,7 +59,7 @@ if typing.TYPE_CHECKING:
         Point,
     )
     from fibsem.ui import FibsemMillingWidget
-    from adaptive_polish.dl_segmentation.sem_lamella_segmentor import (
+    from adaptive_polish.processing.sem_segmentation import (
         AbstractAdaptivePolishingModel,
     )
 
@@ -412,7 +409,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             raise FileNotFoundError(
                 f"Failed to find SEM segmentation model '{model_path}'"
             )
-        self.model = gm.load_sem_model(
+        self.model = sem_seg_proc.load_model(
             model_path=model_path,
             generation=self.config.get_model_generation(),
         )
@@ -430,7 +427,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         with cycle_info.timestamps.predict:
             prediction = self._segment_sem_image(sem_image.data)
 
-        clean_prediction = gm.clean_prediction(prediction)
+        clean_prediction = lamella_proc.clean_prediction(prediction)
 
         image_pixel_size_m = (
             sem_image.metadata.pixel_size.x,
@@ -442,15 +439,19 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             image_pixel_size_m[1] * (sem_image.data.shape[0] / prediction.shape[0]),
         )
 
-        mask_lamella_clean = clean_prediction == SegmentationLabels.LAMELLA.value
+        mask_lamella_clean = (
+            clean_prediction == sem_seg_proc.SegmentationLabels.LAMELLA.value
+        )
 
-        mask_crack_clean = clean_prediction == SegmentationLabels.CRACK.value
+        mask_crack_clean = (
+            clean_prediction == sem_seg_proc.SegmentationLabels.CRACK.value
+        )
 
         lamella_thickness = np.sum(mask_lamella_clean, axis=0)
 
         crack_thickness = np.sum(mask_crack_clean, axis=0)
 
-        crack_count = gm.count_objects(mask_crack_clean)
+        crack_count = image_proc.count_objects(mask_crack_clean)
 
         # Save guaranteed values
         statistics = LamellaStatistics(
@@ -477,7 +478,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             try:
                 # Get lamella position
                 lamella_image_bbox, lamella_prediction_bbox = (
-                    get_bounding_box_scaled_to_image(
+                    image_proc.get_bounding_box_scaled_to_image(
                         image=sem_image.data,
                         mask=mask_lamella_clean,
                         edge_finding="percentile",
@@ -502,17 +503,17 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
 
             # Measure GIS
             # Note the returned values are scaled to the image, not the prediction
-            ylims_px = gm.bbox_to_ylims(
+            ylims_px = image_proc.bbox_to_ylims(
                 lamella_prediction_bbox,
                 y_bounds=(0, clean_prediction.shape[0] - 1),
                 pad=0,
             )
-            statistics.xlims_prediction_px = gm.bbox_to_xlims(
+            statistics.xlims_prediction_px = image_proc.bbox_to_xlims(
                 lamella_prediction_bbox,
                 x_bounds=(0, clean_prediction.shape[1] - 1),
                 pad=x_pad,
             )
-            gis_thickness_image_px, xlims_image_px = gm.get_gis_thickness(
+            gis_thickness_image_px, xlims_image_px = lamella_proc.get_gis_thickness(
                 clean_prediction,
                 xlims=statistics.xlims_prediction_px,
                 ylims=(ylims_px[0], None),
@@ -528,7 +529,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             )
             gis_thickness_filtered_image_px[
                 xlims_image_px[0] : xlims_image_px[1] + 1
-            ] = gm.filter_gis_thickness(
+            ] = lamella_proc.filter_gis_thickness(
                 gis_thickness_image_px[xlims_image_px[0] : xlims_image_px[1] + 1],
                 window_size_m=(
                     self.config.window_size_px * sem_image.metadata.pixel_size.x
@@ -568,7 +569,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             and expected_lamella_centre_m is not None
             and stats.lamella_bounding_box_image_px is not None
         ):
-            centre_m, centre_px = get_centre_points_from_bounding_box(
+            centre_m, centre_px = image_proc.get_centre_points_from_bounding_box(
                 stats.lamella_bounding_box_image_px,
                 image=lamella_info.sem_image.data,
                 pixel_size_m=lamella_info.sem_image.metadata.pixel_size.x,
@@ -588,7 +589,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                     create_centring_plot(
                         sem_image=lamella_info.sem_image,
                         mask_lamella_clean=lamella_info.clean_prediction
-                        == SegmentationLabels.LAMELLA.value,
+                        == sem_seg_proc.SegmentationLabels.LAMELLA.value,
                         centre_px=centre_px,
                         centre_m=centre_m,
                         plot_path=Path(plots_directory)
@@ -692,7 +693,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         try:
             prediction = self._segment_sem_image(sem_image.data)
 
-            mask_lamella_clean = gm.clean_lamella(prediction)
+            mask_lamella_clean = lamella_proc.clean_lamella(prediction)
         except Exception as e:
             raise SegmentationException(
                 f"Failed to get clean lamella mask required for SEM alignment: {e}"
@@ -702,7 +703,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         centre_px: Point | None = None
         lamella_bbox: tuple[float, float, float, float] | None = None
         try:
-            lamella_bbox, _ = get_bounding_box_scaled_to_image(
+            lamella_bbox, _ = image_proc.get_bounding_box_scaled_to_image(
                 sem_image.data,
                 mask=mask_lamella_clean,
                 edge_finding="percentile",
@@ -713,7 +714,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                     "Unable to get pixel size from SEM image with no metadata"
                 )
 
-            centre_m, centre_px = get_centre_points_from_bounding_box(
+            centre_m, centre_px = image_proc.get_centre_points_from_bounding_box(
                 lamella_bbox,
                 image=sem_image.data,
                 pixel_size_m=sem_image.metadata.pixel_size.x,

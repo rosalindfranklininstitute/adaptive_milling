@@ -18,7 +18,7 @@ from fibsem.applications.autolamella.protocol.validation import validate_protoco
 
 from adaptive_polish.strategy import adaptive_polish as ap_strategy
 from adaptive_polish._dataclasses import CycleInformation
-from adaptive_polish.dl_segmentation.sem_lamella_segmentor import SegmentationLabels
+from adaptive_polish.processing.sem_segmentation import SegmentationLabels as SemLabels
 
 from . import setup, utils
 
@@ -413,8 +413,8 @@ def test_max_milling_cycles_not_exceeded(
 @patch.object(
     ap_strategy.fs_utils, "current_timestamp", new=MagicMock(return_value=TIMESTAMP)
 )
-@patch.object(ap_strategy.gm, "clean_prediction")
-@patch.object(ap_strategy.gm, "filter_gis_thickness")
+@patch.object(ap_strategy.lamella_proc, "clean_prediction")
+@patch.object(ap_strategy.lamella_proc, "filter_gis_thickness")
 def test_results_saved(
     mock_filter_gis_thickness,
     mock_clean_prediction,
@@ -468,9 +468,9 @@ def test_results_saved(
     lamella_mask[:lamella_bottom, :] = True
     gis_mask[lamella_bottom:gis_bottom, :] = True
 
-    prediction = np.full(mask_shape, SegmentationLabels.VACUUM.value, dtype=np.uint8)
-    prediction[lamella_mask] = SegmentationLabels.LAMELLA.value
-    prediction[gis_mask] = SegmentationLabels.GIS.value
+    prediction = np.full(mask_shape, SemLabels.VACUUM.value, dtype=np.uint8)
+    prediction[lamella_mask] = SemLabels.LAMELLA.value
+    prediction[gis_mask] = SemLabels.GIS.value
 
     mock_clean_prediction.return_value = prediction
 
@@ -577,7 +577,7 @@ def test_results_saved(
 
 
 @pytest.mark.parametrize("hits_limits", [False, True], ids=["normal", "hits_limits"])
-@patch.object(ap_strategy, "get_bounding_box_scaled_to_image")
+@patch.object(ap_strategy.image_proc, "get_bounding_box_scaled_to_image")
 def test_align_beam(
     mock_get_bounding_box_scaled_to_image,
     hits_limits,
@@ -637,7 +637,7 @@ def test_align_beam(
         patch.object(microscope, "beam_shift") as mock_beam_shift,
     ):
         mock_model.predict.return_value = (
-            test_lamella.array.astype(np.uint8) * SegmentationLabels.LAMELLA
+            test_lamella.array.astype(np.uint8) * SemLabels.LAMELLA
         )
 
         def mock_beam_shift_fn(dx, dy, beam_type) -> None:
@@ -769,7 +769,7 @@ def test_check_lamella(
 
 @pytest.mark.parametrize("file_exists", [True, False], ids=["file", "no file"])
 @patch("pathlib.Path.is_file")
-@patch("adaptive_polish.strategy.adaptive_polish.gm.load_sem_model")
+@patch("adaptive_polish.strategy.adaptive_polish.sem_seg_proc.load_model")
 def test_load_model(mock_load_sem_model, mock_is_file, file_exists: bool) -> None:
     model_generation = "model_generation"
     model_path = "model_path"

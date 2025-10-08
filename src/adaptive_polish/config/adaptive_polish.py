@@ -5,7 +5,9 @@ from pydantic.dataclasses import dataclass
 
 from fibsem.milling.base import MillingStrategyConfig
 
-from adaptive_polish.gis_measurement import DEFAULT_SEM_MODEL_GENERATION
+from adaptive_polish.processing.sem_segmentation import get_latest_generation_key
+
+DEFAULT_MODEL_GENERATION = get_latest_generation_key()
 
 
 @dataclass(config=ConfigDict(validate_assignment=True))
@@ -19,7 +21,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
     minimum_lamella_area_um2: float = 30.0  # 30μm²
     maximum_drift_um: float = 0.1
     lamella_pad_x: float = 0.0  # fraction of lamella width to pad by on each side
-    model_generation: str = DEFAULT_SEM_MODEL_GENERATION
+    model_generation: str = DEFAULT_MODEL_GENERATION
     save_predictions: bool = True
 
     def get_model_generation(self) -> typing.Optional[str]:
