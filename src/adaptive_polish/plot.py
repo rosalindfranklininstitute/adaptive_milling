@@ -159,10 +159,12 @@ def create_milling_cycle_plot(
     max_crack_area_um2: float | None = None,
     image_xlims: tuple[int, int] | None = None,
     img_name: str | None = None,
-    gis_ymax_um: float = 2,
+    gis_ymax_um: float = 3,
 ) -> None:
     _logger.debug("Creating milling cycle plot")
-    fig, axs = plt.subplots(nrows=2, ncols=3, figsize=(12, 8), tight_layout=True)
+    fig, axs = plt.subplots(
+        nrows=2, ncols=3, figsize=(15, 10), dpi=300, tight_layout=True
+    )
     plot_title = img_name
     if total_milling_time is not None:
         plot_title = f"{plot_title}\nMilling time: {total_milling_time:.2f} s"
