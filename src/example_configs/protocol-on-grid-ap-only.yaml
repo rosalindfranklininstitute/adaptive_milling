@@ -26,7 +26,6 @@ milling:
         align_sem: True,
         gis_stop_um: 0.2,
         max_milling_cycles: 5,
-        window_size_px: 10,
         max_crack_area_um2: 2,
         model_path:
       }}
