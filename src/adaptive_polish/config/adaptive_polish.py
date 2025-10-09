@@ -1,14 +1,7 @@
 from __future__ import annotations
 import os
 import typing
-from pydantic import (
-    ConfigDict,
-    PositiveInt,
-    NonNegativeFloat,
-    NonNegativeInt,
-    Field,
-    field_validator,
-)
+from pydantic import ConfigDict, PositiveInt, NonNegativeFloat, Field, field_validator
 from pydantic.dataclasses import dataclass
 
 from fibsem.milling.base import MillingStrategyConfig
@@ -22,10 +15,10 @@ DEFAULT_MODEL_GENERATION = get_latest_generation_key()
 class AdaptivePolishMillingConfig(MillingStrategyConfig):
     model_path: str = ""
     align_sem: bool = True
+    gis_filter_sigma: NonNegativeFloat = 10 / 6
     gis_stop_um: NonNegativeFloat = 0.2
     max_crack_area_um2: NonNegativeFloat = 2
     max_milling_cycles: PositiveInt = 30
-    window_size_px: NonNegativeInt = 10
     minimum_lamella_area_um2: NonNegativeFloat = 30.0  # 30μm²
     maximum_drift_um: NonNegativeFloat = 70
     lamella_pad_x: float = Field(  # fraction of lamella width to pad by on each side

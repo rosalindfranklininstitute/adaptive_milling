@@ -18,6 +18,7 @@ from math import ceil, floor
 
 import numpy as np
 from scipy.signal.windows import gaussian
+from scipy.ndimage import gaussian_filter1d
 
 from adaptive_polish.processing.image import (
     resize_image,
@@ -112,11 +113,11 @@ def get_lamella_centre(
     return get_centre_from_bounding_box(bbox, subpixel_accuracy=subpixel_accuracy)
 
 
-def filter_gis_thickness(
-    gis_thickness_px: NDArray[typing.Union[np.integer, np.floating]],
+def filter_gis_thickness_OLD(
+    gis_thickness_px: NDArray[np.integer | np.float64 | np.float32],
     window_size_m: float,
     pixel_size_m: float,
-) -> NDArray[np.floating[typing.Any]]:
+) -> NDArray[np.float64 | np.float32]:
     # TODO: Change window_size_m to beam FWHM
     # FWHM is 2 * sqrt(2 * np.log(2)) * sigma, which is approx 2.355 * sigma
     # The number of points in the gaussian curve should be approx 6 * std for convolution
@@ -132,6 +133,23 @@ def filter_gis_thickness(
         gaussian_curve,
         mode="valid",
     )
+
+
+def filter_gis_thickness(
+    gis_thickness_px: NDArray[np.integer | np.float64 | np.float32],
+    xlims_px: tuple[int, int],
+    sigma: float,
+) -> NDArray[np.float_]:
+    # Filter GIS thickness within xlims to a avoid edge artifacts
+    gis_thickness_filtered_px = np.zeros_like(gis_thickness_px, dtype=float)
+    gis_thickness_filtered_px[xlims_px[0] : xlims_px[1] + 1] = gaussian_filter1d(
+        gis_thickness_px[xlims_px[0] : xlims_px[1] + 1],
+        sigma=sigma,
+        mode="constant",
+        cval=0,
+        truncate=6,
+    )
+    return gis_thickness_filtered_px
 
 
 def get_mask_area_um2(mask: NDArray[np.bool_], pixel_size_um: float) -> float:
