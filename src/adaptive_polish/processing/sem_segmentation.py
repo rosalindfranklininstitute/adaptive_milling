@@ -454,7 +454,13 @@ class Gen1Model(AbstractAdaptivePolishingModel):
             decoder_attention_type="scse",
         ).to(self.device)
 
-        model.load_state_dict(torch.load(model_path, map_location=self.device))
+        try:
+            model.load_state_dict(torch.load(model_path, map_location=self.device))
+        except Exception:
+            _logger.error(
+                "Failed to load model state from '%s'", model_path
+            )
+            raise
         return model
 
 
