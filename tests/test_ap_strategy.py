@@ -19,6 +19,7 @@ from fibsem.applications.autolamella.protocol.validation import validate_protoco
 from adaptive_polish.strategy import adaptive_polish as ap_strategy
 from adaptive_polish._dataclasses import CycleInformation
 from adaptive_polish.processing.sem_segmentation import SegmentationLabels as SemLabels
+from adaptive_polish.exceptions import SegmentationException
 
 from . import setup, utils
 
@@ -103,14 +104,15 @@ def assert_results_dicts_equal(
         except Exception as e:
             raise AssertionError(f"Mismatch: {k} {e}") from e
 
-
-def test_default_config() -> None:
+@patch("os.path.isfile")
+def test_default_config(mock_isfile) -> None:
     """Tests that default config works with no errors"""
     # Create AdaptivePolish obj with default input parameters from millingstrategy
+    mock_isfile.return_value = True
     model_path = "path/to/model.file"
-    config = ap_strategy.AdaptivePolishMillingConfig(model_path=model_path)
+    config = ap_strategy.AdaptivePolishMillingConfig(model_path=str(model_path))
     strategy = ap_strategy.AdaptivePolishMillingStrategy.from_dict(
-        {"config": {"model_path": model_path}}
+        {"config": {"model_path": str(model_path)}}
     )
     assert config == strategy.config, "Configs do not match"
 
@@ -119,8 +121,9 @@ def test_milling_stage_loads_defaults(
     protocol_template_path: Path, tmp_path: Path
 ) -> None:
     """Tests that default the strategy loads the defaults when setup via stages"""
-    model_path = "path/to/model.file"
-    config_dict = {"model_path": model_path}
+    model_path = tmp_path / "model.file"
+    model_path.touch()
+    config_dict = {"model_path": str(model_path)}
     config = ap_strategy.AdaptivePolishMillingConfig.from_dict(config_dict)
     _, milling_stages = setup_protocol_and_milling_stages(
         config_dict, protocol_template_path, tmp_path
@@ -141,8 +144,9 @@ def test_ap_folders_created(
     tmp_path: Path,
 ) -> None:
     """Tests that the lamella folders are created in the correct place"""
-
-    ap_config = ap_strategy.AdaptivePolishMillingConfig(model_path="path/to/model.file")
+    model_path = tmp_path / "model.file"
+    model_path.touch()
+    ap_config = ap_strategy.AdaptivePolishMillingConfig(model_path=str(model_path))
     _, stages = setup_protocol_and_milling_stages(
         ap_config.to_dict(), protocol_template_path, tmp_path
     )
@@ -157,7 +161,7 @@ def test_ap_folders_created(
 
     stage.imaging.path = lamella_directory
 
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(SegmentationException):
         # This will raise an error but should make directories first
         strategy.run(microscope, stage)
 
@@ -178,7 +182,11 @@ def test_loads_sem_model_on_first_run(
     tmp_path: Path,
 ) -> None:
     """Tests that the sem model loading is called correctly"""
-    ap_config = ap_strategy.AdaptivePolishMillingConfig(align_sem=False)
+    model_path = tmp_path / "model.file"
+    model_path.touch()
+    ap_config = ap_strategy.AdaptivePolishMillingConfig(
+        model_path=str(model_path), align_sem=False
+    )
     _, stages = setup_protocol_and_milling_stages(
         ap_config.to_dict(), protocol_template_path, tmp_path
     )
@@ -219,10 +227,10 @@ def test_reference_images_saved_correctly(
     """Test that reference images are saved in the correct file naming
     convention
     """
-
-    model_path = "path/to/model.file"
+    model_path = tmp_path / "model.file"
+    model_path.touch()
     ap_config = ap_strategy.AdaptivePolishMillingConfig(
-        model_path=model_path, align_sem=False
+        model_path=str(model_path), align_sem=False
     )
     _, stages = setup_protocol_and_milling_stages(
         ap_config.to_dict(), protocol_template_path, tmp_path
@@ -271,12 +279,13 @@ def test_max_milling_cycles_not_exceeded(
     """Tests that milling cycles cannot exceed the max"""
     max_milling_cycles = 2
 
-    model_path = "path/to/model.file"
+    model_path = tmp_path / "model.file"
+    model_path.touch()
     pass_checks_kwargs = _AP_PASS_CHECKS_CONFIG.copy()
     pass_checks_kwargs["max_milling_cycles"] = max_milling_cycles
 
     ap_config = ap_strategy.AdaptivePolishMillingConfig(
-        model_path=model_path,
+        model_path=str(model_path),
         align_sem=False,
         **pass_checks_kwargs,  # type: ignore[arg-type]
     )
@@ -425,7 +434,8 @@ def test_results_saved(
     """Tests that results are saved in correct file naming convention"""
     max_milling_cycles = 3
 
-    model_path = "path/to/model.file"
+    model_path = tmp_path / "model.file"
+    model_path.touch()
     pass_checks_kwargs = _AP_PASS_CHECKS_CONFIG.copy()
     pass_checks_kwargs["max_milling_cycles"] = max_milling_cycles
     max_checks = max_milling_cycles + 1
@@ -433,7 +443,7 @@ def test_results_saved(
     sem_res: tuple[int, int] = (1536, 1024)
 
     ap_config = ap_strategy.AdaptivePolishMillingConfig(
-        model_path=model_path,
+        model_path=str(model_path),
         align_sem=False,
         **pass_checks_kwargs,  # type: ignore[arg-type]
     )
@@ -584,8 +594,11 @@ def test_align_beam(
     microscope_config_path: Path,
     tmp_path: Path,
 ) -> None:
+    model_path = tmp_path / "model.file"
+    model_path.touch()
+
     plot_path = tmp_path / "plot.png"
-    ap_config = ap_strategy.AdaptivePolishMillingConfig(model_path="path/to/model.file")
+    ap_config = ap_strategy.AdaptivePolishMillingConfig(model_path=str(model_path))
 
     # connect to microscope
     microscope, settings = fibsem_utils.setup_session(
@@ -769,12 +782,16 @@ def test_check_lamella(
 
 @pytest.mark.parametrize("file_exists", [True, False], ids=["file", "no file"])
 @patch("pathlib.Path.is_file")
+@patch("os.path.isfile")
 @patch("adaptive_polish.strategy.adaptive_polish.sem_seg_proc.load_model")
-def test_load_model(mock_load_sem_model, mock_is_file, file_exists: bool) -> None:
+def test_load_model(
+    mock_load_sem_model, mock_os_isfile, mock_pathlib_is_file, file_exists: bool
+) -> None:
     model_generation = "model_generation"
     model_path = "model_path"
+    mock_os_isfile.return_value = True
 
-    mock_is_file.return_value = file_exists
+    mock_pathlib_is_file.return_value = file_exists
 
     ap_config = ap_strategy.AdaptivePolishMillingConfig(
         model_generation=model_generation,

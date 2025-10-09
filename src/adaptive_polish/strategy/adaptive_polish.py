@@ -409,10 +409,13 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             raise FileNotFoundError(
                 f"Failed to find SEM segmentation model '{model_path}'"
             )
-        self.model = sem_seg_proc.load_model(
-            model_path=model_path,
-            generation=self.config.get_model_generation(),
-        )
+        try:
+            self.model = sem_seg_proc.load_model(
+                model_path=model_path,
+                generation=self.config.get_model_generation(),
+            )
+        except Exception as e:
+            raise SegmentationException("Failed to load SEM segmentation model") from e
 
     def _get_lamella_info(
         self,
@@ -696,8 +699,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             mask_lamella_clean = lamella_proc.clean_lamella(prediction)
         except Exception as e:
             raise SegmentationException(
-                f"Failed to get clean lamella mask required for SEM alignment: {e}"
-            )
+                "Failed to get clean lamella mask required for SEM alignment"
+            ) from e
 
         centre_m: Point | None = None
         centre_px: Point | None = None
