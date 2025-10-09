@@ -526,18 +526,10 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             statistics.xlims_image_px = xlims_image_px
             statistics.gis_thickness_image_px = gis_thickness_image_px.tolist()
 
-            # Filter GIS thickness within xlims to a avoid edge artifacts
-            gis_thickness_filtered_image_px = np.zeros_like(
-                gis_thickness_image_px, dtype=float
-            )
-            gis_thickness_filtered_image_px[
-                xlims_image_px[0] : xlims_image_px[1] + 1
-            ] = lamella_proc.filter_gis_thickness(
-                gis_thickness_image_px[xlims_image_px[0] : xlims_image_px[1] + 1],
-                window_size_m=(
-                    self.config.window_size_px * sem_image.metadata.pixel_size.x
-                ),
-                pixel_size_m=sem_image.metadata.pixel_size.x,
+            gis_thickness_filtered_image_px = lamella_proc.filter_gis_thickness(
+                gis_thickness_px=gis_thickness_image_px,
+                xlims_px=xlims_image_px,
+                sigma=self.config.gis_filter_sigma,
             )
 
             statistics.gis_thickness_filtered_image_px = (
