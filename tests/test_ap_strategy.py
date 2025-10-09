@@ -492,7 +492,7 @@ def test_results_saved(
         np.arange(
             i,
             mask_shape[1] + i,
-            dtype=np.uint16,
+            dtype=float,
         )
         for i in expected_min_gis_thicknesses
     ]

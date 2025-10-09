@@ -27,7 +27,6 @@ _AP_MILLING_CONFIG_SETTINGS = {
     "gis_stop_um": 0,  # Ensures check passes
     "max_crack_area_um2": 1e4,  # Ensures check passes
     "max_milling_cycles": 2,
-    "window_size_px": 8,
     "minimum_lamella_area_um2": 0,  # Ensures check passes
     "maximum_drift_um": 1e4,  # Ensures check passes
 }
