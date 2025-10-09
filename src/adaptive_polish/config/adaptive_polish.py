@@ -1,6 +1,14 @@
 from __future__ import annotations
+import os
 import typing
-from pydantic import ConfigDict
+from pydantic import (
+    ConfigDict,
+    PositiveInt,
+    NonNegativeFloat,
+    NonNegativeInt,
+    Field,
+    field_validator,
+)
 from pydantic.dataclasses import dataclass
 
 from fibsem.milling.base import MillingStrategyConfig
@@ -14,15 +22,24 @@ DEFAULT_MODEL_GENERATION = get_latest_generation_key()
 class AdaptivePolishMillingConfig(MillingStrategyConfig):
     model_path: str = ""
     align_sem: bool = True
-    gis_stop_um: float = 0.2
-    max_crack_area_um2: float = 2
-    max_milling_cycles: int = 30
-    window_size_px: int = 10
-    minimum_lamella_area_um2: float = 30.0  # 30μm²
-    maximum_drift_um: float = 0.1
-    lamella_pad_x: float = 0.0  # fraction of lamella width to pad by on each side
+    gis_stop_um: NonNegativeFloat = 0.2
+    max_crack_area_um2: NonNegativeFloat = 2
+    max_milling_cycles: PositiveInt = 30
+    window_size_px: NonNegativeInt = 10
+    minimum_lamella_area_um2: NonNegativeFloat = 30.0  # 30μm²
+    maximum_drift_um: NonNegativeFloat = 70
+    lamella_pad_x: float = Field(  # fraction of lamella width to pad by on each side
+        default=0.0, ge=0, le=1
+    )
     model_generation: str = DEFAULT_MODEL_GENERATION
     save_predictions: bool = True
+
+    @field_validator("model_path", mode="after")
+    @classmethod
+    def ensure_model_path(cls, v: str) -> str:
+        if not os.path.isfile(v):
+            raise FileNotFoundError(f"'{v}' is not a valid file path")
+        return v
 
     def get_model_generation(self) -> typing.Optional[str]:
         model_generation = self.model_generation.strip()
