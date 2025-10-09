@@ -24,7 +24,7 @@ if typing.TYPE_CHECKING:
 
 _AP_MILLING_CONFIG_SETTINGS = {
     "align_sem": True,
-    "gis_stop_um": -1,  # Ensures check passes
+    "gis_stop_um": 0,  # Ensures check passes
     "max_crack_area_um2": 1e4,  # Ensures check passes
     "max_milling_cycles": 2,
     "window_size_px": 8,
