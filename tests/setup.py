@@ -16,20 +16,23 @@ def setup_protocol_path(
     protocol_template_path: Path,
     temporary_directory: Path,
     adaptive_polish_config_dict: dict[str, typing.Any],
-    ap_only: bool,
+    ap_only: bool = False,
+    ap_type: typing.Literal["normal", "bitmap"] = "normal",
 ) -> Path:
     with protocol_template_path.open() as f:
         protocol_dict = yaml.safe_load(f)
 
+    ap_index = 1 if ap_type == "bitmap" else 0
+
     # Update protocol from config
-    protocol_dict["milling"]["mill_polishing"][0]["strategy"]["config"] = (
+    protocol_dict["milling"]["mill_polishing"][ap_index]["strategy"]["config"] = (
         adaptive_polish_config_dict
     )
 
     if ap_only:
         # Optionally remove non-AP milling steps
         protocol_dict["milling"] = {
-            "mill_polishing": protocol_dict["milling"]["mill_polishing"]
+            "mill_polishing": [protocol_dict["milling"]["mill_polishing"][ap_index]]
         }
 
     protocol_path = temporary_directory / "protocol.yaml"
