@@ -156,6 +156,32 @@ milling:
         name: Trench
         # shapes:
       strategy: { name: AdaptivePolishing, config: {} }
+    - milling:
+        milling_current: 2.0e-11
+        spot_size: 5.0e-08
+        rate: 0.0001
+        dwell_time: 1.0e-06
+        hfw: 4.0e-05
+        patterning_mode: Parallel
+        application_file: Si
+        preset: ""
+        # spacing:
+        # milling_voltage:
+        # milling_channel:
+        # acquire_images:
+      name: Localised Adaptive Polishing
+      pattern:
+        width: 1.0e-05
+        depth: 5.0e-08
+        spacing: 2.25e-07
+        upper_trench_height: 3.5e-07
+        lower_trench_height: 3.5e-07
+        cross_section: Rectangle
+        # time:
+        # point:
+        name: Trench
+        # shapes:
+      strategy: { name: BitmapAdaptivePolishing, config: {} }
   microexpansion:
     - milling:
         milling_current: 2.0e-09
