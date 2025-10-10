@@ -1,19 +1,21 @@
 from __future__ import annotations
 import time
+from dataclasses import asdict, dataclass, field
 from functools import cached_property
-from dataclasses import dataclass, asdict, field
 from types import TracebackType
 from typing import TYPE_CHECKING
 
 import numpy as np
+import pandas as pd
 
 from adaptive_polish.enums import StopReasons
 
 if TYPE_CHECKING:
     from typing import Any
+
     import numpy as np
-    from numpy.typing import NDArray
     from fibsem.structures import FibsemImage
+    from numpy.typing import NDArray
 
 
 @dataclass
@@ -21,6 +23,12 @@ class ProcessTimestamps:
     start: float | None = None
     end: float | None = None
     exception: str | None = None
+
+    @property
+    def duration(self) -> float | None:
+        if self.start is None or self.end is None:
+            return None
+        return self.end - self.start
 
     def __enter__(self) -> None:
         self.start = time.time()
@@ -34,6 +42,11 @@ class ProcessTimestamps:
         self.end = time.time()
         if exc_val is not None:
             self.exception = f"{exc_val.__class__.__name__}({exc_val})"
+
+    def to_dict(self) -> dict[str, Any]:
+        ddict = asdict(self)
+        ddict["duration"] = self.duration
+        return ddict
 
 
 @dataclass
@@ -74,13 +87,43 @@ class StrategyRunInformation:
     strategy_end_reason: str | None = None
     cycle_information: list[CycleInformation] = field(default_factory=list)
 
-    def to_dict(self) -> dict[str, Any]:
-        return asdict(self)
-
     def set_end_reason(self, reason: StopReasons | str | None) -> None:
         if isinstance(reason, StopReasons):
             reason = reason.value
         self.strategy_end_reason = reason
+
+    def to_dict(self) -> dict[str, Any]:
+        return asdict(self)
+
+    def to_dataframe(self) -> pd.DataFrame:
+        """Convert strategy run information into a pandas DataFrame."""
+
+        ddict = asdict(self)
+        cycle_info = ddict.pop("cycle_information")
+        df_cycles = pd.json_normalize(cycle_info)
+
+        df = df_cycles.join(pd.json_normalize(ddict), how="outer").ffill()
+
+        # compute duration columns for all .start/.end pairs
+        for c in df.columns[df.columns.str.contains(r"timestamps\.[\w_]+\.start$")]:
+            # find the matching .end column
+            col_base = c.rsplit(".", maxsplit=1)[0]
+            end_col = col_base + ".end"
+            if end_col not in df.columns:
+                continue
+            duration_col = col_base + ".duration"
+            # compute the duration in seconds
+            df[duration_col] = df[end_col] - df[c]
+
+        return df
+
+    def to_final_dataframe(self) -> pd.DataFrame:
+        """Return only the final row of the summary dataframe."""
+
+        df = self.to_dataframe()
+        if df.empty:
+            return df
+        return df.tail(1).reset_index(drop=True)
 
 
 @dataclass
@@ -181,6 +224,7 @@ class LamellaStatistics:
             np.sum(self.crack_thickness_prediction_px)
             * (self.prediction_pixel_size_m[0] * self.prediction_pixel_size_m[1] * 1e12)
         )
+
     @cached_property
     def lamella_thickness_um(self) -> NDArray[np.float_] | None:
         return np.asarray(self.lamella_thickness_prediction_px, dtype=float) * (
