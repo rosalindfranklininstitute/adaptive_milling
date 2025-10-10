@@ -281,3 +281,24 @@ def get_centre_points_from_bounding_box(
         subpixel_precision=True,
     )
     return centre_m, centre_px_point
+
+
+def resize_interp_1d(
+    array_1d: Sequence[int | float] | NDArray[typing.Any],
+    target_size: int,
+) -> NDArray[np.float_]:
+    if len(array_1d) == target_size:
+        return np.asarray(array_1d, dtype=float)
+    return np.interp(
+        np.linspace(0, len(array_1d), target_size),
+        range(len(array_1d)),
+        array_1d,
+    )
+
+
+def rescale_values(
+    array: NDArray[typing.Any],
+    input_range: tuple[float, float],
+    output_range: tuple[float, float],
+) -> NDArray[np.float_]:
+    return np.interp(array, input_range, output_range)
