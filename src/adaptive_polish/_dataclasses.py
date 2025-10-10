@@ -105,7 +105,7 @@ class StrategyRunInformation:
         df = df_cycles.join(pd.json_normalize(ddict), how="outer").ffill()
 
         # compute duration columns for all .start/.end pairs
-        for c in df.columns[df.columns.str.contains(r"timestamps\.[\w_]+\.start")]:
+        for c in df.columns[df.columns.str.contains(r"timestamps\.[\w_]+\.start$")]:
             # find the matching .end column
             col_base = c.rsplit(".", maxsplit=1)[0]
             end_col = col_base + ".end"
