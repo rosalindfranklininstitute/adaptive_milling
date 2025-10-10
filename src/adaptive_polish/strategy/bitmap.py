@@ -13,7 +13,7 @@ from fibsem.milling.patterning import (
 
 from adaptive_polish.strategy import AdaptivePolishMillingStrategy
 from adaptive_polish.config import BitmapAdaptivePolishMillingConfig
-from adaptive_polish.processing.bitmap import create_bitmap_array
+from adaptive_polish.processing.bitmap import filter_bitmap_signal, create_bitmap_array
 from adaptive_polish.processing.lamella import (
     crop_xlims_centre,
     crop_xlims_convolve_filtered,
@@ -194,8 +194,8 @@ class BitmapAdaptivePolishMillingStrategy(
     ) -> NDArray:
         if stats.gis_thickness_filtered_um is None:
             raise ValueError('"gis_thickness_filtered_um" is not available')
-        elif stats.lamella_thickness_um is None:
-            raise ValueError('"lamella_thickness_um" is not available')
+        elif stats.crack_thickness_prediction_px is None:
+            raise ValueError('"crack_thickness_prediction_px" is not defined')
         elif stats.xlims_image_px is None:
             raise ValueError('"xlims_image_px" is not defined')
 
@@ -214,8 +214,27 @@ class BitmapAdaptivePolishMillingStrategy(
             xlims=stats.xlims_image_px,
         )
 
+        bitmap_signal = gis_thickness_um.copy()
+
+        if self.config.mask_cracks:
+            # Interpolate cracks to have image_px width
+            crack_thickness_prediction_px = np.interp(
+                np.linspace(
+                    0, len(stats.crack_thickness_prediction_px), len(bitmap_signal)
+                ),
+                range(len(stats.crack_thickness_prediction_px)),
+                stats.crack_thickness_prediction_px,
+            )
+
+            # Set any region with cracks a thickness of 0 for the purposes of the bitmap
+            bitmap_signal[crack_thickness_prediction_px > 0] = 0
+
+        bitmap_signal = np.clip(bitmap_signal, 0, self.config.gis_max_um)
+
+        bitmap_signal = self._filter_bitmap_signal(bitmap_signal)
+
         bitmap_array = create_bitmap_array(
-            input_signal=gis_thickness_um * 1e-6,
+            input_signal=bitmap_signal,
             xlims=pattern_xlims,
             min_dwell_threshold=min_dwell_thickness_um,
             max_dwell_threshold=self.config.gis_max_um,
@@ -236,3 +255,15 @@ class BitmapAdaptivePolishMillingStrategy(
             )
 
         return bitmap_array
+
+    def _filter_bitmap_signal(
+        self,
+        array_1d: NDArray[np.float32 | np.float64],
+    ) -> NDArray[np.float32 | np.float64]:
+        return filter_bitmap_signal(
+            array_1d=array_1d,
+            erosion_px=self.config.bitmap_erosion_px,
+            gaussian_sigma=self.config.bitmap_gaussian_sigma,
+            minimum_value=self.config.gis_min_um,
+            maximum_value=self.config.gis_max_um,
+        )

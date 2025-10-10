@@ -187,3 +187,39 @@ def create_bitmap_array(
         bitmap_array[:, :, 1][blanking_array] = blanking_flag_value
 
     return bitmap_array
+
+
+def filter_bitmap_signal(
+    array_1d: NDArray[np.float32 | np.float64],
+    erosion_px: int,
+    gaussian_sigma: float,
+    minimum_value: float | None = None,
+    maximum_value: float | None = None,
+) -> NDArray[np.float32 | np.float64]:
+    array_1d = np.clip(array_1d, 0, maximum_value)
+
+    if minimum_value is not None:
+        min_mask = array_1d <= minimum_value
+
+        # Expand the minimum regions according to bitmap_erosion_px and ensure
+        # that the blur doesn't cut into them
+        expanded_mask = ndi.binary_erosion(
+            min_mask,
+            iterations=erosion_px,
+        )
+    else:
+        expanded_mask = False
+
+    # Use grey erosion to filter
+    array_1d = ndi.grey_erosion(array_1d, size=erosion_px)
+
+    if gaussian_sigma > 0:
+        blurred = ndi.gaussian_filter1d(
+            array_1d, sigma=gaussian_sigma, mode="constant", cval=0, truncate=6
+        )
+        array_1d = blurred
+
+    # Set to 0 to ensure the masked area is definitely at/below the minimum
+    array_1d[expanded_mask] = 0
+
+    return array_1d
