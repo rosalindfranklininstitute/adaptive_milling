@@ -208,17 +208,17 @@ class BitmapAdaptivePolishMillingStrategy(
         lamella_width_px = int(round(pattern.width / stats.image_pixel_size_m[0]))
         gis_thickness_um = np.asarray(stats.gis_thickness_filtered_um, dtype=np.float32)
 
-        new_x_lims = self._refine_xlims(
+        pattern_xlims = self._refine_xlims(
             lamella_width=lamella_width_px,
             gis_thickness=gis_thickness_um,
             xlims=stats.xlims_image_px,
         )
 
         bitmap_array = create_bitmap_array(
-            gis_thickness_m=gis_thickness_um * 1e-6,
-            xlims=new_x_lims,
-            min_dwell_thickness_m=min_dwell_thickness_um * 1e-6,
-            max_dwell_thickness_m=self.config.gis_max_um * 1e-6,
+            input_signal=gis_thickness_um * 1e-6,
+            xlims=pattern_xlims,
+            min_dwell_threshold=min_dwell_thickness_um,
+            max_dwell_threshold=self.config.gis_max_um,
             as_image=False,
         )
 
