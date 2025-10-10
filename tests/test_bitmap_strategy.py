@@ -88,8 +88,6 @@ def test_milling_stage_loads_defaults(
 def test_create_bitmap_array_calls(
     mock_resize_interp_1d, mock_create_bitmap_array, mask_cracks: bool
 ) -> None:
-    """Tests that the lamella folders are created in the correct place"""
-
     pattern_width = 1e-5
     lamella_width_px = 1000
     sigma = 19
@@ -162,8 +160,6 @@ def test_create_bitmap_array_calls(
 
 @pytest.mark.parametrize("mask_cracks", [True, False])
 def test_create_bitmap_array_simple_values(mask_cracks: bool) -> None:
-    """Tests that the lamella folders are created in the correct place"""
-
     pattern_width = 1e-5
     lamella_width_px = 1000
     image_width = 100
