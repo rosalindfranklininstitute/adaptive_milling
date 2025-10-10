@@ -8,6 +8,10 @@ from datetime import datetime
 
 import numpy as np
 
+from adaptive_polish.processing.sem_segmentation import (
+    SegmentationLabels as SemLabels,
+)
+
 if typing.TYPE_CHECKING:
     from numpy.typing import NDArray
 
@@ -57,6 +61,101 @@ def setup_test_experiment(
         f.write(experiment)
 
     return experiment_path
+
+
+def create_mock_prediction_gis_thickness(
+    image_shape: tuple[int, int],
+    lamella_bbox: tuple[int, int, int, int],
+    background_lamella_overlap: int,
+    vacuum_bottom_pixels: int,
+    add_crack: bool = True,
+    top_background_size: int = 3,
+    top_vacuum_size: int = 3,
+) -> tuple[NDArray[np.uint8], NDArray[np.uint8], NDArray[np.uint8]]:
+    segmented_gis_thickness: NDArray[np.uint8] = np.asarray(
+        (
+            ([0] * lamella_bbox[1])
+            + [_ // 2 for _ in range(lamella_bbox[3] - lamella_bbox[1])]
+            + ([0] * (image_shape[1] - lamella_bbox[3]))
+        ),
+        dtype=np.uint8,
+    )
+
+    # Add on overlapping background to segmented GIS area
+    expected_gis_thickness = segmented_gis_thickness.copy()
+    gis_background_thickness = image_shape[0] - (lamella_bbox[2] + 1)
+    expected_gis_thickness[
+        lamella_bbox[1] : lamella_bbox[1] + background_lamella_overlap
+    ] = gis_background_thickness
+    expected_gis_thickness[
+        lamella_bbox[3] + 1 - background_lamella_overlap : lamella_bbox[3] + 1
+    ] = gis_background_thickness
+
+    prediction = np.full(image_shape, SemLabels.VACUUM.value, dtype=np.uint8)
+
+    # Draw background (edges)
+    prediction[:, : lamella_bbox[1] + background_lamella_overlap] = (
+        SemLabels.BACKGROUND.value
+    )
+    prediction[:, lamella_bbox[3] + 1 - background_lamella_overlap :] = (
+        SemLabels.BACKGROUND.value
+    )
+
+    # Add background to bottom of vacuum (should be ignored)
+    prediction[image_shape[0] - vacuum_bottom_pixels :, :] = SemLabels.BACKGROUND.value
+
+    # Draw lamella
+    prediction[
+        lamella_bbox[0] : lamella_bbox[2] + 1, lamella_bbox[1] : lamella_bbox[3] + 1
+    ] = SemLabels.LAMELLA.value
+
+    # Draw GIS
+    gis_top = lamella_bbox[2] + 1
+    for i, thickness in enumerate(segmented_gis_thickness):
+        prediction[gis_top : gis_top + thickness, i] = SemLabels.GIS.value
+
+    # Mislable some GIS as background
+    # This should not affect the GIS thickness
+    hole_coords = (lamella_bbox[2] + 1, lamella_bbox[3])
+    prediction[hole_coords[0], hole_coords[1]] = SemLabels.BACKGROUND.value
+
+    # Add hole of vacuum to GIS layer
+    hole_coords = (lamella_bbox[2] + 1, lamella_bbox[3] - lamella_bbox[1])
+    prediction[hole_coords[0], hole_coords[1]] = SemLabels.VACUUM.value
+    expected_gis_thickness[hole_coords[1]] -= 1
+
+    # Add some background to top of lamella
+    # This should not affect the GIS thickness
+    slicer = (
+        slice(None, lamella_bbox[0] + top_background_size),
+        slice(lamella_bbox[1], lamella_bbox[1] + top_background_size),
+    )
+    prediction[slicer] = SemLabels.BACKGROUND.value
+
+    # Add some vacuum to top of lamella
+    # This should not affect the GIS thickness
+    slicer = (
+        slice(None, lamella_bbox[0] + top_vacuum_size),
+        slice(lamella_bbox[3], lamella_bbox[3] - top_vacuum_size - 1, -1),
+    )
+    prediction[slicer] = SemLabels.VACUUM.value
+
+    if add_crack:
+        # Add a crack to GIS layer
+        remaining_gis_thickness = 1
+        crack_coords = (
+            lamella_bbox[2] + 1 + remaining_gis_thickness,
+            lamella_bbox[3] - lamella_bbox[1] + 1,
+        )
+        prediction[
+            crack_coords[0] : crack_coords[0]
+            + expected_gis_thickness[crack_coords[1]]
+            - remaining_gis_thickness,
+            crack_coords[1],
+        ] = SemLabels.CRACK.value
+        expected_gis_thickness[crack_coords[1]] = remaining_gis_thickness
+
+    return prediction, segmented_gis_thickness, expected_gis_thickness
 
 
 @dataclass(repr=False)
