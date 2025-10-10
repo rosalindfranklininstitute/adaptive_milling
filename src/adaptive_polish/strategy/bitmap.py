@@ -86,7 +86,7 @@ class BitmapAdaptivePolishMillingStrategy(
         stats: LamellaStatistics,
     ) -> TrenchBitmapPattern:
         bitmap_array = self.create_bitmap_array(
-            pattern=pattern,
+            pattern_width_m=pattern.width,
             stats=stats,
         )
         if pattern.time != 0:
@@ -111,7 +111,7 @@ class BitmapAdaptivePolishMillingStrategy(
         stats: LamellaStatistics,
     ) -> BitmapPattern:
         bitmap_array = self.create_bitmap_array(
-            pattern=pattern,
+            pattern_width_m=pattern.width,
             stats=stats,
         )
 
@@ -189,7 +189,7 @@ class BitmapAdaptivePolishMillingStrategy(
 
     def create_bitmap_array(
         self,
-        pattern: RectanglePattern | TrenchPattern,
+        pattern_width_m: float,
         stats: LamellaStatistics,
     ) -> NDArray:
         if stats.gis_thickness_filtered_um is None:
@@ -205,7 +205,7 @@ class BitmapAdaptivePolishMillingStrategy(
             else self.config.gis_min_um
         )
 
-        lamella_width_px = int(round(pattern.width / stats.image_pixel_size_m[0]))
+        lamella_width_px = int(round(pattern_width_m / stats.image_pixel_size_m[0]))
         gis_thickness_um = np.asarray(stats.gis_thickness_filtered_um, dtype=np.float32)
 
         pattern_xlims = self._refine_xlims(
