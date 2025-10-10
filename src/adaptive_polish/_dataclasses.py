@@ -1,6 +1,6 @@
 from __future__ import annotations
 import time
-from dataclasses import asdict, dataclass, field, fields
+from dataclasses import asdict, dataclass, field
 from functools import cached_property
 from types import TracebackType
 from typing import TYPE_CHECKING
@@ -153,38 +153,6 @@ class LamellaStatistics:
     gis_thickness_min_image_px: float | None = None
     gis_thickness_median_image_px: float | None = None
     gis_thickness_mean_image_px: float | None = None
-
-    def to_summary_dict(self) -> dict[str, Any]:
-        data = {}
-
-        lamella_thickness_um = self.lamella_thickness_um
-        if lamella_thickness_um is None or lamella_thickness_um.size == 0:
-            data["lamella_thickness_um"] = None
-        else:
-            data["lamella_thickness_um"] = float(np.nanmean(lamella_thickness_um))
-
-        gis_thickness_um = self.gis_thickness_um
-        if gis_thickness_um is None or gis_thickness_um.size == 0:
-            data["gis_thickness_um"] = None
-        else:
-            data["gis_thickness_um"] = float(np.nanmean(gis_thickness_um))
-
-        gis_thickness_filtered_um = self.gis_thickness_filtered_um
-        if gis_thickness_filtered_um is None or gis_thickness_filtered_um.size == 0:
-            data["gis_thickness_filtered_um"] = None
-        else:
-            data["gis_thickness_filtered_um"] = float(
-                np.nanmean(gis_thickness_filtered_um)
-            )
-
-        data["crack_area_um2"] = self.crack_area_um2
-        data["lamella_area_um2"] = self.lamella_area_um2
-        data["gis_thickness_min_um"] = self.gis_thickness_min_um
-        data["gis_thickness_mean_um"] = self.gis_thickness_mean_um
-        data["gis_thickness_median_um"] = self.gis_thickness_median_um
-        data["crack_count"] = self.crack_count
-
-        return data
 
     def calculate_gis_statistics(self) -> None:
         if (
