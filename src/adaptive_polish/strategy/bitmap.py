@@ -18,11 +18,12 @@ from adaptive_polish.processing.lamella import (
     crop_xlims_centre,
     crop_xlims_convolve_filtered,
 )
+from adaptive_polish.processing.image import resize_interp_1d
 from adaptive_polish.plot import create_milling_cycle_plot
 from adaptive_polish.exceptions import StopMillingException
 
 if TYPE_CHECKING:
-    from typing import ClassVar
+    from typing import ClassVar, Any
     from pathlib import Path
     from numpy.typing import NDArray
     from fibsem.milling import FibsemMillingStage
@@ -89,6 +90,9 @@ class BitmapAdaptivePolishMillingStrategy(
             pattern_width_m=pattern.width,
             stats=stats,
         )
+
+        self._check_bitmap(bitmap_array)
+
         if pattern.time != 0:
             _logger.warning(
                 "Bitmap adaptive polishing won't work as expected because pattern time has been set"
@@ -114,6 +118,8 @@ class BitmapAdaptivePolishMillingStrategy(
             pattern_width_m=pattern.width,
             stats=stats,
         )
+
+        self._check_bitmap(bitmap_array)
 
         if pattern.time != 0:
             _logger.warning(
@@ -170,7 +176,7 @@ class BitmapAdaptivePolishMillingStrategy(
     def _refine_xlims(
         self,
         lamella_width,
-        gis_thickness: NDArray[np.float32 | np.float64],
+        gis_thickness: NDArray[np.float64 | np.float32],
         xlims: tuple[int, int],
     ) -> tuple[int, int]:
         if self.config.pattern_alignment == "centre":
@@ -199,62 +205,34 @@ class BitmapAdaptivePolishMillingStrategy(
         elif stats.xlims_image_px is None:
             raise ValueError('"xlims_image_px" is not defined')
 
-        min_dwell_thickness_um = (
-            self.config.gis_stop_um
-            if self.config.gis_min_um == 0
-            else self.config.gis_min_um
-        )
-
         lamella_width_px = int(round(pattern_width_m / stats.image_pixel_size_m[0]))
-        gis_thickness_um = np.asarray(stats.gis_thickness_filtered_um, dtype=np.float32)
 
         pattern_xlims = self._refine_xlims(
             lamella_width=lamella_width_px,
-            gis_thickness=gis_thickness_um,
+            gis_thickness=stats.gis_thickness_filtered_um,
             xlims=stats.xlims_image_px,
         )
 
-        bitmap_signal = gis_thickness_um.copy()
+        bitmap_signal = stats.gis_thickness_filtered_um.copy()
 
         if self.config.mask_cracks:
             # Interpolate cracks to have image_px width
-            crack_thickness_prediction_px = np.interp(
-                np.linspace(
-                    0, len(stats.crack_thickness_prediction_px), len(bitmap_signal)
-                ),
-                range(len(stats.crack_thickness_prediction_px)),
-                stats.crack_thickness_prediction_px,
+            crack_thickness_image_px = resize_interp_1d(
+                stats.crack_thickness_prediction_px, target_size=len(bitmap_signal)
             )
 
             # Set any region with cracks a thickness of 0 for the purposes of the bitmap
-            bitmap_signal[crack_thickness_prediction_px > 0] = 0
-
-        bitmap_signal = np.clip(bitmap_signal, 0, self.config.gis_max_um)
+            bitmap_signal[crack_thickness_image_px > 0] = 0
 
         bitmap_signal = self._filter_bitmap_signal(bitmap_signal)
 
-        bitmap_array = create_bitmap_array(
+        return create_bitmap_array(
             input_signal=bitmap_signal,
             xlims=pattern_xlims,
-            min_dwell_threshold=min_dwell_thickness_um,
+            min_dwell_threshold=self.config.gis_min_um,
             max_dwell_threshold=self.config.gis_max_um,
             as_image=False,
         )
-
-        if (
-            dwell_multiplier_max := bitmap_array[:, :, 0].max()
-        ) < self.config.stop_mill_fraction_max:
-            raise StopMillingException(
-                f"The maximum dwell time multiplier is {dwell_multiplier_max:.3f}, below the threshold of {self.config.stop_mill_fraction_max:.3f}"
-            )
-        elif (
-            dwell_multiplier_max := bitmap_array[:, :, 0].mean()
-        ) <= self.config.stop_mill_fraction_mean:
-            raise StopMillingException(
-                f"The mean dwell time multiplier is {dwell_multiplier_max:.3f}, below the threshold of {self.config.stop_mill_fraction_max:.3f}"
-            )
-
-        return bitmap_array
 
     def _filter_bitmap_signal(
         self,
@@ -267,3 +245,17 @@ class BitmapAdaptivePolishMillingStrategy(
             minimum_value=self.config.gis_min_um,
             maximum_value=self.config.gis_max_um,
         )
+
+    def _check_bitmap(self, bitmap_array: NDArray[Any]) -> None:
+        if (
+            dwell_multiplier_max := bitmap_array[:, :, 0].max()
+        ) < self.config.stop_mill_fraction_max:
+            raise StopMillingException(
+                f"The maximum dwell time multiplier is {dwell_multiplier_max:.3f}, below the threshold of {self.config.stop_mill_fraction_max:.3f}"
+            )
+        elif (
+            dwell_multiplier_max := bitmap_array[:, :, 0].mean()
+        ) <= self.config.stop_mill_fraction_mean:
+            raise StopMillingException(
+                f"The mean dwell time multiplier is {dwell_multiplier_max:.3f}, below the threshold of {self.config.stop_mill_fraction_max:.3f}"
+            )
