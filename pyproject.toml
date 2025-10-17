@@ -41,6 +41,8 @@ dependencies = [
   "jinja2",
   "pydantic",
   "fibsem@git+https://github.com/rosalindfranklininstitute/fibsem-os.git",
+  "torch >= 2.7.0",
+  "torchvision >= 0.22.0",
 ]
 
 [project.urls]
@@ -52,6 +54,15 @@ readme = { file = "README.md", content-type = "text/markdown" }
 
 [tool.setuptools_scm]
 version_file = "adaptive_polish/_version.py"
+
+[tool.setuptools.packages.find]
+where = [
+  "src",
+]
+exclude = [
+  "tests",
+  "scripts",
+]
 
 [project.optional-dependencies]
 test = [
@@ -75,16 +86,83 @@ ui = [
 reporting = [
   "fibsem[reporting]@git+https://github.com/rosalindfranklininstitute/fibsem-os.git",
 ]
-all = ["adaptive_polish[test,dev,scripts,ui,reporting]"]
+all = [
+  "adaptive_polish[test,dev,scripts,ui,reporting]",
+]
 
-[tool.setuptools.packages.find]
-where = [
-  "src",
+# Extras that are linked with the PyTorch index for CPU or CUDA version (if using uv)
+cpu = [
+  "torch>=2.7.0",
+  "torchvision>=0.22.0",
 ]
-exclude = [
-  "tests",
-  "scripts",
+cu113 = [
+  "torch>=2.7.0",
+  "torchvision>=0.22.0",
 ]
+cu118 = [
+  "torch>=2.7.0",
+  "torchvision>=0.22.0",
+]
+cu126 = [
+  "torch>=2.7.0",
+  "torchvision>=0.22.0",
+]
+cu128 = [
+  "torch>=2.7.0",
+  "torchvision>=0.22.0",
+]
+
+[tool.uv]
+conflicts = [
+  [
+    { extra = "cpu" },
+    { extra = "cu113" },
+    { extra = "cu118" },
+    { extra = "cu126" },
+    { extra = "cu128" },
+  ],
+]
+
+[tool.uv.sources]
+torch = [
+  { index = "pytorch-cpu", extra = "cpu" },
+  { index = "pytorch-cu118", extra = "cu113" },
+  { index = "pytorch-cu118", extra = "cu118" },
+  { index = "pytorch-cu126", extra = "cu126" },
+  { index = "pytorch-cu128", extra = "cu128" },
+]
+torchvision = [
+  { index = "pytorch-cpu", extra = "cpu" },
+  { index = "pytorch-cu118", extra = "cu113" },
+  { index = "pytorch-cu118", extra = "cu118" },
+  { index = "pytorch-cu126", extra = "cu126" },
+  { index = "pytorch-cu128", extra = "cu128" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu113"
+url = "https://download.pytorch.org/whl/cu113"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu118"
+url = "https://download.pytorch.org/whl/cu118"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu126"
+url = "https://download.pytorch.org/whl/cu126"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
 
 [project.entry-points.'fibsem.strategies']
 # Make the strategy discoverable by fibsem
