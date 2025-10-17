@@ -604,7 +604,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
 
         if self._get_crack_too_large(stats.crack_area_um2):
             raise StopMillingException(
-                f"Crack area (um2) {stats.crack_area_um2:.4e} > threshold {stats.crack_area_um2:.4e} um2",
+                f"Crack area (um2) {stats.crack_area_um2:.4e} > threshold {self.config.max_crack_area_um2:.4e} um2",
                 reason=StopReasons.CRACK_AREA,
             )
 
