@@ -31,11 +31,9 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           enable-cache: true
-      - name: Install dependencies
-        run: uv sync --no-cache --no-binary --extra test
       - name: Lint with ruff
         uses: astral-sh/ruff-action@v3
         with:
           src: "./src"
-      - name: Test with pytest
-        run: uv run pytest
+      - name: Install & test
+        run: uv run --locked --extra test pytest
