@@ -31,6 +31,7 @@ _AP_PASS_CHECKS_CONFIG = {
     "max_crack_area_um2": np.inf,
     "minimum_lamella_area_um2": 0,
     "maximum_drift_um": np.inf,
+    "gis_min_change_px": 0,
 }
 
 TIMESTAMP = "timestamp"
@@ -103,6 +104,7 @@ def assert_results_dicts_equal(
             compare(value=value, expected=expected)
         except Exception as e:
             raise AssertionError(f"Mismatch: {k} {e}") from e
+
 
 @patch("os.path.isfile")
 def test_default_config(mock_isfile) -> None:
@@ -553,6 +555,7 @@ def test_results_saved(
                     "lamella_thickness_prediction_px": ANY,
                     "crack_thickness_prediction_px": ANY,
                     "estimated_milling_time_s": ANY,
+                    "gis_thickness_change_image_px": ANY,
                     "lamella_bounding_box_prediction_px": ANY,
                     "xlims_prediction_px": ANY,
                     "lamella_bounding_box_image_px": ANY,
@@ -681,7 +684,8 @@ def test_align_beam(
 
 @pytest.mark.usefixtures("skip_if_no_models")
 @pytest.mark.parametrize(
-    "failure_reason", ["gis", "crack", "lamella area", "centring", "none"]
+    "failure_reason",
+    ["gis", "crack", "lamella area", "centring", "gis_reduction", "none"],
 )
 def test_check_lamella(
     failure_reason: str,
@@ -702,7 +706,6 @@ def test_check_lamella(
     saves_results: bool
     pass_checks_kwargs = _AP_PASS_CHECKS_CONFIG.copy()
     check_exception: type[Exception] | None = None
-    info_exception: type[Exception] | None = None
     if failure_reason == "gis":
         saves_results = True
         check_exception = ap_strategy.StopMillingException
@@ -719,6 +722,10 @@ def test_check_lamella(
         saves_results = True
         check_exception = ap_strategy.StopEarlyError
         pass_checks_kwargs["maximum_drift_um"] = 0
+    elif failure_reason == "gis_reduction":
+        saves_results = True
+        check_exception = ap_strategy.StopMillingException
+        pass_checks_kwargs["gis_min_change_px"] = 0.1
     elif failure_reason == "none":
         saves_results = True
     else:
@@ -739,18 +746,14 @@ def test_check_lamella(
     fib_image = FibsemImage.load(str(fib_image_path))
     sem_image = FibsemImage.load(str(sem_image_path))
 
-    stage = MagicMock()
-    stage.pattern.time = 20
-
-    with utils.assert_raises(info_exception):
-        lamella_info = strategy._get_lamella_info(
-            cycle_info=CycleInformation(
-                milling_cycle=milling_cycle, identifier=image_name
-            ),
-            sem_image=sem_image,
-            fib_image=fib_image,
-            lamella_pad_x=0,
-        )
+    lamella_info = strategy._get_lamella_info(
+        cycle_info=CycleInformation(milling_cycle=milling_cycle, identifier=image_name),
+        sem_image=sem_image,
+        fib_image=fib_image,
+        lamella_pad_x=0,
+    )
+    # Set gis_thickness_change_image_px so that the gis_min_change_px check can run
+    lamella_info.statistics.gis_thickness_change_image_px = [0]
 
     with utils.assert_raises(check_exception):
         strategy._check_lamella(

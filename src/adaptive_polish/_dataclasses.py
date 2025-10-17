@@ -148,6 +148,7 @@ class LamellaStatistics:
 
     gis_thickness_image_px: list[float | int] | None = None
     gis_thickness_filtered_image_px: list[float | int] | None = None
+    gis_thickness_change_image_px: list[float | int] | None = None
 
     # These can be calculated by calculate_gis_statistics
     gis_thickness_min_image_px: float | None = None

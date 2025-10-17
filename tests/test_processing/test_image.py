@@ -11,6 +11,7 @@ from adaptive_polish.processing.image import (
     get_bounding_box_from_edges,
     get_centre_from_bounding_box,
     get_mask_edges,
+    center_subtract_1d,
 )
 
 from ..setup import SimpleRectangleLamellaMask
@@ -114,7 +115,7 @@ def test_get_mask_bounding_box_simple(
     found_bounding_box = get_mask_bounding_box(
         test_lamella.array, edge_finding=edge_finding
     )
-    np.testing.assert_array_equal(
+    assert_array_equal(
         found_bounding_box,
         test_lamella.bounding_box,
         err_msg="The found bounding box does not match the actual bounding box",
@@ -144,7 +145,7 @@ def test_get_lamella_bounding_box_median() -> None:
     found_bounding_box = get_mask_bounding_box(
         test_lamella.array, edge_finding="median"
     )
-    np.testing.assert_array_equal(
+    assert_array_equal(
         found_bounding_box,
         test_lamella.bounding_box,
         err_msg="The found bounding box does not match the expected bounding box",
@@ -166,8 +167,22 @@ def test_get_lamella_bounding_box_mean() -> None:
 
     found_bounding_box = get_mask_bounding_box(triangle_array, edge_finding="mean")
 
-    np.testing.assert_array_equal(
+    assert_array_equal(
         found_bounding_box,
         expected_bounding_box,
         err_msg="The found bounding box does not match the expected bounding box",
+    )
+
+def test_center_subtract_1d() -> None:
+    long_array = np.linspace(0, 50, num=51)
+    short_array = np.linspace(5, 45, num=41)
+
+    result = center_subtract_1d(long_array, short_array)
+
+    assert len(result) == len(short_array)
+    assert not sum(result)
+    assert_array_equal(
+        result,
+        center_subtract_1d(short_array, long_array),
+        err_msg="Result should not be different if the argument order is swapped",
     )

@@ -90,6 +90,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
     def __init__(self, config: TAdaptivePolishMillingConfig | None = None) -> None:
         super().__init__(config=config)
         self.model: AbstractAdaptivePolishingModel | None = None
+        self._last_gis_measurement_px: NDArray[np.float32 | np.float64] | None = None
 
     def run(
         self,
@@ -111,6 +112,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             strategy_name=self.name,
             stage_name=stage.name,
         )
+        self._last_gis_measurement_px = None  # Clear at the beginning of each run
         with run_info.timestamps.strategy:
             with run_info.timestamps.setup:
                 # setup milling
@@ -535,6 +537,28 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             statistics.gis_thickness_filtered_image_px = (
                 gis_thickness_filtered_image_px.tolist()
             )
+
+            if self._last_gis_measurement_px is not None:
+                # Calculate difference between the GIS thickness measurements
+                # from the last cycle (if there is one) and this cycle.
+                # This makes the comparison assuming that the middle of both
+                # arrays is in the same place, cropping out areas that don't
+                # both have values (the slices defined by xlims might be
+                # difference lengths).
+                statistics.gis_thickness_change_image_px = (
+                    image_proc.center_subtract_1d(
+                        self._last_gis_measurement_px,
+                        gis_thickness_filtered_image_px[
+                            xlims_image_px[0] : xlims_image_px[1] + 1
+                        ],
+                    )
+                ).tolist()
+
+            # Update last GIS measurement
+            self._last_gis_measurement_px = gis_thickness_filtered_image_px[
+                xlims_image_px[0] : xlims_image_px[1] + 1
+            ]
+
             # Calculate GIS min, median, etc.
             statistics.calculate_gis_statistics()
 
@@ -606,6 +630,12 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             raise StopMillingException(
                 f"Crack area (um2) {stats.crack_area_um2:.4e} > threshold {self.config.max_crack_area_um2:.4e} um2",
                 reason=StopReasons.CRACK_AREA,
+            )
+
+        if self._get_gis_reduction_rate_too_small(stats.gis_thickness_change_image_px):
+            raise StopMillingException(
+                f"The change in measured GIS thickness has not seen more than {self.config.gis_min_change_px:4e} px GIS milled away between cycles",
+                reason=StopReasons.GIS_REDUCTION_RATE,
             )
 
     def _mill(
@@ -755,6 +785,16 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
     def _get_crack_too_large(self, crack_area_um2: float) -> bool:
         # Total crack area check
         return crack_area_um2 > float(self.config.max_crack_area_um2)
+
+    def _get_gis_reduction_rate_too_small(
+        self, gis_thickness_change_image_px: list[float | int] | None
+    ) -> bool:
+        if gis_thickness_change_image_px is None or self.config.gis_min_change_px == 0:
+            # Check must pass for the first cycle when gis_thickness_change_image_px is None.
+            # Setting gis_min_change_px to 0 disables the check.
+            return False
+        # The minimum change should be negative and below the negative of the configured value
+        return min(gis_thickness_change_image_px) > -self.config.gis_min_change_px
 
     def _save_results(
         self,

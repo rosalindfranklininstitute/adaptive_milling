@@ -281,3 +281,22 @@ def get_centre_points_from_bounding_box(
         subpixel_precision=True,
     )
     return centre_m, centre_px_point
+
+
+def center_subtract_1d(
+    arr1: NDArray[typing.Any], arr2: NDArray[typing.Any]
+) -> NDArray[typing.Any]:
+    len1 = len(arr1)
+    len2 = len(arr2)
+
+    if len1 < len2:
+        start = len2 // 2 - len1 // 2
+        end = start + len1
+        return arr1 - arr2[start:end]
+    elif len1 > len2:
+        start = len1 // 2 - len2 // 2
+        end = start + len2
+        return arr1[start:end] - arr2
+
+    # If lengths are equal
+    return arr1 - arr2

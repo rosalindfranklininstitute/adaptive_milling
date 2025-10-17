@@ -16,6 +16,13 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
     model_path: str = ""
     model_generation: str = DEFAULT_MODEL_GENERATION
     gis_stop_um: NonNegativeFloat = 0.2
+    gis_min_change_px: float = Field(
+        default=0.0,
+        ge=0,
+        title="GIS min change (pixels)",
+        description="One or more points must have at least this reduction in "
+        "GIS thickness between cycles. This check is disabled if set to 0.",
+    )
     max_crack_area_um2: NonNegativeFloat = 2
     max_milling_cycles: PositiveInt = 30
     minimum_lamella_area_um2: NonNegativeFloat = 30.0  # 30μm²
@@ -37,7 +44,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         "save_predictions",
         "gis_filter_sigma",
         "lamella_pad_x",
-        "save_predictions",
+        "gis_min_change_px",
     )
 
     @field_validator("model_path", mode="after")
