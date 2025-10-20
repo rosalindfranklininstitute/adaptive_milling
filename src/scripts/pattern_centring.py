@@ -16,7 +16,7 @@ from fibsem.utils import load_protocol
 from adaptive_polish.config import BitmapAdaptivePolishMillingConfig
 from adaptive_polish.strategy import BitmapAdaptivePolishMillingStrategy
 from adaptive_polish._dataclasses import CycleInformation, CycleTimestamps
-from adaptive_polish.gis_measurement import (
+from adaptive_polish.processing.lamella import (
     crop_xlims_centre,
     crop_xlims_convolve,
     crop_xlims_convolve_filtered,
