@@ -538,6 +538,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                 gis_thickness_filtered_image_px.tolist()
             )
 
+            new_gis_measurement_px = gis_thickness_filtered_image_px[
+                xlims_image_px[0] : xlims_image_px[1] + 1
+            ]
             if self._last_gis_measurement_px is not None:
                 # Calculate difference between the GIS thickness measurements
                 # from the last cycle (if there is one) and this cycle.
@@ -545,19 +548,15 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                 # arrays is in the same place, cropping out areas that don't
                 # both have values (the slices defined by xlims might be
                 # difference lengths).
+
                 statistics.gis_thickness_change_image_px = (
-                    image_proc.center_subtract_1d(
-                        self._last_gis_measurement_px,
-                        gis_thickness_filtered_image_px[
-                            xlims_image_px[0] : xlims_image_px[1] + 1
-                        ],
-                    )
-                ).tolist()
+                    image_proc.align_and_subtract_signals(
+                        new_gis_measurement_px, self._last_gis_measurement_px
+                    ).tolist()
+                )
 
             # Update last GIS measurement
-            self._last_gis_measurement_px = gis_thickness_filtered_image_px[
-                xlims_image_px[0] : xlims_image_px[1] + 1
-            ]
+            self._last_gis_measurement_px = new_gis_measurement_px
 
             # Calculate GIS min, median, etc.
             statistics.calculate_gis_statistics()
@@ -632,11 +631,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                 reason=StopReasons.CRACK_AREA,
             )
 
-        if self._get_gis_reduction_rate_too_small(stats.gis_thickness_change_image_px):
-            raise StopMillingException(
-                f"The change in measured GIS thickness has not seen more than {self.config.gis_min_change_px:4e} px GIS milled away between cycles",
-                reason=StopReasons.GIS_REDUCTION_RATE,
-            )
+        self._check_gis_reduction_rate_too_small(stats.gis_thickness_change_image_px)
 
     def _mill(
         self,
@@ -794,7 +789,32 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             # Setting gis_min_change_px to 0 disables the check.
             return False
         # The minimum change should be negative and below the negative of the configured value
-        return min(gis_thickness_change_image_px) > -self.config.gis_min_change_px
+        return (
+            float(np.median(gis_thickness_change_image_px))
+            > -self.config.gis_min_change_px
+        )
+
+    def _check_gis_reduction_rate_too_small(
+        self,
+        gis_thickness_change_px: list[float | int] | None,
+    ) -> None:
+        if gis_thickness_change_px is None or self.config.gis_min_change_px == 0:
+            # Check must pass for the first cycle when gis_thickness_change_px is None.
+            # Setting gis_min_change_px to 0 disables the check.
+            return
+        # The average change should be negative and below the negative of the configured value
+        median_change = float(np.median(gis_thickness_change_px))
+        print(f"Median change: {median_change}")
+        mean_change = float(np.mean(gis_thickness_change_px))
+        print(f"Mean change: {mean_change}")
+        min_change = min(gis_thickness_change_px)
+        print(f"Biggest reduction: {min_change}")
+
+        if min_change > -self.config.gis_min_change_px:
+            raise StopMillingException(
+                f"The biggest reduction in measured GIS thickness of {min_change:.4f} px is below the threshold of -{self.config.gis_min_change_px:.4f} px GIS milled away between cycles",
+                reason=StopReasons.GIS_REDUCTION_RATE,
+            )
 
     def _save_results(
         self,

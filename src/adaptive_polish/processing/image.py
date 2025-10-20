@@ -4,6 +4,7 @@ from functools import partial
 from math import ceil, floor
 
 import numpy as np
+from scipy.signal import correlate, correlation_lags
 from skimage import measure, transform
 
 from fibsem import conversions
@@ -300,3 +301,39 @@ def center_subtract_1d(
 
     # If lengths are equal
     return arr1 - arr2
+
+
+def correlate_arrays_1d(
+    target_array: NDArray[typing.Any], new_array: NDArray[typing.Any]
+) -> int:
+    target_length = len(target_array)
+    target_length_quater = target_length // 4
+    # Use the middle half of the target_array to correlate:
+    weights = target_array[target_length_quater : 3 * target_length_quater]
+    correlation_mode = "valid"
+    correlation = correlate(new_array, weights, mode=correlation_mode)
+    # # Remove padded correlations
+    # correlation = correlation[
+    #     (len(new_array) - target_length_quater * 2 - 1) : len(correlation)
+    #     - (len(new_array) - target_length_quater * 2 - 1)
+    # ]
+    # argmax gets the middle of the target array, we want the left edge
+    offsets = correlation_lags(len(new_array), len(weights), mode=correlation_mode)
+    corr_idx = np.argmax(correlation)
+    return offsets[corr_idx] - (2 * target_length_quater)
+
+
+def align_and_subtract_signals(
+    arr1: NDArray[typing.Any], arr2: NDArray[typing.Any]
+) -> NDArray[typing.Any]:
+    corr_idx = -correlate_arrays_1d(arr1, arr2)
+
+    if corr_idx < 0:  # decides which array sets the minimum limit
+        corr_idx = abs(corr_idx)
+        arr1_slice = slice(0, min(len(arr1), len(arr2) - corr_idx))
+        arr2_slice = slice(corr_idx, min(len(arr2), len(arr1) + corr_idx))
+    else:
+        arr1_slice = slice(corr_idx, min(len(arr1), len(arr2) + corr_idx))
+        arr2_slice = slice(0, min(len(arr2), len(arr1) - corr_idx))
+
+    return np.subtract(arr2[arr2_slice], arr2[arr1_slice])
