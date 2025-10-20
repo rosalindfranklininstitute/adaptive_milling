@@ -13,7 +13,10 @@ from fibsem.milling import get_milling_stages, mill_stages
 
 from fibsem.applications.autolamella.protocol.validation import validate_protocol
 from fibsem.applications.autolamella.structures import AutoLamellaProtocol
-from adaptive_polish.config.adaptive_polish import AdaptivePolishMillingConfig
+from adaptive_polish.config import (
+    AdaptivePolishMillingConfig,
+    BitmapAdaptivePolishMillingConfig,
+)
 
 from . import setup
 
@@ -37,18 +40,29 @@ TIMESTAMP = "timestamp"
 
 @pytest.fixture
 def protocol_path(
+    request: pytest.FixtureRequest,
     protocol_template_path: Path,
     tmp_path: Path,
     sem_segmentation_model: tuple[str, Path],
 ) -> Path:
-    ap_config = AdaptivePolishMillingConfig(
+    strategy_type = request.param
+    if strategy_type == "bitmap":
+        config_class = BitmapAdaptivePolishMillingConfig
+    else:
+        config_class = AdaptivePolishMillingConfig
+
+    ap_config = config_class(
         model_generation=sem_segmentation_model[0],
         model_path=str(sem_segmentation_model[1]),
         **_AP_MILLING_CONFIG_SETTINGS,
     )
 
     return setup.setup_protocol_path(
-        protocol_template_path, tmp_path, ap_config.to_dict(), ap_only=True
+        protocol_template_path,
+        tmp_path,
+        ap_config.to_dict(),
+        ap_only=True,
+        ap_type=strategy_type,
     )
 
 
@@ -89,6 +103,7 @@ def raise_error_after_num_calls(
 
 
 @pytest.mark.usefixtures("skip_if_no_models")
+@pytest.mark.parametrize("protocol_path", ["normal", "bitmap"], indirect=True)
 @patch(
     "adaptive_polish.strategy.adaptive_polish.fs_utils.current_timestamp",
     new=MagicMock(return_value=TIMESTAMP),
@@ -109,9 +124,13 @@ def test_runs(
     # Check Autolamella loads protocol correctly
     protocol = AutoLamellaProtocol.load(protocol_path)
     milling_stages = protocol.milling["mill_polishing"]
-    protocol_strategy_config: AdaptivePolishMillingConfig = milling_stages[
-        0
-    ].strategy.config
+    protocol_strategy_config = milling_stages[0].strategy.config
+
+    assert isinstance(
+        protocol_strategy_config,
+        (AdaptivePolishMillingConfig, BitmapAdaptivePolishMillingConfig),
+    ), f"Strategy config is the wrong type: {type(protocol_strategy_config)}"
+
     for k, v in _AP_MILLING_CONFIG_SETTINGS.items():
         value = getattr(protocol_strategy_config, k)
         assert getattr(protocol_strategy_config, k) == v, (
