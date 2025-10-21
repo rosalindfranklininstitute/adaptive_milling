@@ -35,7 +35,7 @@ class AsymmetricFiducialPattern(BasePattern[FibsemRectangleSettings]):
             cross_section=cross_section,
             rotation=rotation,
         )
-        right_pattern = FibsemRectangleSettings(
+        horizontal_pattern = FibsemRectangleSettings(
             width=width,
             height=height,
             depth=depth,
@@ -45,7 +45,7 @@ class AsymmetricFiducialPattern(BasePattern[FibsemRectangleSettings]):
             cross_section=cross_section,
             rotation=rotation + math.radians(90),
         )
-        left_pattern_2 = FibsemRectangleSettings(
+        short_offset_pattern = FibsemRectangleSettings(
             width=width,
             height=height * 0.5,
             depth=depth,
@@ -55,7 +55,7 @@ class AsymmetricFiducialPattern(BasePattern[FibsemRectangleSettings]):
             cross_section=cross_section,
             rotation=rotation + math.radians(37),
         )
-        right_pattern_2 = FibsemRectangleSettings(
+        medium_offest_pattern = FibsemRectangleSettings(
             width=width,
             height=height * 0.75,
             depth=depth,
@@ -66,5 +66,10 @@ class AsymmetricFiducialPattern(BasePattern[FibsemRectangleSettings]):
             rotation=rotation + math.radians(147),
         )
 
-        self.shapes = [left_pattern, right_pattern, left_pattern_2, right_pattern_2]
+        self.shapes = [
+            vertical_pattern,
+            horizontal_pattern,
+            short_offset_pattern,
+            medium_offest_pattern,
+        ]
         return self.shapes
