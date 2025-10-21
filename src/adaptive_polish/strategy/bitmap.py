@@ -212,6 +212,7 @@ class BitmapAdaptivePolishMillingStrategy(
             gis_thickness=stats.gis_thickness_filtered_um,
             xlims=stats.xlims_image_px,
         )
+        stats.pattern_xlims_px = pattern_xlims
 
         bitmap_signal = stats.gis_thickness_filtered_um.copy()
 
@@ -226,13 +227,17 @@ class BitmapAdaptivePolishMillingStrategy(
 
         bitmap_signal = self._filter_bitmap_signal(bitmap_signal)
 
-        return create_bitmap_array(
+        bitmap_array = create_bitmap_array(
             input_signal=bitmap_signal,
             xlims=pattern_xlims,
             min_dwell_threshold=self.config.gis_min_um,
             max_dwell_threshold=self.config.gis_max_um,
             as_image=False,
         )
+        stats.pattern_dwell_multiplier = bitmap_array[:, :, 0].tolist()
+        stats.pattern_blanking = bitmap_array[:, :, 1].astype(bool).tolist()
+
+        return bitmap_array
 
     def _filter_bitmap_signal(
         self,
