@@ -95,6 +95,7 @@ def test_create_bitmap_array_calls(
     gis_width = 10
     crack_location = int(gis_width / 2)
     bitmap_signal = np.random.rand(gis_width)
+    refined_xlims = [5, 10]
 
     lamella_stats = MagicMock()
     lamella_stats.gis_thickness_filtered_um = bitmap_signal.copy()
@@ -121,6 +122,11 @@ def test_create_bitmap_array_calls(
         patch.object(strategy, "_refine_xlims") as mock_refine_xlims,
         patch.object(strategy, "_filter_bitmap_signal") as mock_filter_bitmap_signal,
     ):
+        mock_refine_xlims.return_value = refined_xlims
+        mock_filter_bitmap_signal.return_value = np.arange(
+            refined_xlims[0], refined_xlims[1] + 1
+        )
+
         bitmap_array = strategy.create_bitmap_array(
             pattern_width_m=1e-5, stats=lamella_stats
         )
@@ -143,13 +149,13 @@ def test_create_bitmap_array_calls(
     mock_filter_bitmap_signal.assert_called_once()
     assert_array_equal(
         mock_filter_bitmap_signal.call_args[0][0],
-        bitmap_signal,
+        bitmap_signal[refined_xlims[0] : refined_xlims[1] + 1],
         "argument to _filter_bitmap_signal is not as expected",
     )
 
     mock_create_bitmap_array.assert_called_once_with(
         input_signal=mock_filter_bitmap_signal.return_value,
-        xlims=mock_refine_xlims.return_value,
+        xlims=(0, len(mock_filter_bitmap_signal.return_value) - 1),
         min_dwell_threshold=bitmap_config.gis_min_um,
         max_dwell_threshold=bitmap_config.gis_max_um,
         as_image=False,

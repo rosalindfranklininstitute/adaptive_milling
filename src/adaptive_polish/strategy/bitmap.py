@@ -227,11 +227,13 @@ class BitmapAdaptivePolishMillingStrategy(
             # Set any region with cracks a thickness of 0 for the purposes of the bitmap
             bitmap_signal[crack_thickness_image_px > 0] = 0
 
-        bitmap_signal = self._filter_bitmap_signal(bitmap_signal)
+        filtered_bitmap_signal = self._filter_bitmap_signal(
+            bitmap_signal[pattern_xlims[0] : pattern_xlims[1] + 1]
+        )
 
         bitmap_array = create_bitmap_array(
-            input_signal=bitmap_signal,
-            xlims=pattern_xlims,
+            input_signal=filtered_bitmap_signal,
+            xlims=(0, len(filtered_bitmap_signal) - 1),
             min_dwell_threshold=self.config.gis_min_um,
             max_dwell_threshold=self.config.gis_max_um,
             as_image=False,
