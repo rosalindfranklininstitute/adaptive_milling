@@ -171,6 +171,8 @@ class BitmapAdaptivePolishMillingStrategy(
             image_xlims=stats.xlims_image_px,
             max_crack_area_um2=self.config.max_crack_area_um2,
             img_name=lamella_info.identifier,
+            pattern_dwell_multiplier=stats.pattern_dwell_multiplier,
+            pattern_xlims=stats.pattern_xlims_px,
         )
 
     def _refine_xlims(
@@ -234,8 +236,8 @@ class BitmapAdaptivePolishMillingStrategy(
             max_dwell_threshold=self.config.gis_max_um,
             as_image=False,
         )
-        stats.pattern_dwell_multiplier = bitmap_array[:, :, 0].tolist()
-        stats.pattern_blanking = bitmap_array[:, :, 1].astype(bool).tolist()
+        stats.pattern_dwell_multiplier = bitmap_array[0, :, 0].tolist()
+        stats.pattern_blanking = bitmap_array[0, :, 1].astype(bool).tolist()
 
         return bitmap_array
 

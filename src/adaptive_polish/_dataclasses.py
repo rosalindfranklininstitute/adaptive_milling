@@ -156,8 +156,8 @@ class LamellaStatistics:
 
     # Bitmap specific values
     pattern_xlims_px: tuple[int, int] | None = None
-    pattern_dwell_multiplier: list[float] | list[list[float]] | None = None  # 1D or 2D
-    pattern_blanking: list[bool] | list[list[bool]] | None = None  # 1D or 2D
+    pattern_dwell_multiplier: list[float] | None = None
+    pattern_blanking: list[bool] | None = None
 
     def calculate_gis_statistics(self) -> None:
         if (

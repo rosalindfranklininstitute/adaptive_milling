@@ -19,6 +19,7 @@ from adaptive_polish.processing.sem_segmentation import (
 
 if typing.TYPE_CHECKING:
     from os import PathLike
+    from collections.abc import Sequence
     from numpy.typing import NDArray, ArrayLike
     from fibsem.structures import FibsemImage
     from adaptive_polish._dataclasses import StrategyRunInformation
@@ -162,6 +163,8 @@ def create_milling_cycle_plot(
     image_xlims: tuple[int, int] | None = None,
     img_name: str | None = None,
     gis_ymax_um: float = 3,
+    pattern_dwell_multiplier: Sequence[float] | None = None,
+    pattern_xlims: tuple[int, int] | None = None,
 ) -> None:
     _logger.debug("Creating milling cycle plot")
     fig, axs = plt.subplots(
@@ -230,11 +233,28 @@ def create_milling_cycle_plot(
         gis_thickness_um = np.asarray(gis_thickness_um)
 
         # GIS thickness
-        axs[1, 2].plot(gis_thickness_um, ".-")
+        thickness_colour = "tab:blue"
+        axs[1, 2].plot(gis_thickness_um, ".-", c=thickness_colour)
+        axs[1, 2].tick_params(axis="y", labelcolor=thickness_colour)
         axs[1, 2].set_xlabel("Distance along x $px$")
-        axs[1, 2].set_ylabel(r"GIS thickness ($\mu m$)")
+        axs[1, 2].set_ylabel(r"GIS thickness ($\mu m$)", color=thickness_colour)
         axs[1, 2].set_xlim(0, len(gis_thickness_um))
         axs[1, 2].set_ylim(0, gis_ymax_um)
+
+        if pattern_dwell_multiplier is not None and pattern_xlims is not None:
+            dwell_time_colour = "tab:orange"
+            dwell_time_axis = axs[1, 2].twinx()
+            dwell_time_axis.plot(
+                np.arange(pattern_xlims[0], pattern_xlims[1] + 1),
+                pattern_dwell_multiplier,
+                "-",
+                c=dwell_time_colour,
+            )
+            dwell_time_axis.tick_params(axis="y", labelcolor=dwell_time_colour)
+            dwell_time_axis.set_ylabel(
+                r"Dwell time multiplier", color=dwell_time_colour
+            )
+            dwell_time_axis.set_ylim(0, 1)
 
         if gis_min_threshold_um is not None:
             axs[1, 2].hlines(
@@ -286,7 +306,7 @@ def create_milling_cycle_plot(
 
 def create_summary_gis_plot(
     run_info: StrategyRunInformation, save_path: str | PathLike[str]
-):
+) -> None:
     milling_times: list[float | None] = []
     min_gis_thicknesses: list[float | None] = []
     mean_gis_thicknesses: list[float | None] = []
