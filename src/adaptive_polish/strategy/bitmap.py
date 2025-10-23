@@ -261,13 +261,13 @@ class BitmapAdaptivePolishMillingStrategy(
     def _check_bitmap(self, bitmap_array: NDArray[Any]) -> None:
         if (
             dwell_multiplier_max := bitmap_array[:, :, 0].max()
-        ) < self.config.stop_mill_fraction_max:
+        ) < self.config.dwell_multiplier_max_stop:
             raise StopMillingException(
-                f"The maximum dwell time multiplier is {dwell_multiplier_max:.3f}, below the threshold of {self.config.stop_mill_fraction_max:.3f}"
+                f"The maximum dwell time multiplier is {dwell_multiplier_max:.3f}, below the threshold of {self.config.dwell_multiplier_max_stop:.3f}"
             )
         elif (
             dwell_multiplier_mean := bitmap_array[:, :, 0].mean()
-        ) <= self.config.stop_mill_fraction_mean:
+        ) <= self.config.dwell_multiplier_mean_stop:
             raise StopMillingException(
-                f"The mean dwell time multiplier is {dwell_multiplier_mean:.3f}, below the threshold of {self.config.stop_mill_fraction_mean:.3f}"
+                f"The mean dwell time multiplier is {dwell_multiplier_mean:.3f}, below the threshold of {self.config.dwell_multiplier_mean_stop:.3f}"
             )
