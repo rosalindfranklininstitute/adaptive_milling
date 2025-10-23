@@ -382,7 +382,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         Image.fromarray(lamella_info.prediction).save(prediction_dir / filename)
 
     def _update_milling_stage(
-        self, stage: FibsemMillingStage, lamella_info: LamellaInformation
+        self,
+        stage: FibsemMillingStage,
+        lamella_info: LamellaInformation,
     ) -> FibsemMillingStage:
         # Make a copy of the milling stage before updating the pattern
         return deepcopy(stage)

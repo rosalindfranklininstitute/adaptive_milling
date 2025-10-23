@@ -18,7 +18,7 @@ from math import ceil, floor
 
 import numpy as np
 from scipy.signal.windows import gaussian
-from scipy.ndimage import gaussian_filter1d
+from scipy.ndimage import median_filter, gaussian_filter1d
 
 from adaptive_polish.processing.image import (
     resize_image,
@@ -323,18 +323,84 @@ def get_gis_thickness(
     return sliced_gis_thickness, xlims_out
 
 
-def find_milling_edges(
-    lamella_thickness: NDArray[np.float32],
-    gis_thickness: NDArray[np.float32],
+def crop_xlims_convolve(
+    gis_thickness: NDArray[np.float32 | np.float64],
+    xlims: tuple[int, int],
     lamella_width: int,
+    edge_size: int = 17,
+    sigma: float = 0.7,
 ) -> tuple[int, int]:
-    mean_lamella_thickness = lamella_thickness.mean()
-    clipped_gis = np.clip(gis_thickness, 0, mean_lamella_thickness)
-    return _get_minimum_area(clipped_gis - lamella_thickness, width=lamella_width)
+    """This function uses convolution to search for indents caused by the beam
+    stopping briefly at the edges of the milling pattern. As such, it assumes a
+    pattern with the same width has previously been milled in the position
+    being searched for.
+
+    After testing using the pattern_centring.py script, the following were
+    found to be optimal:
+    edge_size=17
+    sigma=0.7
+    """
+    min_diffs = _get_milled_area_convolve_gaussian(
+        np.log(gis_thickness[xlims[0] : xlims[1] + 1]),
+        width=lamella_width,
+        edge_size=edge_size,
+        sigma=sigma,
+    )
+    return (xlims[0] + min_diffs[0], xlims[0] + min_diffs[1])
 
 
-def _get_minimum_area(data: NDArray[np.float32], width: int):
-    cumsum = np.concatenate(([0], np.cumsum(data)))
-    window_sums = cumsum[width:] - cumsum[:-width]
-    idx = int(np.argmin(window_sums))
+def crop_xlims_convolve_filtered(
+    gis_thickness: NDArray[np.float32 | np.float64],
+    xlims: tuple[int, int],
+    lamella_width: int,
+    edge_size: int = 15,
+    sigma: float = 0.8,
+    filter_size: int = 136,
+) -> tuple[int, int]:
+    trimmed_thickness = gis_thickness[xlims[0] : xlims[1] + 1]
+    trimmed_filtered_thickness = median_filter(gis_thickness, size=filter_size)[
+        xlims[0] : xlims[1] + 1
+    ]
+    min_diffs = _get_milled_area_convolve_gaussian(
+        np.log(trimmed_thickness / trimmed_filtered_thickness),
+        width=lamella_width,
+        edge_size=edge_size,
+        sigma=sigma,
+    )
+    return (xlims[0] + min_diffs[0], xlims[0] + min_diffs[1])
+
+
+def _get_milled_area_convolve_gaussian(
+    data: NDArray[np.float32 | np.float64],
+    width: int,
+    edge_size: int = 17,
+    sigma: float = 0.7,
+) -> tuple[int, int]:
+    kernel = np.zeros((width,))
+    if edge_size <= 0:
+        raise ValueError("edge_size must be above 0")
+
+    window_size_px = edge_size
+    gaussian_curve = gaussian(window_size_px, std=sigma)
+    # The gaussian peaks should be 6 sigma pixels inside kernel
+    trim = ceil((window_size_px - 1) / 2 + sigma * 6)
+    kernel = np.concatenate(
+        [gaussian_curve, kernel[trim : width - trim], gaussian_curve],
+        axis=0,
+    )
+
+    conv = np.convolve(data, kernel, mode="valid")
+    idx = int(np.argmin(conv))
+    idx += trim - window_size_px
     return (idx, idx + width)
+
+
+def crop_xlims_centre(
+    lamella_width: float,
+    xlims: tuple[int, int],
+) -> tuple[int, int]:
+    crop_amount = round((1 + xlims[1] - xlims[0] - lamella_width) / 2)
+    return (
+        xlims[0] + floor(crop_amount),
+        xlims[1] - ceil(crop_amount),
+    )

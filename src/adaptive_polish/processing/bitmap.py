@@ -10,51 +10,45 @@ if typing.TYPE_CHECKING:
 
 
 def create_dwell_and_blanking_arrays(
-    gis_m: typing.Union[
-        NDArray[np.float128],
-        NDArray[np.float96],
-        NDArray[np.float64],
-        NDArray[np.float32],
-        NDArray[np.float16],
+    input_signal: NDArray[
+        np.float128 | np.float96 | np.float64 | np.float32 | np.float16
     ],
-    gis_minimum_m: float,
-    gis_maximum_m: float,
-    gis_blanking_m: typing.Union[float, None] = None,
-    gis_resolution_m: typing.Union[float, None] = None,
-    blanking_width_m: typing.Union[float, None] = None,
-    bitmap_resolution_m: typing.Union[float, None] = None,
-    max_output_range: tuple[float, float] = (1, 255),
+    min_dwell_threshold: float,
+    max_dwell_threshold: float,
+    blanking_threshold: float | None = None,
+    input_resolution_m: float | None = None,
+    blanking_width_m: float | None = None,
+    bitmap_resolution_m: float | None = None,
+    max_output_range: tuple[float, float] = (0, 255),
     nan_value: float = 0,
-) -> tuple[NDArray[typing.Any], typing.Union[NDArray[np.bool_], None]]:
+) -> tuple[NDArray[typing.Any], NDArray[np.bool_] | None]:
     """
-    Strength multiplier should be between 0 and 1
+    If `bitmap_resolution_m` and `input_resolution_m` are `None`, no pixel interpolation is used.
 
-    If `bitmap_resolution_m` and `gis_resolution_m` are `None`, no pixel interpolation is used.
-
-    `blanking_width_m` is only used if both `gis_blanking_m` and `bitmap_resolution_m` are not `None`
+    `blanking_width_m` is only used if both `blanking_threshold` and `bitmap_resolution_m` are not `None`
     """
 
-    n = len(gis_m)
-    if gis_resolution_m is not None and bitmap_resolution_m is not None:
-        factor = bitmap_resolution_m / gis_resolution_m
+    n = len(input_signal)
+    if input_resolution_m is not None and bitmap_resolution_m is not None:
+        factor = bitmap_resolution_m / input_resolution_m
     else:
         factor = 1
 
     x = np.linspace(0, n - 1, int(round((n - 1) * factor)) + 1)
-    gis_m = gis_m.copy()
-    gis_m[np.isnan(gis_m)] = nan_value
+    input_signal = input_signal.copy()
+    input_signal[np.isnan(input_signal)] = nan_value
     # Interpolate over to ensure pixel size
-    interpolated = np.interp(x, range(n), gis_m)
+    interpolated = np.interp(x, range(n), input_signal)
 
-    # Rescale values to from (gis_minimum_m, gis_maximum_m) to max_output_range
+    # Rescale values to from (min_dwell_threshold, max_dwell_threshold) to max_output_range
     rescaled = np.interp(
         interpolated,
-        (gis_minimum_m, gis_maximum_m),
+        (min_dwell_threshold, max_dwell_threshold),
         max_output_range,
     ).reshape(1, -1)
 
-    if gis_blanking_m is not None:
-        blanking_array = (interpolated < gis_blanking_m).reshape(1, -1)
+    if blanking_threshold is not None:
+        blanking_array = (interpolated < blanking_threshold).reshape(1, -1)
         if blanking_width_m is not None and bitmap_resolution_m is not None:
             blanking_half_width_px = int(
                 np.ceil(blanking_width_m / (2 * bitmap_resolution_m))
@@ -81,64 +75,52 @@ def bitmap_to_points(bitmap_image: NDArray[np.uint8]) -> NDArray[typing.Any]:
 
 @typing.overload
 def create_bitmap_array(
-    gis_thickness_m: typing.Union[
-        NDArray[np.float128],
-        NDArray[np.float96],
-        NDArray[np.float64],
-        NDArray[np.float32],
-        NDArray[np.float16],
+    input_signal: NDArray[
+        np.float128 | np.float96 | np.float64 | np.float32 | np.float16
     ],
     xlims: tuple[int, int],
-    window_size_m: float,
-    pixel_size_m: float,
-    max_dwell_thickness_m: float,
-    min_dwell_thickness_m: float,
-    blanking_thickness_m: float,
-    blanking_width_m: float,
-    nan_value: float,
-    as_image: typing.Literal[True],
+    max_dwell_threshold: float,
+    min_dwell_threshold: float,
+    input_resolution_m: float | None = ...,
+    bitmap_resolution_m: float | None = ...,
+    blanking_threshold: float | None = ...,
+    blanking_width_m: float = ...,
+    nan_value: float = ...,
+    as_image: typing.Literal[True] = ...,
 ) -> NDArray[np.uint8]: ...
 
 
 @typing.overload
 def create_bitmap_array(
-    gis_thickness_m: typing.Union[
-        NDArray[np.float128],
-        NDArray[np.float96],
-        NDArray[np.float64],
-        NDArray[np.float32],
-        NDArray[np.float16],
+    input_signal: NDArray[
+        np.float128 | np.float96 | np.float64 | np.float32 | np.float16
     ],
     xlims: tuple[int, int],
-    window_size_m: float,
-    pixel_size_m: float,
-    max_dwell_thickness_m: float,
-    min_dwell_thickness_m: float,
-    blanking_thickness_m: float,
-    blanking_width_m: float,
-    nan_value: float,
-    as_image: typing.Literal[False],
+    max_dwell_threshold: float,
+    min_dwell_threshold: float,
+    input_resolution_m: float | None = ...,
+    bitmap_resolution_m: float | None = ...,
+    blanking_threshold: float | None = ...,
+    blanking_width_m: float = ...,
+    nan_value: float = ...,
+    as_image: typing.Literal[False] = ...,
 ) -> NDArray[typing.Any]: ...
 
 
 def create_bitmap_array(
-    gis_thickness_m: typing.Union[
-        NDArray[np.float128],
-        NDArray[np.float96],
-        NDArray[np.float64],
-        NDArray[np.float32],
-        NDArray[np.float16],
+    input_signal: NDArray[
+        np.float128 | np.float96 | np.float64 | np.float32 | np.float16
     ],
     xlims: tuple[int, int],
-    window_size_m: float,
-    pixel_size_m: float,
-    max_dwell_thickness_m: float,
-    min_dwell_thickness_m: float,
-    blanking_thickness_m: float = -1,  # Blanking won't be applied
+    max_dwell_threshold: float,
+    min_dwell_threshold: float,
+    input_resolution_m: float | None = None,
+    bitmap_resolution_m: float | None = None,
+    blanking_threshold: float | None = None,  # Blanking won't be applied
     blanking_width_m: float = 5e-7,
     nan_value: float = 0,
     as_image: bool = True,
-) -> NDArray[typing.Union[np.uint8, typing.Any]]:
+) -> NDArray[np.uint8 | typing.Any]:
     """
     Creates bitmap array for TFS AutoScript API.
     This has two behaviours:
@@ -161,48 +143,42 @@ def create_bitmap_array(
     - The flag values have been inverted.
     - What was previously Channel 0 has been removed.
     """
-    #
-
-    # The bitmap needs to be offset by the window size / 2 (in pixels) as the medium rank filter isn't centred around the pixel
-    bitmap_offset = int(np.floor(window_size_m / (2 * pixel_size_m)))
-
     if as_image:
         dwell_time_range = (0, 255)
         dwell_time_channel = 2
         blanking_flag_value = 0
-        bitmap_array = np.ones(  # If flags channel were all 0s, it would blank everything
-            (
-                1,  # This could be expanded if some falloff is wanted
-                len(
-                    gis_thickness_m[xlims[0] - bitmap_offset : xlims[1] - bitmap_offset]
+        bitmap_array = (
+            np.ones(  # If flags channel were all 0s, it would blank everything
+                (
+                    1,  # This could be expanded if some falloff is wanted
+                    xlims[1] - xlims[0] + 1,
+                    3,
                 ),
-                3,
-            ),
-            dtype=np.uint8,
+                dtype=np.uint8,
+            )
         )
     else:
-        # TODO: find out what the lowest value can be. Docs say 'If the value is 0, the pixel is skipped' but what if it is smaller than 1/255?
+        # Pixel value of 0 means as little milling as possible
         dwell_time_range = (0, 1)
         dwell_time_channel = 0
         blanking_flag_value = 1
         bitmap_array = np.zeros(
             (
                 1,  # This could be expanded if some falloff is wanted
-                len(
-                    gis_thickness_m[xlims[0] - bitmap_offset : xlims[1] - bitmap_offset]
-                ),
+                xlims[1] - xlims[0] + 1,
                 2,
             ),
             dtype=object,
         )
 
     dwell_time_array, blanking_array = create_dwell_and_blanking_arrays(
-        gis_m=gis_thickness_m[xlims[0] - bitmap_offset : xlims[1] - bitmap_offset],
-        gis_minimum_m=min_dwell_thickness_m,
-        gis_maximum_m=max_dwell_thickness_m,
-        gis_blanking_m=blanking_thickness_m,
+        input_signal=input_signal[xlims[0] : xlims[1] + 1],
+        min_dwell_threshold=min_dwell_threshold,
+        max_dwell_threshold=max_dwell_threshold,
+        blanking_threshold=blanking_threshold,
         max_output_range=dwell_time_range,
-        bitmap_resolution_m=pixel_size_m,
+        input_resolution_m=input_resolution_m,
+        bitmap_resolution_m=bitmap_resolution_m,
         blanking_width_m=blanking_width_m,
         nan_value=nan_value,
     )
@@ -213,3 +189,39 @@ def create_bitmap_array(
         bitmap_array[:, :, 1][blanking_array] = blanking_flag_value
 
     return bitmap_array
+
+
+def filter_bitmap_signal(
+    array_1d: NDArray[np.float32 | np.float64],
+    erosion_px: int,
+    gaussian_sigma: float,
+    minimum_value: float | None = None,
+    maximum_value: float | None = None,
+) -> NDArray[np.float32 | np.float64]:
+    array_1d = np.clip(array_1d, 0, maximum_value)
+
+    if minimum_value is not None:
+        min_mask = array_1d <= minimum_value
+
+        # Expand the minimum regions according to bitmap_erosion_px and ensure
+        # that the blur doesn't cut into them
+        expanded_mask = ndi.binary_erosion(
+            min_mask,
+            iterations=erosion_px,
+        )
+    else:
+        expanded_mask = False
+
+    # Use grey erosion to filter
+    array_1d = ndi.grey_erosion(array_1d, size=erosion_px)
+
+    if gaussian_sigma > 0:
+        blurred = ndi.gaussian_filter1d(
+            array_1d, sigma=gaussian_sigma, mode="constant", cval=0, truncate=6
+        )
+        array_1d = blurred
+
+    # Set to 0 to ensure the masked area is definitely at/below the minimum
+    array_1d[expanded_mask] = 0
+
+    return array_1d

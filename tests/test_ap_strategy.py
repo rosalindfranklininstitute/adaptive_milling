@@ -572,6 +572,9 @@ def test_results_saved(
                     "gis_thickness_mean_image_px": float(
                         np.nanmean(expected_filtered_gis_thicknesses[i])
                     ),
+                    "pattern_xlims_px": None,
+                    "pattern_dwell_multiplier": None,
+                    "pattern_blanking": None,
                 },
             }
             for i in range(max_checks)
@@ -760,7 +763,12 @@ def test_check_lamella(
         )
 
     for key, value in lamella_info.statistics.to_dict().items():
-        if key == "estimated_milling_time_s":
+        if key in (
+            "estimated_milling_time_s",
+            "pattern_xlims_px",
+            "pattern_dwell_multiplier",
+            "pattern_blanking",
+        ):
             # Not set in this test, as that is done by _mill
             assert value is None, f"{key} should be None"
         elif not saves_results and key in (

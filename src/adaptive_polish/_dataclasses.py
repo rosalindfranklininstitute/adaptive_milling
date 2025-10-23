@@ -154,6 +154,11 @@ class LamellaStatistics:
     gis_thickness_median_image_px: float | None = None
     gis_thickness_mean_image_px: float | None = None
 
+    # Bitmap specific values
+    pattern_xlims_px: tuple[int, int] | None = None
+    pattern_dwell_multiplier: list[float] | None = None
+    pattern_blanking: list[bool] | None = None
+
     def calculate_gis_statistics(self) -> None:
         if (
             self.gis_thickness_filtered_image_px is not None
@@ -240,7 +245,6 @@ class LamellaStatistics:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
-
 
 @dataclass
 class LamellaInformation:
