@@ -42,7 +42,9 @@ class BitmapAdaptivePolishMillingStrategy(
     )
 
     def _update_milling_stage(
-        self, stage: FibsemMillingStage, lamella_info: LamellaInformation
+        self,
+        stage: FibsemMillingStage,
+        lamella_info: LamellaInformation,
     ) -> FibsemMillingStage:
         fib_image = lamella_info.fib_image
         sem_image = lamella_info.sem_image
@@ -140,7 +142,8 @@ class BitmapAdaptivePolishMillingStrategy(
 
     @staticmethod
     def _get_milling_pixel_dimensions(
-        dimensions: tuple[float, float], fib_pixel_size_m: tuple[float, float]
+        dimensions: tuple[float, float],
+        fib_pixel_size_m: tuple[float, float],
     ) -> tuple[int, int]:
         return (
             int(round(dimensions[0] / fib_pixel_size_m[0])),
