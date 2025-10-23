@@ -147,13 +147,15 @@ def create_bitmap_array(
         dwell_time_range = (0, 255)
         dwell_time_channel = 2
         blanking_flag_value = 0
-        bitmap_array = np.ones(  # If flags channel were all 0s, it would blank everything
-            (
-                1,  # This could be expanded if some falloff is wanted
-                len(input_signal[xlims[0] : xlims[1] + 1]),
-                3,
-            ),
-            dtype=np.uint8,
+        bitmap_array = (
+            np.ones(  # If flags channel were all 0s, it would blank everything
+                (
+                    1,  # This could be expanded if some falloff is wanted
+                    xlims[1] - xlims[0] + 1,
+                    3,
+                ),
+                dtype=np.uint8,
+            )
         )
     else:
         # Pixel value of 0 means as little milling as possible
@@ -163,7 +165,7 @@ def create_bitmap_array(
         bitmap_array = np.zeros(
             (
                 1,  # This could be expanded if some falloff is wanted
-                len(input_signal[xlims[0] : xlims[1] + 1]),
+                xlims[1] - xlims[0] + 1,
                 2,
             ),
             dtype=object,
