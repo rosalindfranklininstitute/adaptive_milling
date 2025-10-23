@@ -186,7 +186,8 @@ def get_xlims(
 
 
 def display_diff_stats(
-    function_diffs: dict[str, list[float]], plot_path: str | PathLike[str] | None = None
+    function_diffs: dict[str, list[float]],
+    plot_path: str | PathLike[str] | None = None,
 ) -> None:
     names = list(function_diffs.keys())
     diffs = np.asarray(list(function_diffs.values()))
@@ -223,7 +224,7 @@ def display_diff_stats(
         width = 2 + 4 * len(names)
         fig, axs = plt.subplots(2, 1, sharex=True, squeeze=True, figsize=(width, 12))
         axs[0].violinplot(
-            [_ for _ in abs_diffs],
+            abs_diffs.tolist(),
             showmeans=False,
             showmedians=False,
         )
@@ -260,7 +261,7 @@ def display_diff_stats(
         axs[0].set_ylabel("Absolute difference (px)")
         axs[0].legend()
 
-        axs[1].violinplot([_ for _ in diffs], showmeans=False, showmedians=False)
+        axs[1].violinplot(diffs.tolist(), showmeans=False, showmedians=False)
         idxs = np.arange(1, len(names) + 1)
         axs[1].errorbar(
             idxs,
