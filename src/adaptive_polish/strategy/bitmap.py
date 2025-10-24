@@ -28,9 +28,7 @@ if TYPE_CHECKING:
     from pathlib import Path
     from numpy.typing import NDArray
     from fibsem.milling import FibsemMillingStage
-    from fibsem.structures import FibsemImage
     from adaptive_polish._dataclasses import (
-        CycleInformation,
         LamellaInformation,
         LamellaStatistics,
     )
@@ -63,10 +61,13 @@ class BitmapAdaptivePolishMillingStrategy(
 
         pattern = stage.pattern
 
-        if self.config.apply_lamella_edge_smoothing:
+        if (
+            self.config.apply_boundary_smoothing
+            and self.config.boundary_smoothing_sigma > 0
+        ):
             boundary_peturbations = get_lamella_gis_boundary_peturbations(
                 lamella_info.clean_prediction,
-                lamella_smoothing_sigma=self.config.lamella_gis_boundary_smoothing_sigma,
+                sigma=self.config.boundary_smoothing_sigma,
             )
         else:
             boundary_peturbations = None
@@ -262,23 +263,30 @@ class BitmapAdaptivePolishMillingStrategy(
 
         if lamella_gis_boundary_peturbations is not None:
             # Interpolate boundary peturbations to have image_px width
-            interpolated_boundary_peturbations = np.interp(
+            interpolated_boundary_peturbations_um = np.interp(
                 np.linspace(
-                    0, len(stats.lamella_thickness_prediction_px), len(bitmap_signal)
+                    1, len(stats.lamella_thickness_prediction_px), len(bitmap_signal)
                 ),
-                lamella_gis_boundary_peturbations[1],
-                lamella_gis_boundary_peturbations[0],
+                lamella_gis_boundary_peturbations[:, 1],
+                lamella_gis_boundary_peturbations[:, 0]
+                * stats.prediction_pixel_size_m[0]
+                * 1e6,
             )
-            # Subtract the peturbations to hopefully smooth the signal a bit
-            bitmap_signal -= interpolated_boundary_peturbations
+            # We don't want to aim for below gis_min_um, ensure we aren't
+            # increasing any values in bitmap_signal
+            interpolated_boundary_peturbations_um = np.clip(
+                interpolated_boundary_peturbations_um, 0, None
+            )
+            # Remove the dips in to aim for a smoother GIS layer
+            bitmap_signal -= interpolated_boundary_peturbations_um
 
-        filtered_bitmap_signal = self._filter_bitmap_signal(
+        filtered_trimmed_bitmap_signal = self._filter_bitmap_signal(
             bitmap_signal[pattern_xlims[0] : pattern_xlims[1] + 1]
         )
 
         bitmap_array = create_bitmap_array(
-            input_signal=filtered_bitmap_signal,
-            xlims=(0, len(filtered_bitmap_signal) - 1),
+            input_signal=filtered_trimmed_bitmap_signal,
+            xlims=(0, len(filtered_trimmed_bitmap_signal) - 1),
             min_dwell_threshold=self.config.gis_min_um,
             max_dwell_threshold=self.config.gis_max_um,
             as_image=False,
