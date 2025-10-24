@@ -32,8 +32,8 @@ class BitmapAdaptivePolishMillingConfig(AdaptivePolishMillingConfig):
     )
     bitmap_erosion_px: NonNegativeInt = 20
     bitmap_gaussian_sigma: NonNegativeFloat = 20
-    lamella_gis_boundary_smoothing_sigma: int = 20
-    apply_lamella_edge_smoothing: bool = False
+    boundary_smoothing_sigma: NonNegativeFloat = 5.0
+    apply_boundary_smoothing: bool = False
     mask_cracks: bool = True
     pattern_alignment: Literal["centre", "convolve"] = "centre"
 

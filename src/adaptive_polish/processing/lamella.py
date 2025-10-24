@@ -407,14 +407,18 @@ def crop_xlims_centre(
 
 
 def get_lamella_gis_boundary_peturbations(
-    prediction: NDArray[np.integer[typing.Any]], lamella_smoothing_sigma: int = 20
+    prediction: NDArray[np.integer[typing.Any]],
+    sigma: float,
 ) -> NDArray[np.float_]:
     lamella_mask = prediction == SemSegmentationLabels.LAMELLA.value
-    lower_edge_coords = get_mask_edge(lamella_mask, axis=1, side="max").astype(
+    lower_edge_coords = get_mask_edge(lamella_mask, axis=0, side="max").astype(
         np.float_
     )
     filtered_edge = gaussian_filter1d(
-        lower_edge_coords[0], sigma=lamella_smoothing_sigma
+        lower_edge_coords[:, 0],
+        sigma=sigma,
+        mode="reflect",
+        truncate=6,
     )
-    lower_edge_coords[0] -= filtered_edge
+    lower_edge_coords[:, 0] = filtered_edge - lower_edge_coords[:, 0]
     return lower_edge_coords
