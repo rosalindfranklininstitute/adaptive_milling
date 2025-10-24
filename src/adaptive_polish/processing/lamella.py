@@ -404,3 +404,17 @@ def crop_xlims_centre(
         xlims[0] + floor(crop_amount),
         xlims[1] - ceil(crop_amount),
     )
+
+
+def get_lower_lamella_edge_local_variations(
+    prediction: NDArray[np.integer[typing.Any]], lamella_smoothing_sigma: int = 20
+) -> NDArray[np.float_]:
+    lamella_mask = prediction == SemSegmentationLabels.LAMELLA.value
+    lower_edge_coords = get_mask_edge(lamella_mask, axis=1, side="max").astype(
+        np.float_
+    )
+    filtered_edge = gaussian_filter1d(
+        lower_edge_coords[0], sigma=lamella_smoothing_sigma
+    )
+    lower_edge_coords[0] -= filtered_edge
+    return lower_edge_coords
