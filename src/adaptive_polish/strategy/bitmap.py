@@ -252,15 +252,6 @@ class BitmapAdaptivePolishMillingStrategy(
 
         bitmap_signal = stats.gis_thickness_filtered_um.copy()
 
-        if self.config.mask_cracks:
-            # Interpolate cracks to have image_px width
-            crack_thickness_image_px = resize_interp_1d(
-                stats.crack_thickness_prediction_px, target_size=len(bitmap_signal)
-            )
-
-            # Set any region with cracks a thickness of 0 for the purposes of the bitmap
-            bitmap_signal[crack_thickness_image_px > 0] = 0
-
         if lamella_gis_boundary_peturbations is not None:
             # Interpolate boundary peturbations to have image_px width
             interpolated_boundary_peturbations_um = np.interp(
@@ -279,6 +270,16 @@ class BitmapAdaptivePolishMillingStrategy(
             )
             # Remove the dips in to aim for a smoother GIS layer
             bitmap_signal -= interpolated_boundary_peturbations_um
+
+        if self.config.mask_cracks:
+            # Interpolate cracks to have image_px width
+            crack_thickness_image_px = resize_interp_1d(
+                stats.crack_thickness_prediction_px, target_size=len(bitmap_signal)
+            )
+
+            # Set any region with cracks a thickness of 0 for the purposes of the bitmap
+            bitmap_signal[crack_thickness_image_px > 0] = 0
+
 
         filtered_trimmed_bitmap_signal = self._filter_bitmap_signal(
             bitmap_signal[pattern_xlims[0] : pattern_xlims[1] + 1]
