@@ -17,6 +17,7 @@ from adaptive_polish.processing.bitmap import filter_bitmap_signal, create_bitma
 from adaptive_polish.processing.lamella import (
     crop_xlims_centre,
     crop_xlims_convolve_filtered,
+    get_lamella_gis_boundary_peturbations,
 )
 from adaptive_polish.processing.image import resize_interp_1d
 from adaptive_polish.plot import create_milling_cycle_plot
@@ -28,7 +29,12 @@ if TYPE_CHECKING:
     from pathlib import Path
     from numpy.typing import NDArray
     from fibsem.milling import FibsemMillingStage
-    from adaptive_polish._dataclasses import LamellaInformation, LamellaStatistics
+    from fibsem.structures import FibsemImage
+    from adaptive_polish._dataclasses import (
+        CycleInformation,
+        LamellaInformation,
+        LamellaStatistics,
+    )
 
 _logger = logging.getLogger(__name__)
 
@@ -58,15 +64,25 @@ class BitmapAdaptivePolishMillingStrategy(
 
         pattern = stage.pattern
 
+        if self.config.apply_lamella_edge_smoothing:
+            boundary_peturbations = get_lamella_gis_boundary_peturbations(
+                lamella_info.clean_prediction,
+                lamella_smoothing_sigma=self.config.lamella_gis_boundary_smoothing_sigma,
+            )
+        else:
+            boundary_peturbations = None
+
         if isinstance(pattern, TrenchPattern):
             new_pattern = self._convert_trench_pattern(
                 pattern,
                 stats=stats,
+                lamella_gis_boundary_peturbations=boundary_peturbations,
             )
         elif isinstance(pattern, RectanglePattern):
             new_pattern = self._convert_rectangle_pattern(
                 pattern,
                 stats=stats,
+                lamella_gis_boundary_peturbations=boundary_peturbations,
             )
         else:
             raise TypeError(
@@ -88,10 +104,15 @@ class BitmapAdaptivePolishMillingStrategy(
         self,
         pattern: TrenchPattern,
         stats: LamellaStatistics,
+        lamella_gis_boundary_peturbations: NDArray[
+            np.integer[Any] | np.float32 | np.float64
+        ]
+        | None = None,
     ) -> TrenchBitmapPattern:
         bitmap_array = self.create_bitmap_array(
             pattern_width_m=pattern.width,
             stats=stats,
+            lamella_gis_boundary_peturbations=lamella_gis_boundary_peturbations,
         )
 
         self._check_bitmap(bitmap_array)
@@ -116,10 +137,15 @@ class BitmapAdaptivePolishMillingStrategy(
         self,
         pattern: RectanglePattern,
         stats: LamellaStatistics,
+        lamella_gis_boundary_peturbations: NDArray[
+            np.integer[Any] | np.float32 | np.float64
+        ]
+        | None = None,
     ) -> BitmapPattern:
         bitmap_array = self.create_bitmap_array(
             pattern_width_m=pattern.width,
             stats=stats,
+            lamella_gis_boundary_peturbations=lamella_gis_boundary_peturbations,
         )
 
         self._check_bitmap(bitmap_array)
@@ -207,6 +233,10 @@ class BitmapAdaptivePolishMillingStrategy(
         self,
         pattern_width_m: float,
         stats: LamellaStatistics,
+        lamella_gis_boundary_peturbations: NDArray[
+            np.integer[Any] | np.float32 | np.float64
+        ]
+        | None = None,
     ) -> NDArray:
         if stats.gis_thickness_filtered_um is None:
             raise ValueError('"gis_thickness_filtered_um" is not available')
@@ -234,6 +264,16 @@ class BitmapAdaptivePolishMillingStrategy(
 
             # Set any region with cracks a thickness of 0 for the purposes of the bitmap
             bitmap_signal[crack_thickness_image_px > 0] = 0
+
+        if lamella_gis_boundary_peturbations is not None:
+            # Interpolate boundary peturbations to have image_px width
+            lamella_gis_boundary_peturbations = resize_interp_1d(
+                lamella_gis_boundary_peturbations, target_size=len(bitmap_signal)
+            )
+            # Subtract the peturbations to hopefully smooth the signal a bit
+            bitmap_signal[pattern_xlims[0] : pattern_xlims[1] + 1] -= (
+                lamella_gis_boundary_peturbations
+            )
 
         filtered_bitmap_signal = self._filter_bitmap_signal(
             bitmap_signal[pattern_xlims[0] : pattern_xlims[1] + 1]

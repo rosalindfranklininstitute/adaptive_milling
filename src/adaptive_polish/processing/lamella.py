@@ -406,7 +406,7 @@ def crop_xlims_centre(
     )
 
 
-def get_lower_lamella_edge_local_variations(
+def get_lamella_gis_boundary_peturbations(
     prediction: NDArray[np.integer[typing.Any]], lamella_smoothing_sigma: int = 20
 ) -> NDArray[np.float_]:
     lamella_mask = prediction == SemSegmentationLabels.LAMELLA.value
