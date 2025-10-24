@@ -203,12 +203,15 @@ def filter_bitmap_signal(
     if minimum_value is not None:
         min_mask = array_1d <= minimum_value
 
-        # Expand the minimum regions according to bitmap_erosion_px and ensure
-        # that the blur doesn't cut into them
-        expanded_mask = ndi.binary_dilation(
-            min_mask,
-            iterations=erosion_px,
-        )
+        if erosion_px > 0:
+            # Expand the minimum regions according to bitmap_erosion_px and ensure
+            # that the blur doesn't cut into them
+            expanded_mask = ndi.binary_dilation(
+                min_mask,
+                iterations=erosion_px,
+            )
+        else:
+            expanded_mask = min_mask
     else:
         expanded_mask = False
 
