@@ -262,12 +262,16 @@ class BitmapAdaptivePolishMillingStrategy(
 
         if lamella_gis_boundary_peturbations is not None:
             # Interpolate boundary peturbations to have image_px width
-            lamella_gis_boundary_peturbations = resize_interp_1d(
-                lamella_gis_boundary_peturbations, target_size=len(bitmap_signal)
+            interpolated_boundary_peturbations = np.interp(
+                np.linspace(
+                    0, len(stats.lamella_thickness_prediction_px), len(bitmap_signal)
+                ),
+                lamella_gis_boundary_peturbations[1],
+                lamella_gis_boundary_peturbations[0],
             )
             # Subtract the peturbations to hopefully smooth the signal a bit
             bitmap_signal[pattern_xlims[0] : pattern_xlims[1] + 1] -= (
-                lamella_gis_boundary_peturbations
+                interpolated_boundary_peturbations
             )
 
         filtered_bitmap_signal = self._filter_bitmap_signal(
