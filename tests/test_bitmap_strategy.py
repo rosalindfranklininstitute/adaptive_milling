@@ -200,6 +200,7 @@ def test_create_bitmap_array_simple_values(mask_cracks: bool) -> None:
             model_path="model_path",
             bitmap_gaussian_sigma=0,
             bitmap_erosion_px=0,
+            apply_boundary_smoothing=False,
             mask_cracks=mask_cracks,
             gis_min_um=5,
             gis_max_um=10,
