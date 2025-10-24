@@ -270,9 +270,7 @@ class BitmapAdaptivePolishMillingStrategy(
                 lamella_gis_boundary_peturbations[0],
             )
             # Subtract the peturbations to hopefully smooth the signal a bit
-            bitmap_signal[pattern_xlims[0] : pattern_xlims[1] + 1] -= (
-                interpolated_boundary_peturbations
-            )
+            bitmap_signal -= interpolated_boundary_peturbations
 
         filtered_bitmap_signal = self._filter_bitmap_signal(
             bitmap_signal[pattern_xlims[0] : pattern_xlims[1] + 1]
