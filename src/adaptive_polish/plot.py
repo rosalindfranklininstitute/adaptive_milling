@@ -222,12 +222,14 @@ def create_milling_cycle_plot(
                 fib_image,
                 milling_stages=[milling_stage],
                 crosshair=True,
-                scalebar=True,
+                scalebar=False,
+                show_preset=False,
+                title="Milling pattern",
                 ax=axs[1, 1],
             )
         except Exception:
             logging.error("Failed to draw milling patterns", exc_info=True)
-            axs[1, 1].axis("off")
+        axs[1, 1].axis("off")
 
     if gis_thickness_um is None:
         axs[1, 2].axis("off")
