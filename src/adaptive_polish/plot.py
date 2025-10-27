@@ -155,8 +155,8 @@ def create_milling_cycle_plot(
     gis_thickness_min_um: float | None = None,
     crack_area_um2: float | None = None,
     gis_min_stop_threshold_um: float | None = None,
-    gis_thickness_mean_um: float | None = None,
-    gis_mean_stop_threshold_um: float | None = None,
+    gis_thickness_median_um: float | None = None,
+    gis_median_stop_threshold_um: float | None = None,
     gis_min_threshold_um: float | None = None,
     gis_max_threshold_um: float | None = None,
     milling_stage: FibsemMillingStage | None = None,
@@ -310,21 +310,25 @@ def create_milling_cycle_plot(
         if _min_gis_subtitle:
             _gis_subtitle.append(" ".join(_min_gis_subtitle))
 
-        _mean_gis_subtitle: list[str] = []
-        if gis_thickness_mean_um is not None:
-            _mean_gis_subtitle.append(rf"Mean {gis_thickness_mean_um:.3f} $\mu m$")
-        if gis_mean_stop_threshold_um is not None:
-            _mean_gis_subtitle.append(f"(threshold {gis_mean_stop_threshold_um:.3f})")
+        _median_gis_subtitle: list[str] = []
+        if gis_thickness_median_um is not None:
+            _median_gis_subtitle.append(
+                rf"Median {gis_thickness_median_um:.3f} $\mu m$"
+            )
+        if gis_median_stop_threshold_um is not None:
+            _median_gis_subtitle.append(
+                f"(threshold {gis_median_stop_threshold_um:.3f})"
+            )
             axs[1, 2].hlines(
-                y=gis_mean_stop_threshold_um,
+                y=gis_median_stop_threshold_um,
                 xmin=0,
                 xmax=len(gis_thickness_um),
                 label="Mean thickness threshold",
                 linestyles="-.",
                 colors="red",
             )
-        if _mean_gis_subtitle:
-            _gis_subtitle.append(" ".join(_mean_gis_subtitle))
+        if _median_gis_subtitle:
+            _gis_subtitle.append(" ".join(_median_gis_subtitle))
 
         if _gis_subtitle:
             _gis_title += "\n" + "\n".join(_gis_subtitle)
@@ -351,21 +355,21 @@ def create_summary_gis_plot(
 ) -> None:
     milling_times: list[float | None] = []
     min_gis_thicknesses: list[float | None] = []
-    mean_gis_thicknesses: list[float | None] = []
+    median_gis_thicknesses: list[float | None] = []
     median_gis_thicknesses: list[float | None] = []
     for cycle_info in run_info.cycle_information:
         if cycle_info.lamella_statistics is None:
             milling_times.append(None)
             min_gis_thicknesses.append(None)
-            mean_gis_thicknesses.append(None)
+            median_gis_thicknesses.append(None)
             median_gis_thicknesses.append(None)
         else:
             milling_times.append(cycle_info.lamella_statistics.estimated_milling_time_s)
             min_gis_thicknesses.append(
                 cycle_info.lamella_statistics.gis_thickness_min_um
             )
-            mean_gis_thicknesses.append(
-                cycle_info.lamella_statistics.gis_thickness_mean_um
+            median_gis_thicknesses.append(
+                cycle_info.lamella_statistics.gis_thickness_median_um
             )
             median_gis_thicknesses.append(
                 cycle_info.lamella_statistics.gis_thickness_median_um

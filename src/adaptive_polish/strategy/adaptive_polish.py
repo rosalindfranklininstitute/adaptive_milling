@@ -358,10 +358,10 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             clean_prediction=lamella_info.clean_prediction,
             gis_thickness_um=stats.gis_thickness_filtered_um,
             gis_thickness_min_um=stats.gis_thickness_min_um,
-            gis_thickness_mean_um=stats.gis_thickness_mean_um,
+            gis_thickness_median_um=stats.gis_thickness_median_um,
             crack_area_um2=stats.crack_area_um2,
             gis_min_stop_threshold_um=self.config.gis_stop_min_um,
-            gis_mean_stop_threshold_um=self.config.gis_stop_mean_um,
+            gis_median_stop_threshold_um=self.config.gis_stop_median_um,
             milling_stage=stage,
             image_xlims=stats.xlims_image_px,
             max_crack_area_um2=self.config.max_crack_area_um2,
@@ -606,10 +606,10 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                 reason=StopReasons.MIN_GIS_THICKNESS,
             )
 
-        if self._get_mean_gis_too_thin(stats.gis_thickness_mean_um):
+        if self._get_median_gis_too_thin(stats.gis_thickness_median_um):
             raise StopMillingException(
-                f"Mean GIS thickness (um) {stats.gis_thickness_mean_um:.4e} < threshold {self.config.gis_stop_mean_um:.4e} um",
-                reason=StopReasons.MEAN_GIS_THICKNESS,
+                f"Median GIS thickness (um) {stats.gis_thickness_median_um:.4e} < threshold {self.config.gis_stop_median_um:.4e} um",
+                reason=StopReasons.MEDIAN_GIS_THICKNESS,
             )
 
         if self._get_crack_too_large(stats.crack_area_um2):
@@ -762,11 +762,11 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         # Minumum GIS thickness check
         return min_gis_um < float(self.config.gis_stop_min_um)
 
-    def _get_mean_gis_too_thin(self, mean_gis_um: float | None) -> bool:
-        if mean_gis_um is None:
+    def _get_median_gis_too_thin(self, median_gis_um: float | None) -> bool:
+        if median_gis_um is None:
             raise StopEarlyError("No mean GIS measurement")
         # Mean GIS thickness check
-        return mean_gis_um < float(self.config.gis_stop_mean_um)
+        return median_gis_um < float(self.config.gis_stop_median_um)
 
     def _get_crack_too_large(self, crack_area_um2: float) -> bool:
         # Total crack area check
