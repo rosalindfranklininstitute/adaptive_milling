@@ -104,6 +104,7 @@ def assert_results_dicts_equal(
         except Exception as e:
             raise AssertionError(f"Mismatch: {k} {e}") from e
 
+
 @patch("os.path.isfile")
 def test_default_config(mock_isfile) -> None:
     """Tests that default config works with no errors"""
@@ -393,8 +394,12 @@ def test_max_milling_cycles_not_exceeded(
                     gis_thickness_min_um=lamella_infos[
                         i
                     ].statistics.gis_thickness_min_um,
+                    gis_thickness_median_um=lamella_infos[
+                        i
+                    ].statistics.gis_thickness_median_um,
                     crack_area_um2=lamella_infos[i].statistics.crack_area_um2,
-                    gis_stop_threshold_um=strategy.config.gis_stop_min_um,
+                    gis_min_stop_threshold_um=strategy.config.gis_stop_min_um,
+                    gis_median_stop_threshold_um=strategy.config.gis_stop_median_um,
                     milling_stage=mock_update_milling_stage.return_value,
                     image_xlims=lamella_infos[i].statistics.xlims_image_px,
                     max_crack_area_um2=strategy.config.max_crack_area_um2,
@@ -714,7 +719,7 @@ def test_check_lamella(
     elif failure_reason == "mean_gis":
         saves_results = True
         check_exception = ap_strategy.StopMillingException
-        pass_checks_kwargs["gis_stop_mean_um"] = 500
+        pass_checks_kwargs["gis_stop_median_um"] = 500
     elif failure_reason == "crack":
         saves_results = True
         check_exception = ap_strategy.StopMillingException
