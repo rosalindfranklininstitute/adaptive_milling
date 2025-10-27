@@ -296,7 +296,7 @@ def create_milling_cycle_plot(
                 y=gis_median_stop_threshold_um,
                 xmin=0,
                 xmax=len(gis_thickness_um),
-                label="Mean thickness threshold",
+                label="Median thickness threshold",
                 linestyles="-.",
                 colors="red",
             )
