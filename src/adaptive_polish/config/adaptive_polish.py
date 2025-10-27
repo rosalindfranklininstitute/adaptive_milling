@@ -37,7 +37,6 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         "save_predictions",
         "gis_filter_sigma",
         "lamella_pad_x",
-        "save_predictions",
     )
 
     @field_validator("model_path", mode="after")
