@@ -294,9 +294,9 @@ def create_milling_cycle_plot(
                 colors="green",
             )
 
-        _min_gis_subtitle: list[str] = []
+        _min_gis_subtitle: list[str] = ["Minimum"]
         if gis_thickness_min_um is not None:
-            _min_gis_subtitle.append(rf"Minimum {gis_thickness_min_um:.3f} $\mu m$")
+            _min_gis_subtitle.append(rf"{gis_thickness_min_um:.3f} $\mu m$")
         if gis_min_stop_threshold_um is not None:
             _min_gis_subtitle.append(f"(threshold {gis_min_stop_threshold_um:.3f})")
             axs[1, 2].hlines(
@@ -310,11 +310,9 @@ def create_milling_cycle_plot(
         if _min_gis_subtitle:
             _gis_subtitle.append(" ".join(_min_gis_subtitle))
 
-        _median_gis_subtitle: list[str] = []
+        _median_gis_subtitle: list[str] = ["Median"]
         if gis_thickness_median_um is not None:
-            _median_gis_subtitle.append(
-                rf"Median {gis_thickness_median_um:.3f} $\mu m$"
-            )
+            _median_gis_subtitle.append(rf"{gis_thickness_median_um:.3f} $\mu m$")
         if gis_median_stop_threshold_um is not None:
             _median_gis_subtitle.append(
                 f"(threshold {gis_median_stop_threshold_um:.3f})"
@@ -330,17 +328,14 @@ def create_milling_cycle_plot(
         if _median_gis_subtitle:
             _gis_subtitle.append(" ".join(_median_gis_subtitle))
 
-        if _gis_subtitle:
-            _gis_title += "\n" + "\n".join(_gis_subtitle)
         if image_xlims is not None:
             axs[1, 2].axvline(x=image_xlims[0], color="C4")
             axs[1, 2].axvline(x=image_xlims[1], color="C4")
 
-
         if _gis_subtitle:
-            _gis_title += "\n" + " ".join(_gis_subtitle)
+            _gis_title += "\n" + "\n".join(_gis_subtitle)
 
-    axs[1, 2].set_title(_gis_title)
+        axs[1, 2].set_title(_gis_title)
     handles_and_labels = axs[1, 2].get_legend_handles_labels()
     handles.extend(handles_and_labels[0])
     labels.extend(handles_and_labels[1])
