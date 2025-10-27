@@ -230,6 +230,8 @@ def create_milling_cycle_plot(
     if gis_thickness_um is None:
         axs[1, 2].axis("off")
     else:
+        handles = []
+        labels = []
         gis_thickness_um = np.asarray(gis_thickness_um)
 
         # GIS thickness
@@ -255,6 +257,18 @@ def create_milling_cycle_plot(
                 r"Dwell time multiplier", color=dwell_time_colour
             )
             dwell_time_axis.set_ylim(0, 1)
+
+            dwell_time_axis.hlines(
+                y=np.mean(pattern_dwell_multiplier),
+                xmin=0,
+                xmax=len(gis_thickness_um),
+                label="Mean dwell time multiplier",
+                linestyles="dotted",
+                colors=dwell_time_colour,
+            )
+            handles_and_labels = dwell_time_axis.get_legend_handles_labels()
+            handles.extend(handles_and_labels[0])
+            labels.extend(handles_and_labels[1])
 
         if gis_min_threshold_um is not None:
             axs[1, 2].hlines(
@@ -298,7 +312,10 @@ def create_milling_cycle_plot(
         _gis_title += "\n" + " ".join(_gis_subtitle)
 
     axs[1, 2].set_title(_gis_title)
-    axs[1, 2].legend()
+    handles_and_labels = axs[1, 2].get_legend_handles_labels()
+    handles.extend(handles_and_labels[0])
+    labels.extend(handles_and_labels[1])
+    axs[1, 2].legend(handles, labels)
 
     fig.savefig(save_path)
     plt.close(fig)
