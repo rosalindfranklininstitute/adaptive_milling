@@ -339,7 +339,7 @@ def create_summary_gis_plot(
     )
     ax.plot(
         cumulative_milling_time,
-        np.asarray(median_gis_thicknesses, dtype=np.float_),
+        np.asarray(mean_gis_thicknesses, dtype=np.float_),
         label="Mean",
         linestyle=":",
     )
