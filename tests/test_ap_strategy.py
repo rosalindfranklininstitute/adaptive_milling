@@ -27,7 +27,7 @@ if typing.TYPE_CHECKING:
     from fibsem.milling.base import FibsemMillingStage
 
 _AP_PASS_CHECKS_CONFIG = {
-    "gis_stop_um": 0,
+    "gis_stop_min_um": 0,
     "max_crack_area_um2": np.inf,
     "minimum_lamella_area_um2": 0,
     "maximum_drift_um": np.inf,
@@ -394,7 +394,7 @@ def test_max_milling_cycles_not_exceeded(
                         i
                     ].statistics.gis_thickness_min_um,
                     crack_area_um2=lamella_infos[i].statistics.crack_area_um2,
-                    gis_stop_threshold_um=strategy.config.gis_stop_um,
+                    gis_stop_threshold_um=strategy.config.gis_stop_min_um,
                     milling_stage=mock_update_milling_stage.return_value,
                     image_xlims=lamella_infos[i].statistics.xlims_image_px,
                     max_crack_area_um2=strategy.config.max_crack_area_um2,
@@ -684,7 +684,8 @@ def test_align_beam(
 
 @pytest.mark.usefixtures("skip_if_no_models")
 @pytest.mark.parametrize(
-    "failure_reason", ["gis", "crack", "lamella area", "centring", "none"]
+    "failure_reason",
+    ["min_gis", "mean_gis", "crack", "lamella area", "centring", "none"],
 )
 def test_check_lamella(
     failure_reason: str,
@@ -706,10 +707,14 @@ def test_check_lamella(
     pass_checks_kwargs = _AP_PASS_CHECKS_CONFIG.copy()
     check_exception: type[Exception] | None = None
     info_exception: type[Exception] | None = None
-    if failure_reason == "gis":
+    if failure_reason == "min_gis":
         saves_results = True
         check_exception = ap_strategy.StopMillingException
-        pass_checks_kwargs["gis_stop_um"] = 500
+        pass_checks_kwargs["gis_stop_min_um"] = 500
+    elif failure_reason == "mean_gis":
+        saves_results = True
+        check_exception = ap_strategy.StopMillingException
+        pass_checks_kwargs["gis_stop_mean_um"] = 500
     elif failure_reason == "crack":
         saves_results = True
         check_exception = ap_strategy.StopMillingException
