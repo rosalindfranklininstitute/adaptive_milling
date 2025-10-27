@@ -16,7 +16,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
     model_path: str = ""
     model_generation: str = DEFAULT_MODEL_GENERATION
     gis_stop_min_um: NonNegativeFloat = 0.2
-    gis_stop_mean_um: NonNegativeFloat = 0.25
+    gis_stop_median_um: NonNegativeFloat = 0.25
     max_crack_area_um2: NonNegativeFloat = 2
     max_milling_cycles: PositiveInt = 30
     minimum_lamella_area_um2: NonNegativeFloat = 30.0  # 30μm²
