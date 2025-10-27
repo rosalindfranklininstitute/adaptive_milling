@@ -154,7 +154,9 @@ def create_milling_cycle_plot(
     gis_thickness_um: ArrayLike | None = None,
     gis_thickness_min_um: float | None = None,
     crack_area_um2: float | None = None,
-    gis_stop_threshold_um: float | None = None,
+    gis_min_stop_threshold_um: float | None = None,
+    gis_thickness_median_um: float | None = None,
+    gis_median_stop_threshold_um: float | None = None,
     gis_min_threshold_um: float | None = None,
     gis_max_threshold_um: float | None = None,
     milling_stage: FibsemMillingStage | None = None,
@@ -234,6 +236,9 @@ def create_milling_cycle_plot(
         labels = []
         gis_thickness_um = np.asarray(gis_thickness_um)
 
+        _gis_title = "GIS thickness"
+        _gis_subtitle: list[str] = []
+
         # GIS thickness
         thickness_colour = "tab:blue"
         axs[1, 2].plot(gis_thickness_um, ".-", c=thickness_colour)
@@ -288,30 +293,49 @@ def create_milling_cycle_plot(
                 linestyles="dashed",
                 colors="green",
             )
-        if gis_stop_threshold_um is not None:
+
+        _min_gis_subtitle: list[str] = ["Minimum"]
+        if gis_thickness_min_um is not None:
+            _min_gis_subtitle.append(rf"{gis_thickness_min_um:.3f} $\mu m$")
+        if gis_min_stop_threshold_um is not None:
+            _min_gis_subtitle.append(f"(threshold {gis_min_stop_threshold_um:.3f})")
             axs[1, 2].hlines(
-                y=gis_stop_threshold_um,
+                y=gis_min_stop_threshold_um,
                 xmin=0,
                 xmax=len(gis_thickness_um),
-                label="Stop milling threshold",
+                label="Min thickness threshold",
                 linestyles="dashed",
                 colors="red",
             )
+        if _min_gis_subtitle:
+            _gis_subtitle.append(" ".join(_min_gis_subtitle))
+
+        _median_gis_subtitle: list[str] = ["Median"]
+        if gis_thickness_median_um is not None:
+            _median_gis_subtitle.append(rf"{gis_thickness_median_um:.3f} $\mu m$")
+        if gis_median_stop_threshold_um is not None:
+            _median_gis_subtitle.append(
+                f"(threshold {gis_median_stop_threshold_um:.3f})"
+            )
+            axs[1, 2].hlines(
+                y=gis_median_stop_threshold_um,
+                xmin=0,
+                xmax=len(gis_thickness_um),
+                label="Median thickness threshold",
+                linestyles="-.",
+                colors="red",
+            )
+        if _median_gis_subtitle:
+            _gis_subtitle.append(" ".join(_median_gis_subtitle))
 
         if image_xlims is not None:
             axs[1, 2].axvline(x=image_xlims[0], color="C4")
             axs[1, 2].axvline(x=image_xlims[1], color="C4")
 
-    _gis_title = "GIS thickness"
-    _gis_subtitle: list[str] = []
-    if gis_thickness_min_um is not None:
-        _gis_subtitle.append(rf"Minimum {gis_thickness_min_um:.3f} $\mu m$")
-    if gis_stop_threshold_um is not None:
-        _gis_subtitle.append(f"(threshold {gis_stop_threshold_um:.3f})")
-    if _gis_subtitle:
-        _gis_title += "\n" + " ".join(_gis_subtitle)
+        if _gis_subtitle:
+            _gis_title += "\n" + "\n".join(_gis_subtitle)
 
-    axs[1, 2].set_title(_gis_title)
+        axs[1, 2].set_title(_gis_title)
     handles_and_labels = axs[1, 2].get_legend_handles_labels()
     handles.extend(handles_and_labels[0])
     labels.extend(handles_and_labels[1])
