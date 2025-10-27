@@ -350,13 +350,13 @@ def create_summary_gis_plot(
 ) -> None:
     milling_times: list[float | None] = []
     min_gis_thicknesses: list[float | None] = []
-    median_gis_thicknesses: list[float | None] = []
+    mean_gis_thicknesses: list[float | None] = []
     median_gis_thicknesses: list[float | None] = []
     for cycle_info in run_info.cycle_information:
         if cycle_info.lamella_statistics is None:
             milling_times.append(None)
             min_gis_thicknesses.append(None)
-            median_gis_thicknesses.append(None)
+            mean_gis_thicknesses.append(None)
             median_gis_thicknesses.append(None)
         else:
             milling_times.append(cycle_info.lamella_statistics.estimated_milling_time_s)
@@ -364,7 +364,7 @@ def create_summary_gis_plot(
                 cycle_info.lamella_statistics.gis_thickness_min_um
             )
             median_gis_thicknesses.append(
-                cycle_info.lamella_statistics.gis_thickness_median_um
+                cycle_info.lamella_statistics.gis_thickness_mean_um
             )
             median_gis_thicknesses.append(
                 cycle_info.lamella_statistics.gis_thickness_median_um
