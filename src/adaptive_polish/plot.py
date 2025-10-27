@@ -363,7 +363,7 @@ def create_summary_gis_plot(
             min_gis_thicknesses.append(
                 cycle_info.lamella_statistics.gis_thickness_min_um
             )
-            median_gis_thicknesses.append(
+            mean_gis_thicknesses.append(
                 cycle_info.lamella_statistics.gis_thickness_mean_um
             )
             median_gis_thicknesses.append(
@@ -380,7 +380,7 @@ def create_summary_gis_plot(
     )
     ax.plot(
         cumulative_milling_time,
-        np.asarray(median_gis_thicknesses, dtype=np.float_),
+        np.asarray(mean_gis_thicknesses, dtype=np.float_),
         label="Mean",
         linestyle=":",
     )
