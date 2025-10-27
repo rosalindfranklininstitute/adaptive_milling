@@ -22,6 +22,7 @@ from adaptive_polish.processing.lamella import (
 from adaptive_polish.processing.image import resize_interp_1d
 from adaptive_polish.plot import create_milling_cycle_plot
 from adaptive_polish.exceptions import StopMillingException
+from adaptive_polish.enums import StopReasons
 
 if TYPE_CHECKING:
     from typing import ClassVar, Any
@@ -316,11 +317,13 @@ class BitmapAdaptivePolishMillingStrategy(
             dwell_multiplier_max := bitmap_array[:, :, 0].max()
         ) < self.config.dwell_multiplier_max_stop:
             raise StopMillingException(
-                f"The maximum dwell time multiplier is {dwell_multiplier_max:.3f}, below the threshold of {self.config.dwell_multiplier_max_stop:.3f}"
+                f"The maximum dwell time multiplier is {dwell_multiplier_max:.3f}, below the threshold of {self.config.dwell_multiplier_max_stop:.3f}",
+                reason=StopReasons.MAX_DWELL_MULTIPLIER,
             )
         elif (
             dwell_multiplier_mean := bitmap_array[:, :, 0].mean()
         ) <= self.config.dwell_multiplier_mean_stop:
             raise StopMillingException(
-                f"The mean dwell time multiplier is {dwell_multiplier_mean:.3f}, below the threshold of {self.config.dwell_multiplier_mean_stop:.3f}"
+                f"The mean dwell time multiplier is {dwell_multiplier_mean:.3f}, below the threshold of {self.config.dwell_multiplier_mean_stop:.3f}",
+                reason=StopReasons.MEAN_DWELL_MULTIPLIER,
             )

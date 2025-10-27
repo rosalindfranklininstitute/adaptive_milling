@@ -10,3 +10,5 @@ class StopReasons(enum.Enum):
     LAMELLA_AREA = "lamella area is below the threshold"
     MAX_CYCLES = "run maximum milling cycles"
     USER = "milling stopped by user"
+    MAX_DWELL_MULTIPLIER = "maximum dwell time multiplier is below the threshold"
+    MEAN_DWELL_MULTIPLIER = "mean dwell time multiplier is below the threshold"
