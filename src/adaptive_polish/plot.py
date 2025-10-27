@@ -250,33 +250,6 @@ def create_milling_cycle_plot(
         axs[1, 2].set_xlim(0, len(gis_thickness_um))
         axs[1, 2].set_ylim(0, gis_ymax_um)
 
-        if pattern_dwell_multiplier is not None and pattern_xlims is not None:
-            dwell_time_colour = "tab:orange"
-            dwell_time_axis = axs[1, 2].twinx()
-            dwell_time_axis.plot(
-                np.arange(pattern_xlims[0], pattern_xlims[1] + 1),
-                pattern_dwell_multiplier,
-                "-",
-                c=dwell_time_colour,
-            )
-            dwell_time_axis.tick_params(axis="y", labelcolor=dwell_time_colour)
-            dwell_time_axis.set_ylabel(
-                r"Dwell time multiplier", color=dwell_time_colour
-            )
-            dwell_time_axis.set_ylim(0, 1)
-
-            dwell_time_axis.hlines(
-                y=np.mean(pattern_dwell_multiplier),
-                xmin=0,
-                xmax=len(gis_thickness_um),
-                label="Mean dwell time multiplier",
-                linestyles="dotted",
-                colors=dwell_time_colour,
-            )
-            handles_and_labels = dwell_time_axis.get_legend_handles_labels()
-            handles.extend(handles_and_labels[0])
-            labels.extend(handles_and_labels[1])
-
         if gis_min_threshold_um is not None:
             axs[1, 2].hlines(
                 y=gis_min_threshold_um,
@@ -334,14 +307,46 @@ def create_milling_cycle_plot(
             axs[1, 2].axvline(x=image_xlims[0], color="C4")
             axs[1, 2].axvline(x=image_xlims[1], color="C4")
 
+        handles_and_labels = axs[1, 2].get_legend_handles_labels()
+        handles.extend(handles_and_labels[0])
+        labels.extend(handles_and_labels[1])
+
+        if pattern_dwell_multiplier is not None and pattern_xlims is not None:
+            dwell_time_colour = "tab:orange"
+            dwell_time_axis = axs[1, 2].twinx()
+            dwell_time_axis.plot(
+                np.arange(pattern_xlims[0], pattern_xlims[1] + 1),
+                pattern_dwell_multiplier,
+                "-",
+                c=dwell_time_colour,
+            )
+            dwell_time_axis.tick_params(axis="y", labelcolor=dwell_time_colour)
+            dwell_time_axis.set_ylabel(
+                r"Dwell time multiplier", color=dwell_time_colour
+            )
+            dwell_time_axis.set_ylim(0, 1)
+
+            dwell_time_axis.hlines(
+                y=np.mean(pattern_dwell_multiplier),
+                xmin=0,
+                xmax=len(gis_thickness_um),
+                label="Mean dwell time multiplier",
+                linestyles="dotted",
+                colors=dwell_time_colour,
+            )
+            handles_and_labels = dwell_time_axis.get_legend_handles_labels()
+            handles.extend(handles_and_labels[0])
+            labels.extend(handles_and_labels[1])
+
+            # Plot the legend on the top axis (dwell_time_axis, if created)
+            dwell_time_axis.legend(handles, labels)
+        else:
+            axs[1, 2].legend(handles, labels)
+
         if _gis_subtitle:
             _gis_title += "\n" + "\n".join(_gis_subtitle)
 
         axs[1, 2].set_title(_gis_title)
-    handles_and_labels = axs[1, 2].get_legend_handles_labels()
-    handles.extend(handles_and_labels[0])
-    labels.extend(handles_and_labels[1])
-    axs[1, 2].legend(handles, labels)
 
     fig.savefig(save_path)
     plt.close(fig)
