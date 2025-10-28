@@ -179,6 +179,8 @@ class BitmapAdaptivePolishMillingStrategy(
             img_name=lamella_info.identifier,
             pattern_dwell_multiplier=stats.pattern_dwell_multiplier,
             pattern_xlims=stats.pattern_xlims_px,
+            dwell_multiplier_mean_threshold=self.config.dwell_multiplier_mean_stop,
+            dwell_multiplier_max_threshold=self.config.dwell_multiplier_max_stop,
         )
 
     def _refine_xlims(
