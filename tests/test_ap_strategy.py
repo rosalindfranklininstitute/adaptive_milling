@@ -104,6 +104,7 @@ def assert_results_dicts_equal(
         except Exception as e:
             raise AssertionError(f"Mismatch: {k} {e}") from e
 
+
 @patch("os.path.isfile")
 def test_default_config(mock_isfile) -> None:
     """Tests that default config works with no errors"""
@@ -504,6 +505,12 @@ def test_results_saved(
         patch.object(strategy, "_update_milling_stage") as mock_update_milling_stage,
         patch.object(strategy, "_mill") as mock_mill,
     ):
+        estimated_milling_times_s = np.linspace(10, 50, max_checks).tolist()
+        expected_estimated_milling_times_s = deepcopy(estimated_milling_times_s)
+        # The final cycle doesn't mill so should be None:
+        expected_estimated_milling_times_s[-1] = None
+
+        mock_mill.side_effect = estimated_milling_times_s
         mock_model.predict.return_value = prediction
         mock_update_milling_stage.return_value = deepcopy(stage)
 
@@ -552,7 +559,7 @@ def test_results_saved(
                     "crack_count": 0,
                     "lamella_thickness_prediction_px": ANY,
                     "crack_thickness_prediction_px": ANY,
-                    "estimated_milling_time_s": ANY,
+                    "estimated_milling_time_s": expected_estimated_milling_times_s[i],
                     "lamella_bounding_box_prediction_px": ANY,
                     "xlims_prediction_px": ANY,
                     "lamella_bounding_box_image_px": ANY,
