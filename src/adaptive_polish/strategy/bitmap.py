@@ -17,6 +17,7 @@ from adaptive_polish.processing.bitmap import filter_bitmap_signal, create_bitma
 from adaptive_polish.processing.lamella import (
     crop_xlims_centre,
     crop_xlims_convolve_filtered,
+    get_lamella_gis_boundary_peturbations,
 )
 from adaptive_polish.processing.image import resize_interp_1d
 from adaptive_polish.plot import create_milling_cycle_plot
@@ -28,7 +29,10 @@ if TYPE_CHECKING:
     from pathlib import Path
     from numpy.typing import NDArray
     from fibsem.milling import FibsemMillingStage
-    from adaptive_polish._dataclasses import LamellaInformation, LamellaStatistics
+    from adaptive_polish._dataclasses import (
+        LamellaInformation,
+        LamellaStatistics,
+    )
 
 _logger = logging.getLogger(__name__)
 
@@ -58,15 +62,28 @@ class BitmapAdaptivePolishMillingStrategy(
 
         pattern = stage.pattern
 
+        if (
+            self.config.apply_boundary_smoothing
+            and self.config.boundary_smoothing_sigma > 0
+        ):
+            boundary_peturbations = get_lamella_gis_boundary_peturbations(
+                lamella_info.clean_prediction,
+                sigma=self.config.boundary_smoothing_sigma,
+            )
+        else:
+            boundary_peturbations = None
+
         if isinstance(pattern, TrenchPattern):
             new_pattern = self._convert_trench_pattern(
                 pattern,
                 stats=stats,
+                lamella_gis_boundary_peturbations=boundary_peturbations,
             )
         elif isinstance(pattern, RectanglePattern):
             new_pattern = self._convert_rectangle_pattern(
                 pattern,
                 stats=stats,
+                lamella_gis_boundary_peturbations=boundary_peturbations,
             )
         else:
             raise TypeError(
@@ -88,10 +105,15 @@ class BitmapAdaptivePolishMillingStrategy(
         self,
         pattern: TrenchPattern,
         stats: LamellaStatistics,
+        lamella_gis_boundary_peturbations: NDArray[
+            np.integer[Any] | np.float32 | np.float64
+        ]
+        | None = None,
     ) -> TrenchBitmapPattern:
         bitmap_array = self.create_bitmap_array(
             pattern_width_m=pattern.width,
             stats=stats,
+            lamella_gis_boundary_peturbations=lamella_gis_boundary_peturbations,
         )
 
         self._check_bitmap(bitmap_array)
@@ -116,10 +138,15 @@ class BitmapAdaptivePolishMillingStrategy(
         self,
         pattern: RectanglePattern,
         stats: LamellaStatistics,
+        lamella_gis_boundary_peturbations: NDArray[
+            np.integer[Any] | np.float32 | np.float64
+        ]
+        | None = None,
     ) -> BitmapPattern:
         bitmap_array = self.create_bitmap_array(
             pattern_width_m=pattern.width,
             stats=stats,
+            lamella_gis_boundary_peturbations=lamella_gis_boundary_peturbations,
         )
 
         self._check_bitmap(bitmap_array)
@@ -207,6 +234,10 @@ class BitmapAdaptivePolishMillingStrategy(
         self,
         pattern_width_m: float,
         stats: LamellaStatistics,
+        lamella_gis_boundary_peturbations: NDArray[
+            np.integer[Any] | np.float32 | np.float64
+        ]
+        | None = None,
     ) -> NDArray:
         if stats.gis_thickness_filtered_um is None:
             raise ValueError('"gis_thickness_filtered_um" is not available')
@@ -226,6 +257,25 @@ class BitmapAdaptivePolishMillingStrategy(
 
         bitmap_signal = stats.gis_thickness_filtered_um.copy()
 
+        if lamella_gis_boundary_peturbations is not None:
+            # Interpolate boundary peturbations to have image_px width
+            interpolated_boundary_peturbations_um = np.interp(
+                np.linspace(
+                    1, len(stats.lamella_thickness_prediction_px), len(bitmap_signal)
+                ),
+                lamella_gis_boundary_peturbations[:, 1],
+                lamella_gis_boundary_peturbations[:, 0]
+                * stats.prediction_pixel_size_m[0]
+                * 1e6,
+            )
+            # We don't want to aim for below gis_min_um, ensure we aren't
+            # increasing any values in bitmap_signal
+            interpolated_boundary_peturbations_um = np.clip(
+                interpolated_boundary_peturbations_um, 0, None
+            )
+            # Remove the dips in to aim for a smoother GIS layer
+            bitmap_signal -= interpolated_boundary_peturbations_um
+
         if self.config.mask_cracks:
             # Interpolate cracks to have image_px width
             crack_thickness_image_px = resize_interp_1d(
@@ -235,13 +285,13 @@ class BitmapAdaptivePolishMillingStrategy(
             # Set any region with cracks a thickness of 0 for the purposes of the bitmap
             bitmap_signal[crack_thickness_image_px > 0] = 0
 
-        filtered_bitmap_signal = self._filter_bitmap_signal(
+        filtered_trimmed_bitmap_signal = self._filter_bitmap_signal(
             bitmap_signal[pattern_xlims[0] : pattern_xlims[1] + 1]
         )
 
         bitmap_array = create_bitmap_array(
-            input_signal=filtered_bitmap_signal,
-            xlims=(0, len(filtered_bitmap_signal) - 1),
+            input_signal=filtered_trimmed_bitmap_signal,
+            xlims=(0, len(filtered_trimmed_bitmap_signal) - 1),
             min_dwell_threshold=self.config.gis_min_um,
             max_dwell_threshold=self.config.gis_max_um,
             as_image=False,

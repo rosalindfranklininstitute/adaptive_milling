@@ -31,7 +31,9 @@ class BitmapAdaptivePolishMillingConfig(AdaptivePolishMillingConfig):
         description="Milling will be stopped if the maximum dwell time multiplier drops below this value",
     )
     bitmap_erosion_px: NonNegativeInt = 20
-    bitmap_gaussian_sigma: NonNegativeFloat = 5
+    bitmap_gaussian_sigma: NonNegativeFloat = 20
+    boundary_smoothing_sigma: NonNegativeFloat = 5.0
+    apply_boundary_smoothing: bool = False
     mask_cracks: bool = True
     pattern_alignment: Literal["centre", "convolve"] = "centre"
 
