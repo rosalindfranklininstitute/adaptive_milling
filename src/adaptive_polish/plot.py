@@ -352,7 +352,7 @@ def create_summary_gis_plot(
     ax.set_xlabel(r"Estimated Milling Time $s$")
     ax.set_ylabel(r"GIS Thickness $\mu m$")
     ax.legend()
-    fig.suptitle(save_path.stem)
+    fig.suptitle(f"{run_info.lamella_name} summary plot")
     fig.tight_layout()
     fig.savefig(save_path)
     plt.close(fig)
