@@ -339,7 +339,7 @@ def create_summary_gis_plot(
     )
     ax.plot(
         cumulative_milling_time,
-        np.asarray(median_gis_thicknesses, dtype=np.float_),
+        np.asarray(mean_gis_thicknesses, dtype=np.float_),
         label="Mean",
         linestyle=":",
     )
@@ -351,7 +351,8 @@ def create_summary_gis_plot(
     )
     ax.set_xlabel(r"Estimated Milling Time $s$")
     ax.set_ylabel(r"GIS Thickness $\mu m$")
-    fig.suptitle(save_path.stem)
+    ax.legend()
+    fig.suptitle(f"{run_info.lamella_name} summary plot")
     fig.tight_layout()
     fig.savefig(save_path)
     plt.close(fig)
