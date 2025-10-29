@@ -213,26 +213,20 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                         )
                         run_info.cycle_information.append(cycle_info)
                         with cycle_info.timestamps.cycle:
-                            try:
-                                self._run_milling_cycle(
-                                    cycle_info=cycle_info,
-                                    fib_imaging_settings=fib_imaging_settings,
-                                    sem_imaging_settings=sem_imaging_settings,
-                                    plots_directory=lamella_ap_plots_directory,
-                                    predictions_directory=lamella_ap_predictions_directory,
-                                    microscope=microscope,
-                                    stage=stage,
-                                    expected_lamella_centre_m=lamella_centre_m,
-                                    # Don't mill on the final cycle, just run checks
-                                    mill=milling_cycle < self.config.max_milling_cycles,
-                                    asynch=asynch,
-                                    parent_ui=parent_ui,
-                                )
-                            finally:
-                                self._save_results(
-                                    run_info=run_info,
-                                    save_directory=lamella_ap_directory,
-                                )
+                            self._run_milling_cycle(
+                                cycle_info=cycle_info,
+                                fib_imaging_settings=fib_imaging_settings,
+                                sem_imaging_settings=sem_imaging_settings,
+                                plots_directory=lamella_ap_plots_directory,
+                                predictions_directory=lamella_ap_predictions_directory,
+                                microscope=microscope,
+                                stage=stage,
+                                expected_lamella_centre_m=lamella_centre_m,
+                                # Don't mill on the final cycle, just run checks
+                                mill=milling_cycle < self.config.max_milling_cycles,
+                                asynch=asynch,
+                                parent_ui=parent_ui,
+                            )
                     _logger.info(
                         "%s complete (ended due to maximum milling cycles)", self.name
                     )
@@ -254,6 +248,11 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                     )
                     raise
                 finally:
+                    # Save results again now to include the end reason
+                    self._save_results(
+                        run_info=run_info,
+                        save_directory=lamella_ap_directory,
+                    )
                     # Always try to create a summary plot(s) and finish milling
                     try:
                         self._create_summary_plots(
