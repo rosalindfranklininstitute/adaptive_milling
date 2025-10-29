@@ -167,8 +167,10 @@ class BitmapAdaptivePolishMillingStrategy(
             clean_prediction=lamella_info.clean_prediction,
             gis_thickness_um=stats.gis_thickness_filtered_um,
             gis_thickness_min_um=stats.gis_thickness_min_um,
+            gis_thickness_median_um=stats.gis_thickness_median_um,
             crack_area_um2=stats.crack_area_um2,
-            gis_stop_threshold_um=self.config.gis_stop_min_um,
+            gis_min_stop_threshold_um=self.config.gis_stop_min_um,
+            gis_median_stop_threshold_um=self.config.gis_stop_median_um,
             gis_min_threshold_um=self.config.gis_min_um,
             gis_max_threshold_um=self.config.gis_max_um,
             milling_stage=stage,
@@ -177,6 +179,8 @@ class BitmapAdaptivePolishMillingStrategy(
             img_name=lamella_info.identifier,
             pattern_dwell_multiplier=stats.pattern_dwell_multiplier,
             pattern_xlims=stats.pattern_xlims_px,
+            dwell_multiplier_mean_threshold=self.config.dwell_multiplier_mean_stop,
+            dwell_multiplier_max_threshold=self.config.dwell_multiplier_max_stop,
         )
 
     def _refine_xlims(

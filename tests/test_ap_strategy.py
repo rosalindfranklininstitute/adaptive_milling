@@ -395,8 +395,12 @@ def test_max_milling_cycles_not_exceeded(
                     gis_thickness_min_um=lamella_infos[
                         i
                     ].statistics.gis_thickness_min_um,
+                    gis_thickness_median_um=lamella_infos[
+                        i
+                    ].statistics.gis_thickness_median_um,
                     crack_area_um2=lamella_infos[i].statistics.crack_area_um2,
-                    gis_stop_threshold_um=strategy.config.gis_stop_min_um,
+                    gis_min_stop_threshold_um=strategy.config.gis_stop_min_um,
+                    gis_median_stop_threshold_um=strategy.config.gis_stop_median_um,
                     milling_stage=mock_update_milling_stage.return_value,
                     image_xlims=lamella_infos[i].statistics.xlims_image_px,
                     max_crack_area_um2=strategy.config.max_crack_area_um2,

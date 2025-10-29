@@ -154,7 +154,9 @@ def create_milling_cycle_plot(
     gis_thickness_um: ArrayLike | None = None,
     gis_thickness_min_um: float | None = None,
     crack_area_um2: float | None = None,
-    gis_stop_threshold_um: float | None = None,
+    gis_min_stop_threshold_um: float | None = None,
+    gis_thickness_median_um: float | None = None,
+    gis_median_stop_threshold_um: float | None = None,
     gis_min_threshold_um: float | None = None,
     gis_max_threshold_um: float | None = None,
     milling_stage: FibsemMillingStage | None = None,
@@ -165,6 +167,8 @@ def create_milling_cycle_plot(
     gis_ymax_um: float = 3,
     pattern_dwell_multiplier: Sequence[float] | None = None,
     pattern_xlims: tuple[int, int] | None = None,
+    dwell_multiplier_max_threshold: float | None = None,
+    dwell_multiplier_mean_threshold: float | None = None,
 ) -> None:
     _logger.debug("Creating milling cycle plot")
     fig, axs = plt.subplots(
@@ -220,17 +224,22 @@ def create_milling_cycle_plot(
                 fib_image,
                 milling_stages=[milling_stage],
                 crosshair=True,
-                scalebar=True,
+                scalebar=False,
+                show_preset=False,
+                title="Milling pattern",
                 ax=axs[1, 1],
             )
         except Exception:
             logging.error("Failed to draw milling patterns", exc_info=True)
-            axs[1, 1].axis("off")
+        axs[1, 1].axis("off")
 
     if gis_thickness_um is None:
         axs[1, 2].axis("off")
     else:
         gis_thickness_um = np.asarray(gis_thickness_um)
+
+        _gis_title = "GIS thickness"
+        _gis_subtitle: list[str] = []
 
         # GIS thickness
         thickness_colour = "tab:blue"
@@ -240,6 +249,67 @@ def create_milling_cycle_plot(
         axs[1, 2].set_ylabel(r"GIS thickness ($\mu m$)", color=thickness_colour)
         axs[1, 2].set_xlim(0, len(gis_thickness_um))
         axs[1, 2].set_ylim(0, gis_ymax_um)
+
+        if gis_min_threshold_um is not None:
+            axs[1, 2].hlines(
+                y=gis_min_threshold_um,
+                xmin=0,
+                xmax=len(gis_thickness_um),
+                label=rf"Min dwell ({gis_min_threshold_um:.3f} $\mu m$)",
+                linestyles="dashed",
+                colors="orange",
+            )
+        if gis_max_threshold_um is not None:
+            axs[1, 2].hlines(
+                y=gis_max_threshold_um,
+                xmin=0,
+                xmax=len(gis_thickness_um),
+                label=rf"Full dwell ({gis_max_threshold_um:.3f} $\mu m$)",
+                linestyles="dashed",
+                colors="green",
+            )
+
+        if gis_thickness_min_um is not None:
+            _gis_subtitle.append(rf"Minimum {gis_thickness_min_um:.3f} $\mu m$")
+        if gis_min_stop_threshold_um is not None and gis_min_stop_threshold_um > 0:
+            axs[1, 2].hlines(
+                y=gis_min_stop_threshold_um,
+                xmin=0,
+                xmax=len(gis_thickness_um),
+                label=rf"Min ({gis_min_stop_threshold_um:.3f} $\mu m$)",
+                linestyles="dashed",
+                colors="red",
+            )
+
+        if gis_thickness_median_um is not None:
+            _gis_subtitle.append(rf"Median {gis_thickness_median_um:.3f} $\mu m$")
+        if (
+            gis_median_stop_threshold_um is not None
+            and gis_median_stop_threshold_um > 0
+        ):
+            axs[1, 2].hlines(
+                y=gis_median_stop_threshold_um,
+                xmin=0,
+                xmax=len(gis_thickness_um),
+                label=rf"Median ({gis_median_stop_threshold_um:.3f} $\mu m$)",
+                linestyles="dashed",
+                colors="magenta",
+            )
+
+        if image_xlims is not None:
+            axs[1, 2].axvline(x=image_xlims[0], color="C4")
+            axs[1, 2].axvline(x=image_xlims[1], color="C4")
+
+        gis_thickness_legend = axs[1, 2].legend(
+            *axs[1, 2].get_legend_handles_labels(),
+            loc="upper left",
+            title="GIS thickness thresholds:",
+        )
+
+        if _gis_subtitle:
+            _gis_title += "\n" + "\n".join(_gis_subtitle)
+
+        axs[1, 2].set_title(_gis_title, loc="left")
 
         if pattern_dwell_multiplier is not None and pattern_xlims is not None:
             dwell_time_colour = "tab:orange"
@@ -256,49 +326,41 @@ def create_milling_cycle_plot(
             )
             dwell_time_axis.set_ylim(0, 1)
 
-        if gis_min_threshold_um is not None:
-            axs[1, 2].hlines(
-                y=gis_min_threshold_um,
-                xmin=0,
-                xmax=len(gis_thickness_um),
-                label="Minimum dwell threshold",
-                linestyles="dashed",
-                colors="orange",
-            )
-        if gis_max_threshold_um is not None:
-            axs[1, 2].hlines(
-                y=gis_max_threshold_um,
-                xmin=0,
-                xmax=len(gis_thickness_um),
-                label="Full dwell threshold",
-                linestyles="dashed",
-                colors="green",
-            )
-        if gis_stop_threshold_um is not None:
-            axs[1, 2].hlines(
-                y=gis_stop_threshold_um,
-                xmin=0,
-                xmax=len(gis_thickness_um),
-                label="Stop milling threshold",
-                linestyles="dashed",
-                colors="red",
-            )
+            if dwell_multiplier_max_threshold and dwell_multiplier_max_threshold > 0:
+                dwell_time_axis.hlines(
+                    y=dwell_multiplier_max_threshold,
+                    xmin=0,
+                    xmax=len(gis_thickness_um),
+                    label=f"Max stop ({dwell_multiplier_max_threshold:.3f})",
+                    linestyles="dotted",
+                    colors="tab:pink",
+                )
 
-        if image_xlims is not None:
-            axs[1, 2].axvline(x=image_xlims[0], color="C4")
-            axs[1, 2].axvline(x=image_xlims[1], color="C4")
+            if (
+                dwell_multiplier_mean_threshold is not None
+                and dwell_multiplier_mean_threshold > 0
+            ):
+                dwell_time_axis.hlines(
+                    y=dwell_multiplier_mean_threshold,
+                    xmin=0,
+                    xmax=len(gis_thickness_um),
+                    label=f"Mean stop ({dwell_multiplier_mean_threshold:.3f})",
+                    linestyles="dotted",
+                    colors="tab:purple",
+                )
 
-    _gis_title = "GIS thickness"
-    _gis_subtitle: list[str] = []
-    if gis_thickness_min_um is not None:
-        _gis_subtitle.append(rf"Minimum {gis_thickness_min_um:.3f} $\mu m$")
-    if gis_stop_threshold_um is not None:
-        _gis_subtitle.append(f"(threshold {gis_stop_threshold_um:.3f})")
-    if _gis_subtitle:
-        _gis_title += "\n" + " ".join(_gis_subtitle)
+            gis_thickness_legend.remove()
+            dwell_time_axis.add_artist(gis_thickness_legend)
 
-    axs[1, 2].set_title(_gis_title)
-    axs[1, 2].legend()
+            dwell_time_axis.legend(
+                *dwell_time_axis.get_legend_handles_labels(),
+                loc="upper right",
+                title="Dwell multiplier threshold:",
+            )
+            dwell_time_axis.set_title(
+                f"Dwell time multiplier\nMaximum {np.max(pattern_dwell_multiplier):3f}\nMean {np.mean(pattern_dwell_multiplier):.3f}",
+                loc="right",
+            )
 
     fig.savefig(save_path)
     plt.close(fig)
