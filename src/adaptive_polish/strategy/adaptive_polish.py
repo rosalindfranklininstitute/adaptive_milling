@@ -311,13 +311,17 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
 
             if mill:
                 with cycle_info.timestamps.mill:
-                    self._mill(
+                    estimated_milling_time_s = self._mill(
                         cycle_info.milling_cycle,
                         microscope=microscope,
                         stage=stage,
                         asynch=asynch,
                         parent_ui=parent_ui,
                     )
+                    if cycle_info.lamella_statistics is not None:
+                        cycle_info.lamella_statistics.estimated_milling_time_s = (
+                            estimated_milling_time_s
+                        )
         finally:
             if predictions_directory is not None:
                 try:
