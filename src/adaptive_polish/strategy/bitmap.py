@@ -168,7 +168,7 @@ class BitmapAdaptivePolishMillingStrategy(
             gis_thickness_um=stats.gis_thickness_filtered_um,
             gis_thickness_min_um=stats.gis_thickness_min_um,
             crack_area_um2=stats.crack_area_um2,
-            gis_stop_threshold_um=self.config.gis_stop_um,
+            gis_stop_threshold_um=self.config.gis_stop_min_um,
             gis_min_threshold_um=self.config.gis_min_um,
             gis_max_threshold_um=self.config.gis_max_um,
             milling_stage=stage,
