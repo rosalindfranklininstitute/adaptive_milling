@@ -20,6 +20,7 @@ from adaptive_polish.strategy import adaptive_polish as ap_strategy
 from adaptive_polish._dataclasses import CycleInformation
 from adaptive_polish.processing.sem_segmentation import SegmentationLabels as SemLabels
 from adaptive_polish.exceptions import SegmentationException
+from adaptive_polish.enums import StopReasons
 
 from . import setup, utils
 
@@ -538,7 +539,7 @@ def test_results_saved(
         "stage_name": mock_update_milling_stage.return_value.name,
         "lamella_name": lamella_name,
         "timestamps": ANY,
-        "strategy_end_reason": None,
+        "strategy_end_reason": StopReasons.MAX_CYCLES.value,
         "cycle_information": [
             {
                 "milling_cycle": i,

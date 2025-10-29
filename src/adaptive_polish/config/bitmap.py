@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Literal
+from typing import Literal, ClassVar
 from pydantic import (
     ConfigDict,
     NonNegativeInt,
@@ -34,3 +34,9 @@ class BitmapAdaptivePolishMillingConfig(AdaptivePolishMillingConfig):
     bitmap_gaussian_sigma: NonNegativeFloat = 5
     mask_cracks: bool = True
     pattern_alignment: Literal["centre", "convolve"] = "centre"
+
+    _advanced_attributes: ClassVar[tuple[str, ...]] = (
+        *AdaptivePolishMillingConfig._advanced_attributes,
+        "save_predictions",
+        "pattern_alignment",
+    )
