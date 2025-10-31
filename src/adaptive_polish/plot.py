@@ -409,7 +409,7 @@ def create_milling_cycle_plot(
                 fontsize="small",
             )
             dwell_time_axis.set_title(
-                f"Dwell time multiplier\nMaximum {np.max(pattern_dwell_multiplier):3f}\nMean {np.mean(pattern_dwell_multiplier):.3f}",
+                f"Dwell time multiplier\nMaximum {np.max(pattern_dwell_multiplier):.3f}\nMean {np.mean(pattern_dwell_multiplier):.3f}",
                 loc="right",
             )
 
