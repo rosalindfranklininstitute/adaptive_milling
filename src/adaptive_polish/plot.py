@@ -339,6 +339,7 @@ def create_milling_cycle_plot(
             *axs[1, 2].get_legend_handles_labels(),
             loc="upper left",
             title="GIS thickness thresholds:",
+            fontsize="small",
         )
 
         if sem_image.metadata is not None:
@@ -404,6 +405,7 @@ def create_milling_cycle_plot(
                 *dwell_time_axis.get_legend_handles_labels(),
                 loc="upper right",
                 title="Dwell multiplier threshold:",
+                fontsize="small",
             )
             dwell_time_axis.set_title(
                 f"Dwell time multiplier\nMaximum {np.max(pattern_dwell_multiplier):3f}\nMean {np.mean(pattern_dwell_multiplier):.3f}",
