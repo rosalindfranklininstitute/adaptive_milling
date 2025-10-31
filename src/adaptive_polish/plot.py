@@ -295,8 +295,8 @@ def create_milling_cycle_plot(
                 y=gis_median_stop_threshold_um,
                 xmin=0,
                 xmax=len(gis_thickness_um),
-                label=rf"Median ({gis_median_stop_threshold_um:.3f} $\mu m$)",
-                linestyles="dashed",
+                label=rf"Median stop ({gis_median_stop_threshold_um:.3f} $\mu m$)",
+                linestyles="solid",
                 colors="magenta",
             )
 
@@ -307,8 +307,8 @@ def create_milling_cycle_plot(
                 y=gis_min_stop_threshold_um,
                 xmin=0,
                 xmax=len(gis_thickness_um),
-                label=rf"Min ({gis_min_stop_threshold_um:.3f} $\mu m$)",
-                linestyles="dashed",
+                label=rf"Min stop ({gis_min_stop_threshold_um:.3f} $\mu m$)",
+                linestyles="solid",
                 colors="red",
             )
 
