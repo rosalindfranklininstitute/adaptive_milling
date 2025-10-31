@@ -43,6 +43,7 @@ dependencies = [
   "fibsem@git+https://github.com/rosalindfranklininstitute/fibsem-os.git",
   "torch >= 2.7.0",
   "torchvision >= 0.22.0",
+  "matplotlib_scalebar >= 0.8.1"
 ]
 
 [project.urls]

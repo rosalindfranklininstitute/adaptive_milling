@@ -7,6 +7,7 @@ import numpy as np
 from matplotlib.patches import Rectangle
 from matplotlib.colors import ListedColormap
 import matplotlib.pyplot as plt
+from matplotlib_scalebar.scalebar import ScaleBar
 
 from fibsem import constants
 from fibsem.structures import Point, FibsemImage
@@ -69,6 +70,18 @@ def create_centring_plot(
         alpha=0.5,
         interpolation="none",
     )
+
+    if sem_image.metadata is not None:
+        axs[0].add_artist(
+            ScaleBar(
+                dx=sem_image.metadata.pixel_size.x,
+                color="black",
+                box_color="white",
+                box_alpha=0.5,
+                location="lower right",
+            )
+        )
+
     if bounding_box is not None:
         axs[0].add_patch(
             Rectangle(
@@ -186,6 +199,17 @@ def create_milling_cycle_plot(
     axs[0, 0].axis("off")
     axs[0, 0].set_title("SEM")
 
+    if sem_image.metadata is not None:
+        axs[0, 0].add_artist(
+            ScaleBar(
+                dx=sem_image.metadata.pixel_size.x,
+                color="black",
+                box_color="white",
+                box_alpha=0.5,
+                location="lower right",
+            )
+        )
+
     # SEM + 1st pass prediction
     plot_segmentation_overlay(
         axs[0, 1], sem_image=sem_image.data, prediction=first_prediction
@@ -216,6 +240,17 @@ def create_milling_cycle_plot(
     axs[1, 0].imshow(fib_image.data, cmap="Greys_r")
     axs[1, 0].axis("off")
     axs[1, 0].set_title("FIB")
+
+    if fib_image.metadata is not None:
+        axs[1, 0].add_artist(
+            ScaleBar(
+                dx=fib_image.metadata.pixel_size.x,
+                color="black",
+                box_color="white",
+                box_alpha=0.5,
+                location="lower right",
+            )
+        )
 
     # FIB + milling box
     if milling_stage is not None:
@@ -306,6 +341,16 @@ def create_milling_cycle_plot(
             title="GIS thickness thresholds:",
         )
 
+        if sem_image.metadata is not None:
+            scalebar = ScaleBar(
+                dx=sem_image.metadata.pixel_size.x,
+                color="black",
+                box_color="white",
+                box_alpha=0.5,
+                location="lower right",
+            )
+            axs[1, 2].add_artist(scalebar)
+
         if _gis_subtitle:
             _gis_title += "\n" + "\n".join(_gis_subtitle)
 
@@ -349,8 +394,11 @@ def create_milling_cycle_plot(
                     colors="tab:purple",
                 )
 
+            # Ensure legends and scalebar are above the top plot
             gis_thickness_legend.remove()
             dwell_time_axis.add_artist(gis_thickness_legend)
+            scalebar.remove()
+            dwell_time_axis.add_artist(scalebar)
 
             dwell_time_axis.legend(
                 *dwell_time_axis.get_legend_handles_labels(),
