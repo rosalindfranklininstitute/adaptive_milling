@@ -405,7 +405,7 @@ def create_milling_cycle_plot(
             dwell_time_axis.legend(
                 *dwell_time_axis.get_legend_handles_labels(),
                 loc="upper right",
-                title="Dwell multiplier threshold:",
+                title="Dwell multiplier thresholds:",
                 fontsize="small",
             )
             dwell_time_axis.set_title(
