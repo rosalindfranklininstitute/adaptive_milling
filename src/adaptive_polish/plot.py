@@ -285,23 +285,19 @@ def create_milling_cycle_plot(
         axs[1, 2].set_xlim(0, len(gis_thickness_um))
         axs[1, 2].set_ylim(0, gis_ymax_um)
 
-        if gis_min_threshold_um is not None:
+        if gis_thickness_median_um is not None:
+            _gis_subtitle.append(rf"Median {gis_thickness_median_um:.3f} $\mu m$")
+        if (
+            gis_median_stop_threshold_um is not None
+            and gis_median_stop_threshold_um > 0
+        ):
             axs[1, 2].hlines(
-                y=gis_min_threshold_um,
+                y=gis_median_stop_threshold_um,
                 xmin=0,
                 xmax=len(gis_thickness_um),
-                label=rf"Min dwell ({gis_min_threshold_um:.3f} $\mu m$)",
+                label=rf"Median ({gis_median_stop_threshold_um:.3f} $\mu m$)",
                 linestyles="dashed",
-                colors="orange",
-            )
-        if gis_max_threshold_um is not None:
-            axs[1, 2].hlines(
-                y=gis_max_threshold_um,
-                xmin=0,
-                xmax=len(gis_thickness_um),
-                label=rf"Full dwell ({gis_max_threshold_um:.3f} $\mu m$)",
-                linestyles="dashed",
-                colors="green",
+                colors="magenta",
             )
 
         if gis_thickness_min_um is not None:
@@ -316,19 +312,24 @@ def create_milling_cycle_plot(
                 colors="red",
             )
 
-        if gis_thickness_median_um is not None:
-            _gis_subtitle.append(rf"Median {gis_thickness_median_um:.3f} $\mu m$")
-        if (
-            gis_median_stop_threshold_um is not None
-            and gis_median_stop_threshold_um > 0
-        ):
+        if gis_max_threshold_um is not None:
             axs[1, 2].hlines(
-                y=gis_median_stop_threshold_um,
+                y=gis_max_threshold_um,
                 xmin=0,
                 xmax=len(gis_thickness_um),
-                label=rf"Median ({gis_median_stop_threshold_um:.3f} $\mu m$)",
+                label=rf"Full dwell ({gis_max_threshold_um:.3f} $\mu m$)",
                 linestyles="dashed",
-                colors="magenta",
+                colors="green",
+            )
+
+        if gis_min_threshold_um is not None:
+            axs[1, 2].hlines(
+                y=gis_min_threshold_um,
+                xmin=0,
+                xmax=len(gis_thickness_um),
+                label=rf"Min dwell ({gis_min_threshold_um:.3f} $\mu m$)",
+                linestyles="dashed",
+                colors="orange",
             )
 
         if image_xlims is not None:
