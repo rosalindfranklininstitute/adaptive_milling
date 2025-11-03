@@ -285,37 +285,6 @@ def create_milling_cycle_plot(
         axs[1, 2].set_xlim(0, len(gis_thickness_um))
         axs[1, 2].set_ylim(0, gis_ymax_um)
 
-        if gis_min_threshold_um is not None:
-            axs[1, 2].hlines(
-                y=gis_min_threshold_um,
-                xmin=0,
-                xmax=len(gis_thickness_um),
-                label=rf"Min dwell ({gis_min_threshold_um:.3f} $\mu m$)",
-                linestyles="dashed",
-                colors="orange",
-            )
-        if gis_max_threshold_um is not None:
-            axs[1, 2].hlines(
-                y=gis_max_threshold_um,
-                xmin=0,
-                xmax=len(gis_thickness_um),
-                label=rf"Full dwell ({gis_max_threshold_um:.3f} $\mu m$)",
-                linestyles="dashed",
-                colors="green",
-            )
-
-        if gis_thickness_min_um is not None:
-            _gis_subtitle.append(rf"Minimum {gis_thickness_min_um:.3f} $\mu m$")
-        if gis_min_stop_threshold_um is not None and gis_min_stop_threshold_um > 0:
-            axs[1, 2].hlines(
-                y=gis_min_stop_threshold_um,
-                xmin=0,
-                xmax=len(gis_thickness_um),
-                label=rf"Min ({gis_min_stop_threshold_um:.3f} $\mu m$)",
-                linestyles="dashed",
-                colors="red",
-            )
-
         if gis_thickness_median_um is not None:
             _gis_subtitle.append(rf"Median {gis_thickness_median_um:.3f} $\mu m$")
         if (
@@ -326,9 +295,41 @@ def create_milling_cycle_plot(
                 y=gis_median_stop_threshold_um,
                 xmin=0,
                 xmax=len(gis_thickness_um),
-                label=rf"Median ({gis_median_stop_threshold_um:.3f} $\mu m$)",
-                linestyles="dashed",
+                label=rf"Median stop ({gis_median_stop_threshold_um:.3f} $\mu m$)",
+                linestyles="solid",
                 colors="magenta",
+            )
+
+        if gis_thickness_min_um is not None:
+            _gis_subtitle.append(rf"Minimum {gis_thickness_min_um:.3f} $\mu m$")
+        if gis_min_stop_threshold_um is not None and gis_min_stop_threshold_um > 0:
+            axs[1, 2].hlines(
+                y=gis_min_stop_threshold_um,
+                xmin=0,
+                xmax=len(gis_thickness_um),
+                label=rf"Min stop ({gis_min_stop_threshold_um:.3f} $\mu m$)",
+                linestyles="solid",
+                colors="red",
+            )
+
+        if gis_max_threshold_um is not None:
+            axs[1, 2].hlines(
+                y=gis_max_threshold_um,
+                xmin=0,
+                xmax=len(gis_thickness_um),
+                label=rf"Full dwell ({gis_max_threshold_um:.3f} $\mu m$)",
+                linestyles="dashed",
+                colors="green",
+            )
+
+        if gis_min_threshold_um is not None:
+            axs[1, 2].hlines(
+                y=gis_min_threshold_um,
+                xmin=0,
+                xmax=len(gis_thickness_um),
+                label=rf"Min dwell ({gis_min_threshold_um:.3f} $\mu m$)",
+                linestyles="dashed",
+                colors="orange",
             )
 
         if image_xlims is not None:
@@ -339,6 +340,7 @@ def create_milling_cycle_plot(
             *axs[1, 2].get_legend_handles_labels(),
             loc="upper left",
             title="GIS thickness thresholds:",
+            fontsize="small",
         )
 
         if sem_image.metadata is not None:
@@ -403,10 +405,11 @@ def create_milling_cycle_plot(
             dwell_time_axis.legend(
                 *dwell_time_axis.get_legend_handles_labels(),
                 loc="upper right",
-                title="Dwell multiplier threshold:",
+                title="Dwell multiplier thresholds:",
+                fontsize="small",
             )
             dwell_time_axis.set_title(
-                f"Dwell time multiplier\nMaximum {np.max(pattern_dwell_multiplier):3f}\nMean {np.mean(pattern_dwell_multiplier):.3f}",
+                f"Dwell time multiplier\nMaximum {np.max(pattern_dwell_multiplier):.3f}\nMean {np.mean(pattern_dwell_multiplier):.3f}",
                 loc="right",
             )
 
