@@ -278,10 +278,8 @@ def get_gis_thickness(
 
     mask_good = mask_gis + mask_lamella
 
-    good_bottom = get_mask_edge(mask_good, axis=0, side="max")
-
     # Set everything above the good bottom to False for mask_bad
-    for y, x in good_bottom:
+    for y, x in get_mask_edge(mask_good, axis=0, side="max"):
         mask_bad[: y + 1, x] = False
 
     # Ignore GIS/background below the top of the lower crack/vacuum area
