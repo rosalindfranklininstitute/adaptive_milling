@@ -60,6 +60,8 @@ class BitmapAdaptivePolishMillingStrategy(
         elif sem_image.metadata is None:
             raise ValueError("SEM image has no metadata")
 
+        stage = super()._update_milling_stage(stage=stage, lamella_info=lamella_info)
+
         pattern = stage.pattern
 
         if (
@@ -90,7 +92,6 @@ class BitmapAdaptivePolishMillingStrategy(
                 f"Invalid pattern type {pattern.name}, only {TrenchPattern.name} and {RectanglePattern.name} are supported"
             )
 
-        stage = super()._update_milling_stage(stage=stage, lamella_info=lamella_info)
         stage.pattern = new_pattern
 
         _logger.info(
@@ -98,6 +99,12 @@ class BitmapAdaptivePolishMillingStrategy(
             new_pattern.name,
             stage.name,
         )
+
+        if new_pattern.array is None:
+            raise AttributeError(
+                f"{new_pattern.name} attribute 'array' has not been set"
+            )
+        self._check_bitmap(new_pattern.array)
 
         return stage
 
