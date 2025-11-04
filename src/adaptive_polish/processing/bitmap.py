@@ -228,3 +228,35 @@ def filter_bitmap_signal(
     array_1d[expanded_mask] = 0
 
     return array_1d
+
+
+def get_angle_dwell_multiplier(
+    gis_lower_edge_coordinates: NDArray[
+        np.float64 | np.float32 | np.integer[typing.Any]
+    ],
+    pixel_size: tuple[float, float],
+    sputter_ratio: float = 4.3,
+) -> NDArray[np.float_]:
+    """Create a multiplier to adjust the bitmap signal with.
+
+    This is based on the sputter yield distribution in Fig. 7 of https://doi.org/10.1016/j.matdes.2022.110563
+
+    sputter_ratio sets the ratio between 0 degrees and the maximum sputter rate (at ~80 degrees).
+    """
+    gradient = np.gradient(
+        gis_lower_edge_coordinates[:, 0] * pixel_size[0],
+        gis_lower_edge_coordinates[:, 1] * pixel_size[1],
+    )
+
+    incident_angles = np.arctan(gradient)
+
+    # Yield multiplier is based on fitting a Beta distribution to match
+    # Fig. 7 of https://doi.org/10.1016/j.matdes.2022.110563
+    A = 7
+    p = 5.4
+    q = 1.65
+    yield_multiplier = 1 + sputter_ratio * A * (
+        np.abs(incident_angles) * 2 / np.pi
+    ) ** (p - 1) * (1 - np.abs(incident_angles) * 2 / np.pi) ** (q - 1)
+
+    return 1 / yield_multiplier

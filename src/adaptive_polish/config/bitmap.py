@@ -34,6 +34,7 @@ class BitmapAdaptivePolishMillingConfig(AdaptivePolishMillingConfig):
     bitmap_gaussian_sigma: NonNegativeFloat = 20
     boundary_smoothing_sigma: NonNegativeFloat = 5.0
     apply_boundary_smoothing: bool = False
+    incident_angle_scaling: bool = False
     mask_cracks: bool = True
     pattern_alignment: Literal["centre", "convolve"] = "centre"
 
