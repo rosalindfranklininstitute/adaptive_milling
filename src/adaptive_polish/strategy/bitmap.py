@@ -13,13 +13,20 @@ from fibsem.milling.patterning import (
 
 from adaptive_polish.strategy import AdaptivePolishMillingStrategy
 from adaptive_polish.config import BitmapAdaptivePolishMillingConfig
-from adaptive_polish.processing.bitmap import filter_bitmap_signal, create_bitmap_array
+from adaptive_polish.processing.bitmap import (
+    filter_bitmap_signal,
+    create_bitmap_array,
+    get_angle_dwell_multiplier,
+)
 from adaptive_polish.processing.lamella import (
     crop_xlims_centre,
     crop_xlims_convolve_filtered,
     get_lamella_gis_boundary_peturbations,
 )
-from adaptive_polish.processing.image import resize_interp_1d
+from adaptive_polish.processing.image import resize_interp_1d, get_mask_edge
+from adaptive_polish.processing.sem_segmentation import (
+    SegmentationLabels as SemSegmentationLabels,
+)
 from adaptive_polish.plot import create_milling_cycle_plot
 from adaptive_polish.exceptions import StopMillingException
 from adaptive_polish.enums import StopReasons
@@ -75,17 +82,25 @@ class BitmapAdaptivePolishMillingStrategy(
         else:
             boundary_peturbations = None
 
+        if self.config.incident_angle_scaling:
+            gis_mask = lamella_info.clean_prediction == SemSegmentationLabels.GIS.value
+            gis_lower_edge_coordinates = get_mask_edge(gis_mask, axis=0, side="max")
+        else:
+            boundary_peturbations = None
+
         if isinstance(pattern, TrenchPattern):
             new_pattern = self._convert_trench_pattern(
                 pattern,
                 stats=stats,
                 lamella_gis_boundary_peturbations=boundary_peturbations,
+                gis_lower_edge_coordinates=gis_lower_edge_coordinates,
             )
         elif isinstance(pattern, RectanglePattern):
             new_pattern = self._convert_rectangle_pattern(
                 pattern,
                 stats=stats,
                 lamella_gis_boundary_peturbations=boundary_peturbations,
+                gis_lower_edge_coordinates=gis_lower_edge_coordinates,
             )
         else:
             raise TypeError(
@@ -121,14 +136,15 @@ class BitmapAdaptivePolishMillingStrategy(
             np.integer[Any] | np.float32 | np.float64
         ]
         | None = None,
+        gis_lower_edge_coordinates: NDArray[np.float64 | np.float32 | np.integer[Any]]
+        | None = None,
     ) -> TrenchBitmapPattern:
         bitmap_array = self.create_bitmap_array(
             pattern_width_m=pattern.width,
             stats=stats,
             lamella_gis_boundary_peturbations=lamella_gis_boundary_peturbations,
+            gis_lower_edge_coordinates=gis_lower_edge_coordinates,
         )
-
-        self._check_bitmap(bitmap_array)
 
         if pattern.time != 0:
             _logger.warning(
@@ -154,14 +170,15 @@ class BitmapAdaptivePolishMillingStrategy(
             np.integer[Any] | np.float32 | np.float64
         ]
         | None = None,
+        gis_lower_edge_coordinates: NDArray[np.float64 | np.float32 | np.integer[Any]]
+        | None = None,
     ) -> BitmapPattern:
         bitmap_array = self.create_bitmap_array(
             pattern_width_m=pattern.width,
             stats=stats,
             lamella_gis_boundary_peturbations=lamella_gis_boundary_peturbations,
+            gis_lower_edge_coordinates=gis_lower_edge_coordinates,
         )
-
-        self._check_bitmap(bitmap_array)
 
         if pattern.time != 0:
             _logger.warning(
@@ -250,6 +267,8 @@ class BitmapAdaptivePolishMillingStrategy(
             np.integer[Any] | np.float32 | np.float64
         ]
         | None = None,
+        gis_lower_edge_coordinates: NDArray[np.float64 | np.float32 | np.integer[Any]]
+        | None = None,
     ) -> NDArray:
         if stats.gis_thickness_filtered_um is None:
             raise ValueError('"gis_thickness_filtered_um" is not available')
@@ -269,11 +288,40 @@ class BitmapAdaptivePolishMillingStrategy(
 
         bitmap_signal = stats.gis_thickness_filtered_um.copy()
 
+        if gis_lower_edge_coordinates is not None:
+            # TODO: is there a neater way to do this?
+            angle_dwell_multiplier = get_angle_dwell_multiplier(
+                gis_lower_edge_coordinates=gis_lower_edge_coordinates,
+                pixel_size=stats.image_pixel_size_m,
+            )
+
+            angle_dwell_multiplier = np.interp(
+                np.linspace(
+                    0,
+                    len(stats.lamella_thickness_prediction_px),
+                    len(bitmap_signal),
+                    endpoint=False,
+                ),
+                gis_lower_edge_coordinates[:, 1],
+                angle_dwell_multiplier,
+            )
+
+            bitmap_signal[pattern_xlims[0] : pattern_xlims[1] + 1] = (
+                (
+                    bitmap_signal[pattern_xlims[0] : pattern_xlims[1] + 1]
+                    - self.config.gis_min_um
+                )
+                * angle_dwell_multiplier[pattern_xlims[0] : pattern_xlims[1] + 1]
+            ) + self.config.gis_min_um
+
         if lamella_gis_boundary_peturbations is not None:
             # Interpolate boundary peturbations to have image_px width
             interpolated_boundary_peturbations_um = np.interp(
                 np.linspace(
-                    1, len(stats.lamella_thickness_prediction_px), len(bitmap_signal)
+                    0,
+                    len(stats.lamella_thickness_prediction_px),
+                    len(bitmap_signal),
+                    endpoint=False,
                 ),
                 lamella_gis_boundary_peturbations[:, 1],
                 lamella_gis_boundary_peturbations[:, 0]
@@ -308,6 +356,7 @@ class BitmapAdaptivePolishMillingStrategy(
             max_dwell_threshold=self.config.gis_max_um,
             as_image=False,
         )
+
         stats.pattern_dwell_multiplier = bitmap_array[0, :, 0].tolist()
         stats.pattern_blanking = bitmap_array[0, :, 1].astype(bool).tolist()
 
