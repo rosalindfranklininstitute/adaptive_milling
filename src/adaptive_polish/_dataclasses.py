@@ -12,10 +12,8 @@ from adaptive_polish.enums import StopReasons
 
 if TYPE_CHECKING:
     from typing import Any
-
-    import numpy as np
-    from fibsem.structures import FibsemImage
     from numpy.typing import NDArray
+    from fibsem.structures import FibsemImage
 
 
 @dataclass
@@ -246,6 +244,7 @@ class LamellaStatistics:
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
+
 
 @dataclass
 class LamellaInformation:
