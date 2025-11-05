@@ -308,6 +308,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                     expected_lamella_centre_m=expected_lamella_centre_m,
                     plots_directory=plots_directory,
                 )
+            with cycle_info.timestamps.check_stage:
+                self._check_milling_stage(stage=stage)
 
             if mill:
                 with cycle_info.timestamps.mill:
@@ -391,7 +393,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         stage: FibsemMillingStage,
         lamella_info: LamellaInformation,
     ) -> FibsemMillingStage:
-        # Make a copy of the milling stage before updating the pattern
+        # Make a copy of the milling stage before anything is changed
         return deepcopy(stage)
 
     def _get_imaging_settings(
@@ -620,6 +622,10 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                 f"Crack area (um2) {stats.crack_area_um2:.4e} > threshold {self.config.max_crack_area_um2:.4e} um2",
                 reason=StopReasons.CRACK_AREA,
             )
+
+    def _check_milling_stage(self, stage: FibsemMillingStage) -> None:
+        # The stage isn't updated in this strategy
+        return
 
     def _mill(
         self,

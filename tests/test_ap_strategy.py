@@ -315,6 +315,9 @@ def test_max_milling_cycles_not_exceeded(
             strategy, "_get_lamella_info", autospec=True
         ) as mock_get_lamella_info,
         patch.object(strategy, "_check_lamella", autospec=True) as mock_check_lamella,
+        patch.object(
+            strategy, "_check_milling_stage", autospec=True
+        ) as mock_check_milling_stage,
         patch.object(strategy, "_update_milling_stage") as mock_update_milling_stage,
         patch.object(strategy, "_save_predictions") as mock_save_predictions,
         patch.object(strategy, "_mill") as mock_mill,
@@ -331,7 +334,10 @@ def test_max_milling_cycles_not_exceeded(
             MagicMock(statistics=mock_stats) for _ in range(max_milling_cycles + 1)
         ]
         mock_get_lamella_info.side_effect = lamella_infos
-        mock_update_milling_stage.return_value = "stage"
+        milling_stages = [
+            MagicMock(name=f"stage_{_}") for _ in range(max_milling_cycles + 1)
+        ]
+        mock_update_milling_stage.side_effect = milling_stages
 
         strategy.run(microscope, stage)
 
@@ -361,6 +367,10 @@ def test_max_milling_cycles_not_exceeded(
                 )
                 for i in range(max_milling_cycles + 1)
             ]
+        )
+
+        mock_check_milling_stage.assert_has_calls(
+            [call(stage=stage) for stage in milling_stages]
         )
 
         mock_update_milling_stage.assert_has_calls(
@@ -401,7 +411,7 @@ def test_max_milling_cycles_not_exceeded(
                     crack_area_um2=lamella_infos[i].statistics.crack_area_um2,
                     gis_min_stop_threshold_um=strategy.config.gis_stop_min_um,
                     gis_median_stop_threshold_um=strategy.config.gis_stop_median_um,
-                    milling_stage=mock_update_milling_stage.return_value,
+                    milling_stage=milling_stages[i],
                     image_xlims=lamella_infos[i].statistics.xlims_image_px,
                     max_crack_area_um2=strategy.config.max_crack_area_um2,
                     img_name=lamella_infos[i].identifier,
@@ -416,7 +426,7 @@ def test_max_milling_cycles_not_exceeded(
                 call(
                     i,
                     microscope=microscope,
-                    stage=mock_update_milling_stage.return_value,
+                    stage=milling_stages[i],
                     asynch=False,
                     parent_ui=None,
                 )
