@@ -99,14 +99,19 @@ class BitmapAdaptivePolishMillingStrategy(
             new_pattern.name,
             stage.name,
         )
-
-        if new_pattern.array is None:
-            raise AttributeError(
-                f"{new_pattern.name} attribute 'array' has not been set"
-            )
-        self._check_bitmap(new_pattern.array)
-
         return stage
+
+
+
+    def _check_milling_stage(self, stage: FibsemMillingStage) -> None:
+        super()._check_milling_stage(stage=stage)
+        if not isinstance(stage.pattern, (BitmapPattern, TrenchBitmapPattern)):
+            raise TypeError(f"Stage pattern type is {type(stage.pattern)}, expected pattern types are BitmapPattern, TrenchBitmapPattern.")
+        elif stage.pattern.array is None:
+            raise AttributeError(
+                f"{stage.pattern.name} attribute 'array' has not been set"
+            )
+        self._check_bitmap(stage.pattern.array)
 
     def _convert_trench_pattern(
         self,

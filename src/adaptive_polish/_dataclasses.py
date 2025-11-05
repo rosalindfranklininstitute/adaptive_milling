@@ -57,6 +57,7 @@ class CycleTimestamps:
     update_stage: ProcessTimestamps = field(default_factory=ProcessTimestamps)
     predict: ProcessTimestamps = field(default_factory=ProcessTimestamps)
     check_lamella: ProcessTimestamps = field(default_factory=ProcessTimestamps)
+    check_stage: ProcessTimestamps = field(default_factory=ProcessTimestamps)
     mill: ProcessTimestamps = field(default_factory=ProcessTimestamps)
 
 
