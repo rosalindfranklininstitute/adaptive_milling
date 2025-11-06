@@ -86,7 +86,7 @@ class BitmapAdaptivePolishMillingStrategy(
             gis_mask = lamella_info.clean_prediction == SemSegmentationLabels.GIS.value
             gis_lower_edge_coordinates = get_mask_edge(gis_mask, axis=0, side="max")
         else:
-            boundary_peturbations = None
+            gis_lower_edge_coordinates = None
 
         if isinstance(pattern, TrenchPattern):
             new_pattern = self._convert_trench_pattern(
