@@ -307,12 +307,9 @@ class BitmapAdaptivePolishMillingStrategy(
             )
 
             bitmap_signal[pattern_xlims[0] : pattern_xlims[1] + 1] = (
-                (
-                    bitmap_signal[pattern_xlims[0] : pattern_xlims[1] + 1]
-                    - self.config.gis_min_um
-                )
+                (bitmap_signal[pattern_xlims[0] : pattern_xlims[1] + 1])
                 * angle_dwell_multiplier[pattern_xlims[0] : pattern_xlims[1] + 1]
-            ) + self.config.gis_min_um
+            )
 
         if lamella_gis_boundary_peturbations is not None:
             # Interpolate boundary peturbations to have image_px width
