@@ -82,7 +82,7 @@ class BitmapAdaptivePolishMillingStrategy(
         else:
             boundary_peturbations = None
 
-        if self.config.incident_angle_scaling:
+        if self.config.incident_angle_sputter_ratio > 1:
             gis_mask = lamella_info.clean_prediction == SemSegmentationLabels.GIS.value
             gis_lower_edge_coordinates = get_mask_edge(gis_mask, axis=0, side="max")
         else:
@@ -288,11 +288,15 @@ class BitmapAdaptivePolishMillingStrategy(
 
         bitmap_signal = stats.gis_thickness_filtered_um.copy()
 
-        if gis_lower_edge_coordinates is not None:
+        if (
+            gis_lower_edge_coordinates is not None
+            and self.config.incident_angle_sputter_ratio > 1
+        ):
             # TODO: is there a neater way to do this?
             angle_dwell_multiplier = get_angle_dwell_multiplier(
                 gis_lower_edge_coordinates=gis_lower_edge_coordinates,
                 pixel_size=stats.image_pixel_size_m,
+                sputter_ratio=self.config.incident_angle_sputter_ratio,
             )
 
             angle_dwell_multiplier = np.interp(
