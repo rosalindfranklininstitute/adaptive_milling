@@ -35,6 +35,7 @@ class BitmapAdaptivePolishMillingConfig(AdaptivePolishMillingConfig):
     boundary_smoothing_sigma: NonNegativeFloat = 5.0
     apply_boundary_smoothing: bool = False
     incident_angle_scaling: bool = False
+    incident_angle_scale_with_gis_min: bool = False
     mask_cracks: bool = True
     pattern_alignment: Literal["centre", "convolve"] = "centre"
 
