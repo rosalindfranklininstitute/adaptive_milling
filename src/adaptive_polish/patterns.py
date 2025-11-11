@@ -63,7 +63,7 @@ class AsymmetricFiducialPattern(BasePattern[FibsemRectangleSettings]):
             centre_y=self.point.y,
             scan_direction="TopToBottom",
             cross_section=cross_section,
-            rotation=rotation + 2.56563, # ~ 147 degrees
+            rotation=rotation + 2.56563,  # ~ 147 degrees
         )
 
         self.shapes = [
