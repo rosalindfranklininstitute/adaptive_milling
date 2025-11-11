@@ -457,9 +457,7 @@ class Gen1Model(AbstractAdaptivePolishingModel):
         try:
             model.load_state_dict(torch.load(model_path, map_location=self.device))
         except Exception:
-            _logger.error(
-                "Failed to load model state from '%s'", model_path
-            )
+            _logger.error("Failed to load model state from '%s'", model_path)
             raise
         return model
 
