@@ -279,15 +279,16 @@ class BitmapAdaptivePolishMillingStrategy(
 
         lamella_width_px = int(round(pattern_width_m / stats.image_pixel_size_m[0]))
 
+        gis_thickness_filtered_um = np.asarray(stats.gis_thickness_filtered_um)
+
         pattern_xlims = self._refine_xlims(
             lamella_width=lamella_width_px,
-            gis_thickness=stats.gis_thickness_filtered_um,
+            gis_thickness=gis_thickness_filtered_um,
             xlims=stats.xlims_image_px,
         )
         stats.pattern_xlims_px = pattern_xlims
 
-        bitmap_signal = stats.gis_thickness_filtered_um.copy()
-
+        bitmap_signal = gis_thickness_filtered_um.copy()
         if (
             gis_lower_edge_coordinates is not None
             and self.config.incident_angle_sputter_ratio > 1

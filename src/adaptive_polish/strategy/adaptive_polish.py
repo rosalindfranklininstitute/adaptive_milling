@@ -545,7 +545,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                 gis_thickness_filtered_image_px.tolist()
             )
             # Calculate GIS min, median, etc.
-            statistics.calculate_gis_statistics()
+            statistics.calculate_statistics()
 
         finally:
             return LamellaInformation(
