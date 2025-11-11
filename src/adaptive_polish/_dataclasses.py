@@ -1,7 +1,6 @@
 from __future__ import annotations
 import time
 from dataclasses import asdict, dataclass, field
-from functools import cached_property
 from types import TracebackType
 from typing import TYPE_CHECKING
 
@@ -73,6 +72,17 @@ class CycleInformation:
     timestamps: CycleTimestamps = field(default_factory=CycleTimestamps)
     lamella_statistics: LamellaStatistics | None = None
 
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "CycleInformation":
+        timestamps = CycleTimestamps(**d.pop("timestamps"))
+        lamella_stats = LamellaStatistics(**d.pop("lamella_statistics"))
+        lamella_stats.calculate_statistics()
+        return cls(
+            timestamps=timestamps,
+            lamella_statistics=lamella_stats,
+            **d,
+        )
+
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
@@ -90,6 +100,14 @@ class StrategyRunInformation:
         if isinstance(reason, StopReasons):
             reason = reason.value
         self.strategy_end_reason = reason
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "StrategyRunInformation":
+        timestamps = StrategyTimestamps(**d.pop("timestamps"))
+        cycle_information = [
+            CycleInformation.from_dict(_) for _ in d.pop("cycle_information")
+        ]
+        return cls(timestamps=timestamps, cycle_information=cycle_information, **d)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -148,17 +166,33 @@ class LamellaStatistics:
     gis_thickness_image_px: list[float | int] | None = None
     gis_thickness_filtered_image_px: list[float | int] | None = None
 
-    # These can be calculated by calculate_gis_statistics
+    # These can be calculated by calculate_statistics
     gis_thickness_min_image_px: float | None = None
     gis_thickness_median_image_px: float | None = None
     gis_thickness_mean_image_px: float | None = None
+
+    # Calculated physical values
+    gis_thickness_um: list[float] | None = None
+    gis_thickness_filtered_um: list[float] | None = None
+    gis_thickness_min_um: float | None = None
+    gis_thickness_mean_um: float | None = None
+    gis_thickness_median_um: float | None = None
+    crack_area_um2: float | None = None
+    lamella_thickness_um: list[float] | None = None
+    lamella_area_um2: float | None = None
 
     # Bitmap specific values
     pattern_xlims_px: tuple[int, int] | None = None
     pattern_dwell_multiplier: list[float] | None = None
     pattern_blanking: list[bool] | None = None
 
-    def calculate_gis_statistics(self) -> None:
+    def calculate_statistics(self) -> None:
+        if self.gis_thickness_image_px is not None:
+            self.gis_thickness_um = (
+                np.asarray(self.gis_thickness_image_px)
+                * (self.image_pixel_size_m[1] * 1e6)
+            ).tolist()
+
         if (
             self.gis_thickness_filtered_image_px is not None
             and self.xlims_image_px is not None
@@ -176,68 +210,35 @@ class LamellaStatistics:
                 np.nanmedian(gis_thickness_slice_image_px)
             )
 
-    @cached_property
-    def gis_thickness_um(self) -> NDArray[np.float_] | None:
-        if self.gis_thickness_image_px is None:
-            return None
-        return np.asarray(self.gis_thickness_image_px) / (
-            self.image_pixel_size_m[1] * 1e6
-        )
+            # Physical units
+            self.gis_thickness_filtered_um = (
+                np.asarray(self.gis_thickness_filtered_image_px)
+                * (self.image_pixel_size_m[1] * 1e6)
+            ).tolist()
+            self.gis_thickness_min_um = self.gis_thickness_min_image_px * (
+                self.image_pixel_size_m[1] * 1e6
+            )
+            self.gis_thickness_mean_um = self.gis_thickness_mean_image_px * (
+                self.image_pixel_size_m[1] * 1e6
+            )
+            self.gis_thickness_median_um = self.gis_thickness_median_image_px * (
+                self.image_pixel_size_m[1] * 1e6
+            )
+        if self.crack_thickness_prediction_px is not None:
+            self.crack_area_um2 = float(
+                np.sum(self.crack_thickness_prediction_px)
+                * (
+                    self.prediction_pixel_size_m[0]
+                    * self.prediction_pixel_size_m[1]
+                    * 1e12
+                )
+            )
 
-    @cached_property
-    def gis_thickness_filtered_um(self) -> NDArray[np.float_] | None:
-        if self.gis_thickness_filtered_image_px is None:
-            return None
-        return np.asarray(self.gis_thickness_filtered_image_px, dtype=float) * (
-            self.image_pixel_size_m[1] * 1e6
-        )
-
-    @property
-    def gis_thickness_min_um(self) -> float | None:
-        if self.gis_thickness_min_image_px is None:
-            self.calculate_gis_statistics()
-            if self.gis_thickness_min_image_px is None:
-                return None
-        return float(
-            self.gis_thickness_min_image_px * (self.image_pixel_size_m[1] * 1e6)
-        )
-
-    @property
-    def gis_thickness_mean_um(self) -> float | None:
-        if self.gis_thickness_mean_image_px is None:
-            self.calculate_gis_statistics()
-            if self.gis_thickness_mean_image_px is None:
-                return None
-        return float(
-            self.gis_thickness_mean_image_px * (self.image_pixel_size_m[1] * 1e6)
-        )
-
-    @property
-    def gis_thickness_median_um(self) -> float | None:
-        if self.gis_thickness_median_image_px is None:
-            self.calculate_gis_statistics()
-            if self.gis_thickness_median_image_px is None:
-                return None
-        return float(
-            self.gis_thickness_median_image_px * (self.image_pixel_size_m[1] * 1e6)
-        )
-
-    @cached_property
-    def crack_area_um2(self) -> float:
-        return float(
-            np.sum(self.crack_thickness_prediction_px)
-            * (self.prediction_pixel_size_m[0] * self.prediction_pixel_size_m[1] * 1e12)
-        )
-
-    @cached_property
-    def lamella_thickness_um(self) -> NDArray[np.float_] | None:
-        return np.asarray(self.lamella_thickness_prediction_px, dtype=float) * (
-            self.prediction_pixel_size_m[0] * self.prediction_pixel_size_m[1] * 1e12
-        )
-
-    @cached_property
-    def lamella_area_um2(self) -> float:
-        return float(
+        self.lamella_thickness_um = (
+            np.asarray(self.lamella_thickness_prediction_px, dtype=float)
+            * (self.prediction_pixel_size_m[0] * 1e6)
+        ).tolist()
+        self.lamella_area_um2 = float(
             np.sum(self.lamella_thickness_prediction_px)
             * (self.prediction_pixel_size_m[0] * self.prediction_pixel_size_m[1] * 1e12)
         )
