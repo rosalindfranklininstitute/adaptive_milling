@@ -777,7 +777,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         # Mean GIS thickness check
         return median_gis_um < float(self.config.gis_stop_median_um)
 
-    def _get_crack_too_large(self, crack_area_um2: float) -> bool:
+    def _get_crack_too_large(self, crack_area_um2: float | None) -> bool:
+        if crack_area_um2 is None:
+            raise StopEarlyError("No crack area measurement")
         # Total crack area check
         return crack_area_um2 > float(self.config.max_crack_area_um2)
 
