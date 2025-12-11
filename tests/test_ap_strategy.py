@@ -594,6 +594,16 @@ def test_results_saved(
                     "gis_thickness_mean_image_px": float(
                         np.nanmean(expected_filtered_gis_thicknesses[i])
                     ),
+                    # Calculated physical values
+                    "gis_thickness_um": ANY,
+                    "gis_thickness_filtered_um": ANY,
+                    "gis_thickness_min_um": ANY,
+                    "gis_thickness_mean_um": ANY,
+                    "gis_thickness_median_um": ANY,
+                    "crack_area_um2": ANY,
+                    "lamella_thickness_um": ANY,
+                    "lamella_area_um2": ANY,
+                    # Bitmap specific values,
                     "pattern_xlims_px": None,
                     "pattern_dwell_multiplier": None,
                     "pattern_blanking": None,
