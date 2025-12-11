@@ -166,10 +166,10 @@ def test_create_bitmap_array_calls(
 
 @pytest.mark.parametrize("mask_cracks", [True, False])
 def test_create_bitmap_array_simple_values(mask_cracks: bool) -> None:
-    pattern_width = 1e-5
+    pattern_width_m = 1e-5
     lamella_width_px = 1000
     image_width = 100
-    pixel_size_m = pattern_width * lamella_width_px
+    pixel_size_m = pattern_width_m / lamella_width_px
     pixel_size_m_tuple = (pixel_size_m, pixel_size_m)
     xlims = (20, 50)
     bitmap_width = xlims[1] - xlims[0] + 1
@@ -187,12 +187,13 @@ def test_create_bitmap_array_simple_values(mask_cracks: bool) -> None:
         image_pixel_size_m=pixel_size_m_tuple,
         prediction_pixel_size_m=pixel_size_m_tuple,
         crack_count=0,
-        lamella_thickness_prediction_px=None,  # type: ignore
+        lamella_thickness_prediction_px=list(range(image_width)),
         crack_thickness_prediction_px=crack_thickness_prediction_px,
         gis_thickness_filtered_image_px=gis_thickness_filtered_image_px,
         xlims_prediction_px=xlims,
         xlims_image_px=xlims,
     )
+    lamella_stats.calculate_statistics()
 
     with patch("os.path.isfile") as mock_isfile:
         mock_isfile.return_value = True
@@ -204,6 +205,7 @@ def test_create_bitmap_array_simple_values(mask_cracks: bool) -> None:
             mask_cracks=mask_cracks,
             gis_min_um=5,
             gis_max_um=10,
+            incident_angle_sputter_ratio=1,  # Disables incident angle scaling
         )
     strategy = bitmap_strategy.BitmapAdaptivePolishMillingStrategy(config=bitmap_config)
 
@@ -215,7 +217,7 @@ def test_create_bitmap_array_simple_values(mask_cracks: bool) -> None:
     with patch.object(strategy, "_refine_xlims") as mock_refine_xlims:
         mock_refine_xlims.return_value = xlims
         bitmap_array = strategy.create_bitmap_array(
-            pattern_width_m=pattern_width, stats=lamella_stats
+            pattern_width_m=pattern_width_m, stats=lamella_stats
         )
 
     assert_array_almost_equal(
