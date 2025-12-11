@@ -175,7 +175,6 @@ explicit = true
 [project.entry-points.'fibsem.strategies']
 # Make the strategy discoverable by fibsem
 adaptive_polish = "adaptive_milling.strategy:AdaptivePolishMillingStrategy"
-bitmap_adaptive_polish = "adaptive_milling.strategy:BitmapAdaptivePolishMillingStrategy"
 
 [project.entry-points.'fibsem.patterns']
 asymmetric_fiducial = "adaptive_milling.patterns:AsymmetricFiducialPattern"
