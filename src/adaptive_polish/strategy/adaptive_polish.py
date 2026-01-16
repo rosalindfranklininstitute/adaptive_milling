@@ -813,7 +813,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
 
     def _segment_sem_image(
         self, sem_image: NDArray[np.number], full_size: bool = False
-    ) -> NDArray[typing.Any]:
+    ) -> NDArray[np.uint8]:
         if self.model is None:
             raise SegmentationException(
                 "Unable to continue as no SEM segmentation model has been loaded"
@@ -821,7 +821,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         _logger.debug("Starting SEM segmentation")
         prediction = self.model.predict(sem_image, full_size=full_size)
         _logger.debug("SEM segmentation complete")
-        return prediction
+        return prediction.astype(np.uint8)
 
     def _acquire_image(
         self, microscope: FibsemMicroscope, imaging_settings: ImageSettings
