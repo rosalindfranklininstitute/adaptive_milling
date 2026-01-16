@@ -8,7 +8,7 @@ from copy import deepcopy
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+import tifffile
 
 # fibsem
 from fibsem import acquire, constants, utils as fs_utils
@@ -380,13 +380,23 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
 
         clean_prediction_dir = directory / "clean"
         clean_prediction_dir.mkdir(exist_ok=True)
-        Image.fromarray(lamella_info.clean_prediction).save(
-            clean_prediction_dir / filename
-        )
+        with tifffile.TiffWriter(clean_prediction_dir / filename) as tiff:
+            tiff.write(
+                lamella_info.clean_prediction,
+                photometric=tifffile.PHOTOMETRIC.MINISBLACK,
+                dtype="uint8",
+                compression=tifffile.COMPRESSION.LZW,
+            )
 
         prediction_dir = directory / "raw"
         prediction_dir.mkdir(exist_ok=True)
-        Image.fromarray(lamella_info.prediction).save(prediction_dir / filename)
+        with tifffile.TiffWriter(prediction_dir / filename) as tiff:
+            tiff.write(
+                lamella_info.prediction,
+                photometric=tifffile.PHOTOMETRIC.MINISBLACK,
+                dtype="uint8",
+                compression=tifffile.COMPRESSION.LZW,
+            )
 
     def _update_milling_stage(
         self,
