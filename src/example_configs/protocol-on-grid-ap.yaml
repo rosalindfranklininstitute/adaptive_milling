@@ -287,12 +287,12 @@ tasks:
                         config:
                             model_path: null
                             model_generation: 1.4fpn
-                            gis_stop_min_um: 0.2
-                            gis_stop_median_um: 0.25
-                            max_crack_area_um2: 2
+                            gis_stop_min: 0.2e-6
+                            gis_stop_median: 0.25e-6
+                            max_crack_area: 2.0e-12
                             max_milling_cycles: 30
-                            minimum_lamella_area_um2: 30.0
-                            maximum_drift_um: 70
+                            minimum_lamella_area: 30.0e-12
+                            maximum_drift: 70.0e-6
                             align_sem: true
                             save_predictions: true
                             gis_filter_sigma: 1.6666666666666667

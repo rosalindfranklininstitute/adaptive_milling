@@ -225,13 +225,13 @@ class BitmapAdaptivePolishMillingStrategy(
             gis_thickness_min_um=stats.gis_thickness_min_um,
             gis_thickness_median_um=stats.gis_thickness_median_um,
             crack_area_um2=stats.crack_area_um2,
-            gis_min_stop_threshold_um=self.config.gis_stop_min_um,
-            gis_median_stop_threshold_um=self.config.gis_stop_median_um,
-            gis_min_threshold_um=self.config.gis_min_um,
-            gis_max_threshold_um=self.config.gis_max_um,
+            gis_min_stop_threshold_um=self.config.gis_stop_min * 1e6,
+            gis_median_stop_threshold_um=self.config.gis_stop_median * 1e6,
+            gis_min_threshold_um=self.config.gis_min * 1e6,
+            gis_max_threshold_um=self.config.gis_max * 1e6,
             milling_stage=stage,
             image_xlims=stats.xlims_image_px,
-            max_crack_area_um2=self.config.max_crack_area_um2,
+            max_crack_area_um2=self.config.max_crack_area * 1e12,
             img_name=lamella_info.identifier,
             pattern_dwell_multiplier=stats.pattern_dwell_multiplier,
             pattern_xlims=stats.pattern_xlims_px,
@@ -312,13 +312,15 @@ class BitmapAdaptivePolishMillingStrategy(
             )
 
             if self.config.incident_angle_scale_with_gis_min:
+                # Apply the incident angle scaling to the range between GIS min
+                # and max, rather than the whole range.
                 bitmap_signal[pattern_xlims[0] : pattern_xlims[1] + 1] = (
                     (
                         bitmap_signal[pattern_xlims[0] : pattern_xlims[1] + 1]
-                        - self.config.gis_min_um
+                        - self.config.gis_min * 1e6
                     )
                     * angle_dwell_multiplier[pattern_xlims[0] : pattern_xlims[1] + 1]
-                ) + self.config.gis_min_um
+                ) + self.config.gis_min * 1e6
             else:
                 bitmap_signal[pattern_xlims[0] : pattern_xlims[1] + 1] *= (
                     angle_dwell_multiplier[pattern_xlims[0] : pattern_xlims[1] + 1]
@@ -362,8 +364,8 @@ class BitmapAdaptivePolishMillingStrategy(
         bitmap_array = create_bitmap_array(
             input_signal=filtered_trimmed_bitmap_signal,
             xlims=(0, len(filtered_trimmed_bitmap_signal) - 1),
-            min_dwell_threshold=self.config.gis_min_um,
-            max_dwell_threshold=self.config.gis_max_um,
+            min_dwell_threshold=self.config.gis_min * 1e6,
+            max_dwell_threshold=self.config.gis_max * 1e6,
             as_image=False,
         )
 
@@ -380,8 +382,8 @@ class BitmapAdaptivePolishMillingStrategy(
             array_1d=array_1d,
             erosion_px=self.config.bitmap_erosion_px,
             gaussian_sigma=self.config.bitmap_gaussian_sigma,
-            minimum_value=self.config.gis_min_um,
-            maximum_value=self.config.gis_max_um,
+            minimum_value=self.config.gis_min * 1e6,
+            maximum_value=self.config.gis_max * 1e6,
         )
 
     def _check_bitmap(self, bitmap_array: NDArray[Any]) -> None:

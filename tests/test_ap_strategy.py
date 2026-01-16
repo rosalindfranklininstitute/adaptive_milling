@@ -28,10 +28,10 @@ if typing.TYPE_CHECKING:
     from fibsem.milling.base import FibsemMillingStage
 
 _AP_PASS_CHECKS_CONFIG = {
-    "gis_stop_min_um": 0,
-    "max_crack_area_um2": np.inf,
-    "minimum_lamella_area_um2": 0,
-    "maximum_drift_um": np.inf,
+    "gis_stop_min": 0,
+    "max_crack_area": np.inf,
+    "minimum_lamella_area": 0,
+    "maximum_drift": np.inf,
 }
 
 TIMESTAMP = "timestamp"
@@ -399,11 +399,11 @@ def test_max_milling_cycles_not_exceeded(
                         i
                     ].statistics.gis_thickness_median_um,
                     crack_area_um2=lamella_infos[i].statistics.crack_area_um2,
-                    gis_min_stop_threshold_um=strategy.config.gis_stop_min_um,
-                    gis_median_stop_threshold_um=strategy.config.gis_stop_median_um,
+                    gis_min_stop_threshold_um=strategy.config.gis_stop_min * 1e6,
+                    gis_median_stop_threshold_um=strategy.config.gis_stop_median * 1e6,
                     milling_stage=milling_stages[i],
                     image_xlims=lamella_infos[i].statistics.xlims_image_px,
-                    max_crack_area_um2=strategy.config.max_crack_area_um2,
+                    max_crack_area_um2=strategy.config.max_crack_area * 1e12,
                     img_name=lamella_infos[i].identifier,
                 )
                 for i in range(max_milling_cycles + 1)
@@ -730,23 +730,23 @@ def test_check_lamella(
     if failure_reason == "min_gis":
         saves_results = True
         check_exception = ap_strategy.StopMillingException
-        pass_checks_kwargs["gis_stop_min_um"] = 500
+        pass_checks_kwargs["gis_stop_min"] = 500e-6
     elif failure_reason == "mean_gis":
         saves_results = True
         check_exception = ap_strategy.StopMillingException
-        pass_checks_kwargs["gis_stop_median_um"] = 500
+        pass_checks_kwargs["gis_stop_median"] = 500e-6
     elif failure_reason == "crack":
         saves_results = True
         check_exception = ap_strategy.StopMillingException
-        pass_checks_kwargs["max_crack_area_um2"] = 0
+        pass_checks_kwargs["max_crack_area"] = 0
     elif failure_reason == "lamella area":
         saves_results = False
         check_exception = ap_strategy.StopEarlyError
-        pass_checks_kwargs["minimum_lamella_area_um2"] = 1e5
+        pass_checks_kwargs["minimum_lamella_area"] = 0.1
     elif failure_reason == "centring":
         saves_results = True
         check_exception = ap_strategy.StopEarlyError
-        pass_checks_kwargs["maximum_drift_um"] = 0
+        pass_checks_kwargs["maximum_drift"] = 0
     elif failure_reason == "none":
         saves_results = True
     else:

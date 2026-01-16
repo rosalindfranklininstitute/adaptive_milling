@@ -148,8 +148,8 @@ def test_create_bitmap_array_calls(
     mock_create_bitmap_array.assert_called_once_with(
         input_signal=mock_filter_bitmap_signal.return_value,
         xlims=(0, len(mock_filter_bitmap_signal.return_value) - 1),
-        min_dwell_threshold=bitmap_config.gis_min_um,
-        max_dwell_threshold=bitmap_config.gis_max_um,
+        min_dwell_threshold=bitmap_config.gis_min * 1e6,
+        max_dwell_threshold=bitmap_config.gis_max * 1e6,
         as_image=False,
     )
 
@@ -195,8 +195,8 @@ def test_create_bitmap_array_simple_values(mask_cracks: bool) -> None:
             bitmap_erosion_px=0,
             apply_boundary_smoothing=False,
             mask_cracks=mask_cracks,
-            gis_min_um=5,
-            gis_max_um=10,
+            gis_min=5e-6,
+            gis_max=10e-6,
             incident_angle_sputter_ratio=1,  # Disables incident angle scaling
         )
     strategy = bitmap_strategy.BitmapAdaptivePolishMillingStrategy(config=bitmap_config)

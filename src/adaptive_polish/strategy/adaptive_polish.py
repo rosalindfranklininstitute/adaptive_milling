@@ -11,7 +11,7 @@ import numpy as np
 import tifffile
 
 # fibsem
-from fibsem import acquire, constants, utils as fs_utils
+from fibsem import acquire, utils as fs_utils
 from fibsem.milling import MillingStrategy
 from fibsem.milling import (
     setup_milling,
@@ -365,11 +365,11 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             gis_thickness_min_um=stats.gis_thickness_min_um,
             gis_thickness_median_um=stats.gis_thickness_median_um,
             crack_area_um2=stats.crack_area_um2,
-            gis_min_stop_threshold_um=self.config.gis_stop_min_um,
-            gis_median_stop_threshold_um=self.config.gis_stop_median_um,
+            gis_min_stop_threshold_um=self.config.gis_stop_min * 1e6,
+            gis_median_stop_threshold_um=self.config.gis_stop_median * 1e6,
             milling_stage=stage,
             image_xlims=stats.xlims_image_px,
-            max_crack_area_um2=self.config.max_crack_area_um2,
+            max_crack_area_um2=self.config.max_crack_area * 1e12,
             img_name=lamella_info.identifier,
         )
 
@@ -492,7 +492,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             )
             if self._get_lamella_too_small(lamella_area_um2=lamella_area_um2):
                 raise StopEarlyError(
-                    f"Lamella found was only {lamella_area_um2:.4e} um2, below the threshold of {self.config.minimum_lamella_area_um2:.4e} um2",
+                    f"Lamella found was only {lamella_area_um2:.4e} μm², below the threshold of {self.config.minimum_lamella_area * 1e12:.4e} μm²",
                     reason=StopReasons.LAMELLA_AREA,
                 )
 
@@ -592,7 +592,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                     (centre_m.x - expected_lamella_centre_m.x) ** 2
                     + (centre_m.y - expected_lamella_centre_m.y) ** 2
                 )
-                * constants.SI_TO_MICRO
+                * 1e6
             )
 
             # Only a valid check if sem is aligned
@@ -610,25 +610,25 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                         bounding_box=stats.lamella_bounding_box_image_px,
                     )
                 raise StopEarlyError(
-                    f"Total drift (um) {centre_drift_um:.4e} > threshold {self.config.maximum_drift_um:.4e} (might be a segmentation problem)",
+                    f"Total drift (μm) {centre_drift_um:.4e} > threshold {self.config.maximum_drift * 1e6:.4e} (might be a segmentation problem)",
                     reason=StopReasons.LAMELLA_DRIFT,
                 )
 
         if self._get_min_gis_too_thin(stats.gis_thickness_min_um):
             raise StopMillingException(
-                f"Minimum GIS thickness (um) {stats.gis_thickness_min_um:.4e} < threshold {self.config.gis_stop_min_um:.4e} um",
+                f"Minimum GIS thickness (μm) {stats.gis_thickness_min_um:.4e} < threshold {self.config.gis_stop_min * 1e6:.4e} μm",
                 reason=StopReasons.MIN_GIS_THICKNESS,
             )
 
         if self._get_median_gis_too_thin(stats.gis_thickness_median_um):
             raise StopMillingException(
-                f"Median GIS thickness (um) {stats.gis_thickness_median_um:.4e} < threshold {self.config.gis_stop_median_um:.4e} um",
+                f"Median GIS thickness (μm) {stats.gis_thickness_median_um:.4e} < threshold {self.config.gis_stop_median * 1e6:.4e} μm",
                 reason=StopReasons.MEDIAN_GIS_THICKNESS,
             )
 
         if self._get_crack_too_large(stats.crack_area_um2):
             raise StopMillingException(
-                f"Crack area (um2) {stats.crack_area_um2:.4e} > threshold {self.config.max_crack_area_um2:.4e} um2",
+                f"Crack area (μm²) {stats.crack_area_um2:.4e} > threshold {self.config.max_crack_area * 1e12:.4e} μm²",
                 reason=StopReasons.CRACK_AREA,
             )
 
@@ -769,28 +769,28 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                 )
 
     def _get_lamella_too_small(self, lamella_area_um2: float) -> bool:
-        return lamella_area_um2 < self.config.minimum_lamella_area_um2
+        return lamella_area_um2 < (self.config.minimum_lamella_area * 1e12)
 
     def _get_drift_too_large(self, centre_drift_um: float) -> bool:
-        return centre_drift_um > float(self.config.maximum_drift_um)
+        return centre_drift_um > float(self.config.maximum_drift * 1e6)
 
     def _get_min_gis_too_thin(self, min_gis_um: float | None) -> bool:
         if min_gis_um is None:
             raise StopEarlyError("No minimum GIS measurement")
         # Minumum GIS thickness check
-        return min_gis_um < float(self.config.gis_stop_min_um)
+        return min_gis_um < float(self.config.gis_stop_min * 1e6)
 
     def _get_median_gis_too_thin(self, median_gis_um: float | None) -> bool:
         if median_gis_um is None:
             raise StopEarlyError("No mean GIS measurement")
         # Mean GIS thickness check
-        return median_gis_um < float(self.config.gis_stop_median_um)
+        return median_gis_um < float(self.config.gis_stop_median * 1e6)
 
     def _get_crack_too_large(self, crack_area_um2: float | None) -> bool:
         if crack_area_um2 is None:
             raise StopEarlyError("No crack area measurement")
         # Total crack area check
-        return crack_area_um2 > float(self.config.max_crack_area_um2)
+        return crack_area_um2 > float(self.config.max_crack_area * 1e12)
 
     def _save_results(
         self,

@@ -1,49 +1,163 @@
 from __future__ import annotations
 import os
 import typing
-from pydantic import ConfigDict, PositiveInt, NonNegativeFloat, Field, field_validator
-from pydantic.dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from fibsem.milling.base import MillingStrategyConfig
 
-from adaptive_polish.processing.sem_segmentation import get_latest_generation_key
+from adaptive_polish.processing.sem_segmentation import (
+    get_latest_generation_key,
+    MODEL_GENERATIONS_DICT,
+)
 
 DEFAULT_MODEL_GENERATION = get_latest_generation_key()
 
 
-@dataclass(config=ConfigDict(validate_assignment=True))
+@dataclass
 class AdaptivePolishMillingConfig(MillingStrategyConfig):
-    model_path: str = ""
-    model_generation: str = DEFAULT_MODEL_GENERATION
-    gis_stop_min_um: NonNegativeFloat = 0.2
-    gis_stop_median_um: NonNegativeFloat = 0.25
-    max_crack_area_um2: NonNegativeFloat = 2
-    max_milling_cycles: PositiveInt = 30
-    minimum_lamella_area_um2: NonNegativeFloat = 30.0  # 30μm²
-    maximum_drift_um: NonNegativeFloat = 70
-    align_sem: bool = True
-    save_predictions: bool = True
-    gis_filter_sigma: NonNegativeFloat = 10 / 6
-    lamella_pad_x: float = Field(
+    model_path: str = field(
+        default="",
+        metadata={
+            "label": "Model path",
+            "tooltip": "Path to the SEM segmentation model weights (*.pth).",
+            "type": str,
+            "filepath": True,
+        },
+    )
+    model_generation: str = field(
+        default=DEFAULT_MODEL_GENERATION,
+        metadata={
+            "label": "Model generation",
+            "tooltip": "The generation of model to use (defaults to latest).",
+            "type": str,
+            "items": list(MODEL_GENERATIONS_DICT.keys()),
+        },
+    )
+    gis_stop_min: float = field(
+        default=0.2e-6,
+        metadata={
+            "label": "Minimum GIS thickness threshold",
+            "tooltip": "Stop polishing if the minimum GIS thickness drops below this threshold.",
+            "type": float,
+            "minimum": 0,
+            "step": 0.01,
+            "decimals": 2,
+            "scale": 1e6,
+            "unit": "m",
+        },
+    )
+    gis_stop_median: float = field(
+        default=0.25e-6,
+        metadata={
+            "label": "Median GIS thickness threshold",
+            "tooltip": "Stop polishing if the median GIS thickness drops below this threshold.",
+            "type": float,
+            "minimum": 0,
+            "step": 0.01,
+            "decimals": 2,
+            "scale": 1e6,
+            "unit": "m",
+        },
+    )
+    max_crack_area: float = field(
+        default=2e-12,
+        metadata={
+            "label": "Max. crack area",
+            "tooltip": "Stop polishing if the maximum total crack area is above this threshold.",
+            "type": float,
+            "minimum": 0,
+            "step": 0.01,
+            "decimals": 2,
+            "scale": 1e6,
+            "dimensions": 2,
+            "unit": "m²",
+        },
+    )
+    max_milling_cycles: int = field(
+        default=30,
+        metadata={
+            "label": "Max. cycles",
+            "tooltip": "Maximum adaptive polish cycles per lamella.",
+            "type": int,
+            "minimum": 1,
+            "step": 1,
+        },
+    )
+    minimum_lamella_area: float = field(
+        default=30.0e-12,  # 30μm²
+        metadata={
+            "label": "Min. lamella area",
+            "tooltip": "Minimum lamella area below which something is wrong.",
+            "type": float,
+            "minimum": 0,
+            "step": 0.1,
+            "decimals": 1,
+            "scale": 1e6,
+            "dimensions": 2,
+            "unit": "m²",
+        },
+    )
+    maximum_drift: float = field(
+        default=70e-6,
+        metadata={
+            "label": "Max. lamella drift",
+            "tooltip": "Maximum lamella movement between cycles beyond which something is wrong.",
+            "type": float,
+            "minimum": 0,
+            "scale": 1e6,
+            "decimals": 1,
+            "unit": "m",
+        },
+    )
+    align_sem: bool = field(
+        default=True,
+        metadata={
+            "label": "Align SEM",
+            "tooltip": "Option centre the lamella in the SEM image before beginning.",
+            "type": bool,
+            "advanced": True,
+        },
+    )
+    save_predictions: bool = field(
+        default=True,
+        metadata={
+            "label": "Save segmentations",
+            "tooltip": "Option to save the raw and clean SEM segmentations (useful for improving segmentation model).",
+            "type": bool,
+            "advanced": True,
+        },
+    )
+    gis_filter_sigma: float = field(
+        default=10 / 6,
+        metadata={
+            "label": "GIS filter sigma",
+            "tooltip": "Gaussian blur sigma used to smooth the GIS thickness measurements.",
+            "type": float,
+            "minimum": 0,
+            "step": 0.1,
+            "decimals": 2,
+            "advanced": True,
+        },
+    )
+    lamella_pad_x: float = field(
         default=0.0,
-        ge=0,
-        le=1,
-        title="X pad fraction",
-        description="The fraction of the lamella width that the x limits will "
-        "be padded by. These limits are used to determine the region that GIS "
-        "thickness is measured.",
+        metadata={
+            "label": "X-padding fraction",
+            "tooltip": "The fraction of the lamella width that the X-limits will "
+            "be padded by. These limits are used to determine the region that GIS "
+            "thickness is measured.",
+            "type": float,
+            "minimum": 0,
+            "maximum": 1,
+            "step": 0.01,
+            "decimals": 2,
+            "advanced": True,
+        },
     )
 
-    _advanced_attributes: typing.ClassVar[tuple[str, ...]] = (
-        "save_predictions",
-        "gis_filter_sigma",
-        "lamella_pad_x",
-    )
-
-    @field_validator("model_path", mode="after")
     @classmethod
     def ensure_model_path(cls, v: str) -> str:
-        if not os.path.isfile(v):
+        if v and not os.path.isfile(v):
             raise FileNotFoundError(f"'{v}' is not a valid file path")
         return v
 
