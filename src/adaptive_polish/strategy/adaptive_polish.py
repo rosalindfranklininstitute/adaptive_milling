@@ -373,9 +373,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             img_name=lamella_info.identifier,
         )
 
-    def _save_predictions(
-        self, directory: Path, lamella_info: LamellaInformation
-    ) -> None:
+    @staticmethod
+    def _save_predictions(directory: Path, lamella_info: LamellaInformation) -> None:
         filename = f"{lamella_info.identifier}_SEM.tif"
 
         clean_prediction_dir = directory / "clean"
