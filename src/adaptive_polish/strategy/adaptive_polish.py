@@ -8,7 +8,7 @@ from copy import deepcopy
 from pathlib import Path
 
 import numpy as np
-from PIL import Image
+import tifffile
 
 # fibsem
 from fibsem import acquire, constants, utils as fs_utils
@@ -373,20 +373,29 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             img_name=lamella_info.identifier,
         )
 
-    def _save_predictions(
-        self, directory: Path, lamella_info: LamellaInformation
-    ) -> None:
+    @staticmethod
+    def _save_predictions(directory: Path, lamella_info: LamellaInformation) -> None:
         filename = f"{lamella_info.identifier}_SEM.tif"
 
         clean_prediction_dir = directory / "clean"
         clean_prediction_dir.mkdir(exist_ok=True)
-        Image.fromarray(lamella_info.clean_prediction).save(
-            clean_prediction_dir / filename
-        )
+        with tifffile.TiffWriter(clean_prediction_dir / filename) as tiff:
+            tiff.write(
+                lamella_info.clean_prediction,
+                photometric=tifffile.PHOTOMETRIC.MINISBLACK,
+                dtype="uint8",
+                compression=tifffile.COMPRESSION.LZW,
+            )
 
         prediction_dir = directory / "raw"
         prediction_dir.mkdir(exist_ok=True)
-        Image.fromarray(lamella_info.prediction).save(prediction_dir / filename)
+        with tifffile.TiffWriter(prediction_dir / filename) as tiff:
+            tiff.write(
+                lamella_info.prediction,
+                photometric=tifffile.PHOTOMETRIC.MINISBLACK,
+                dtype="uint8",
+                compression=tifffile.COMPRESSION.LZW,
+            )
 
     def _update_milling_stage(
         self,
@@ -803,7 +812,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
 
     def _segment_sem_image(
         self, sem_image: NDArray[np.number], full_size: bool = False
-    ) -> NDArray[typing.Any]:
+    ) -> NDArray[np.uint8]:
         if self.model is None:
             raise SegmentationException(
                 "Unable to continue as no SEM segmentation model has been loaded"
@@ -811,7 +820,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         _logger.debug("Starting SEM segmentation")
         prediction = self.model.predict(sem_image, full_size=full_size)
         _logger.debug("SEM segmentation complete")
-        return prediction
+        return prediction.astype(np.uint8)
 
     def _acquire_image(
         self, microscope: FibsemMicroscope, imaging_settings: ImageSettings

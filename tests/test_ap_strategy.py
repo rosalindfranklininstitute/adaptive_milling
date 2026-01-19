@@ -10,6 +10,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import numpy as np
+from PIL import Image
 
 from fibsem import utils as fibsem_utils, acquire
 from fibsem.structures import BeamType, Point, FibsemImage
@@ -893,3 +894,40 @@ def test_restore_beam_shifts(microscope_config_path: Path) -> None:
     assert microscope.get("shift", BeamType.ION) == initial_ion_shift, (
         "Failed to restore ion beam shift"
     )
+
+
+def test_save_predictions(tmp_path: Path) -> None:
+    lamella_information = MagicMock()
+    identifier = str(uuid4())
+    prediction = np.random.randint(0, 5, size=(5, 5), dtype=np.uint8)
+    clean_prediction = np.random.randint(0, 5, size=(5, 5), dtype=np.uint8)
+
+    lamella_information.identifier = identifier
+    lamella_information.prediction = prediction
+    lamella_information.clean_prediction = clean_prediction
+
+    ap_strategy.AdaptivePolishMillingStrategy._save_predictions(
+        tmp_path, lamella_info=lamella_information
+    )
+
+    raw_tif_path = tmp_path / "raw" / f"{identifier}_SEM.tif"
+    if raw_tif_path.is_file():
+        with Image.open(raw_tif_path) as image:
+            assert_array_equal(
+                np.asarray(image),
+                prediction,
+                err_msg="Saved raw prediction image doesn't match original image",
+            )
+    else:
+        raise FileNotFoundError(str(raw_tif_path))
+
+    clean_tif_path = tmp_path / "clean" / f"{identifier}_SEM.tif"
+    if clean_tif_path.is_file():
+        with Image.open(clean_tif_path) as image:
+            assert_array_equal(
+                np.asarray(image),
+                clean_prediction,
+                err_msg="Saved clean prediction image doesn't match original image",
+            )
+    else:
+        raise FileNotFoundError(str(clean_tif_path))

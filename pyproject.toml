@@ -36,13 +36,14 @@ dependencies = [
   "opencv-python",
   "scipy",
   "tifffile",
+  "imagecodecs",
   "albumentations",
   "segmentation-models-pytorch >= 0.4.0",
   "jinja2",
   "pydantic",
   "fibsem@git+https://github.com/rosalindfranklininstitute/fibsem-os.git",
   "torch >= 2.7.0",
-  "torchvision >= 0.22.0",
+  "torchvision >= 0.22.0, <= 0.24.0",
   "matplotlib_scalebar >= 0.8.1"
 ]
 
@@ -81,7 +82,8 @@ scripts = [
   "ipywidgets",
 ]
 ui = [
-  "napari[all]",
+  "pyqt5",
+  "napari[all] < 0.5",
   "fibsem[ui]@git+https://github.com/rosalindfranklininstitute/fibsem-os.git",
 ]
 reporting = [
@@ -94,23 +96,23 @@ all = [
 # Extras that are linked with the PyTorch index for CPU or CUDA version (if using uv)
 cpu = [
   "torch>=2.7.0",
-  "torchvision>=0.22.0",
+  "torchvision>=0.22.0,<=0.24.0",
 ]
 cu113 = [
   "torch>=2.7.0",
-  "torchvision>=0.22.0",
+  "torchvision>=0.22.0,<=0.24.0",
 ]
 cu118 = [
   "torch>=2.7.0",
-  "torchvision>=0.22.0",
+  "torchvision>=0.22.0,<=0.24.0",
 ]
 cu126 = [
   "torch>=2.7.0",
-  "torchvision>=0.22.0",
+  "torchvision>=0.22.0,<=0.24.0",
 ]
 cu128 = [
   "torch>=2.7.0",
-  "torchvision>=0.22.0",
+  "torchvision>=0.22.0,<=0.24.0",
 ]
 
 [tool.uv]
