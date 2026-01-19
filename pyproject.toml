@@ -42,10 +42,10 @@ dependencies = [
   "segmentation-models-pytorch >= 0.4.0",
   "jinja2",
   "pydantic",
-  "fibsem@git+https://github.com/rosalindfranklininstitute/fibsem-os.git",
+  "fibsem@git+https://github.com/fibsem-os/fibsem-os.git",
   "torch >= 2.7.0",
   "torchvision >= 0.22.0, <= 0.24.0",
-  "matplotlib_scalebar >= 0.8.1"
+  "matplotlib_scalebar >= 0.8.1",
 ]
 
 [project.urls]
@@ -85,11 +85,11 @@ scripts = [
 ]
 ui = [
   "pyqt5",
-  "napari[all] < 0.5",
-  "fibsem[ui]@git+https://github.com/rosalindfranklininstitute/fibsem-os.git",
+  "napari[all]",
+  "fibsem[ui]@git+https://github.com/fibsem-os/fibsem-os.git",
 ]
 reporting = [
-  "fibsem[reporting]@git+https://github.com/rosalindfranklininstitute/fibsem-os.git",
+  "fibsem[reporting]@git+https://github.com/fibsem-os/fibsem-os.git",
 ]
 all = [
   "adaptive_polish[test,dev,scripts,ui,reporting]",
