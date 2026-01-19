@@ -236,7 +236,7 @@ def get_angle_dwell_multiplier(
     ],
     pixel_size: tuple[float, float],
     sputter_ratio: float = 4.3,
-) -> NDArray[np.float_]:
+) -> NDArray[np.float64]:
     """Create a multiplier to adjust the bitmap signal with.
 
     This is based on the sputter yield distribution in Fig. 7 of https://doi.org/10.1016/j.matdes.2022.110563

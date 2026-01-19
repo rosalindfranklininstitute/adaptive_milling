@@ -571,7 +571,7 @@ def test_results_saved(
                     "gis_thickness_filtered_image_px": expected_filtered_gis_thicknesses[
                         i
                     ]
-                    .astype(np.float_)
+                    .astype(np.float64)
                     .tolist(),
                     "gis_thickness_min_image_px": float(
                         expected_min_gis_thicknesses[i]
