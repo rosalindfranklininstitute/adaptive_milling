@@ -14,8 +14,7 @@ from PIL import Image
 
 from fibsem import utils as fibsem_utils, acquire
 from fibsem.structures import BeamType, Point, FibsemImage
-from fibsem.milling.base import get_milling_stages
-from fibsem.applications.autolamella.protocol.validation import validate_protocol
+from fibsem.applications.autolamella.structures import AutoLamellaTaskProtocol
 
 from adaptive_polish.strategy import adaptive_polish as ap_strategy
 from adaptive_polish._dataclasses import CycleInformation
@@ -38,22 +37,22 @@ _AP_PASS_CHECKS_CONFIG = {
 TIMESTAMP = "timestamp"
 
 
-def setup_protocol_and_milling_stages(
+def get_polishing_stages(
     config_dict: dict[str, typing.Any],
     protocol_template_path: Path,
     temporary_path: Path,
-) -> tuple[dict[str, typing.Any], list[FibsemMillingStage]]:
+) -> list[FibsemMillingStage]:
     protocol_path = setup.setup_protocol_path(
-        protocol_template_path, temporary_path, config_dict, ap_only=True
+        protocol_template_path,
+        temporary_path,
+        config_dict,
+        ap_only=True,
+        ap_type="normal",
     )
 
-    protocol = validate_protocol(
-        fibsem_utils.load_protocol(protocol_path=protocol_path)
-    )
+    protocol = AutoLamellaTaskProtocol.load(str(protocol_path))
 
-    milling_stages = get_milling_stages("mill_polishing", protocol["milling"])
-
-    return protocol, milling_stages
+    return protocol.task_config["Polishing"].milling["mill_polishing"].stages
 
 
 def assert_results_dicts_equal(
@@ -128,10 +127,8 @@ def test_milling_stage_loads_defaults(
     model_path.touch()
     config_dict = {"model_path": str(model_path)}
     config = ap_strategy.AdaptivePolishMillingConfig.from_dict(config_dict)
-    _, milling_stages = setup_protocol_and_milling_stages(
-        config_dict, protocol_template_path, tmp_path
-    )
-    strategy = milling_stages[0].strategy
+    stages = get_polishing_stages(config_dict, protocol_template_path, tmp_path)
+    strategy = stages[0].strategy
     assert isinstance(strategy, ap_strategy.AdaptivePolishMillingStrategy), (
         "Milling stage strategy is not AdaptivePolishMillingStrategy"
     )
@@ -150,9 +147,7 @@ def test_ap_folders_created(
     model_path = tmp_path / "model.file"
     model_path.touch()
     ap_config = ap_strategy.AdaptivePolishMillingConfig(model_path=str(model_path))
-    _, stages = setup_protocol_and_milling_stages(
-        ap_config.to_dict(), protocol_template_path, tmp_path
-    )
+    stages = get_polishing_stages(ap_config.to_dict(), protocol_template_path, tmp_path)
     stage = stages[0]
 
     microscope, _ = fibsem_utils.setup_session(config_path=microscope_config_path)
@@ -190,9 +185,7 @@ def test_loads_sem_model_on_first_run(
     ap_config = ap_strategy.AdaptivePolishMillingConfig(
         model_path=str(model_path), align_sem=False
     )
-    _, stages = setup_protocol_and_milling_stages(
-        ap_config.to_dict(), protocol_template_path, tmp_path
-    )
+    stages = get_polishing_stages(ap_config.to_dict(), protocol_template_path, tmp_path)
     stage = stages[0]
 
     microscope, _ = fibsem_utils.setup_session(config_path=microscope_config_path)
@@ -235,9 +228,7 @@ def test_reference_images_saved_correctly(
     ap_config = ap_strategy.AdaptivePolishMillingConfig(
         model_path=str(model_path), align_sem=False
     )
-    _, stages = setup_protocol_and_milling_stages(
-        ap_config.to_dict(), protocol_template_path, tmp_path
-    )
+    stages = get_polishing_stages(ap_config.to_dict(), protocol_template_path, tmp_path)
 
     microscope, _ = fibsem_utils.setup_session(config_path=microscope_config_path)
     stage = stages[0]
@@ -292,9 +283,7 @@ def test_max_milling_cycles_not_exceeded(
         align_sem=False,
         **pass_checks_kwargs,  # type: ignore[arg-type]
     )
-    _, stages = setup_protocol_and_milling_stages(
-        ap_config.to_dict(), protocol_template_path, tmp_path
-    )
+    stages = get_polishing_stages(ap_config.to_dict(), protocol_template_path, tmp_path)
     stage = stages[0]
 
     microscope, _ = fibsem_utils.setup_session(config_path=microscope_config_path)
@@ -464,9 +453,7 @@ def test_results_saved(
         align_sem=False,
         **pass_checks_kwargs,  # type: ignore[arg-type]
     )
-    _, stages = setup_protocol_and_milling_stages(
-        ap_config.to_dict(), protocol_template_path, tmp_path
-    )
+    stages = get_polishing_stages(ap_config.to_dict(), protocol_template_path, tmp_path)
     stage = stages[0]
 
     lamella_name = f"lamella_{uuid4()}"

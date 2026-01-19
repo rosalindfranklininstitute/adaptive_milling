@@ -9,10 +9,9 @@ from pathlib import Path
 
 from fibsem import utils
 from fibsem.structures import FibsemImage, BeamType
-from fibsem.milling import get_milling_stages, mill_stages
+from fibsem.milling import mill_stages
+from fibsem.applications.autolamella.structures import AutoLamellaTaskProtocol
 
-from fibsem.applications.autolamella.protocol.validation import validate_protocol
-from fibsem.applications.autolamella.structures import AutoLamellaProtocol
 from adaptive_polish.config import (
     AdaptivePolishMillingConfig,
     BitmapAdaptivePolishMillingConfig,
@@ -123,9 +122,10 @@ def test_runs(
     microscope, _ = utils.setup_session(config_path=microscope_config_path)
 
     # Check Autolamella loads protocol correctly
-    protocol = AutoLamellaProtocol.load(protocol_path)
-    milling_stages = protocol.milling["mill_polishing"]
+    protocol = AutoLamellaTaskProtocol.load(str(protocol_path))
+    milling_stages = protocol.task_config["Polishing"].milling["mill_polishing"].stages
     protocol_strategy_config = milling_stages[0].strategy.config
+    protocol.workflow_config
 
     assert isinstance(
         protocol_strategy_config,
@@ -141,14 +141,6 @@ def test_runs(
     lamella_directory = tmp_path / "lamella"
     lamella_directory.mkdir()
     adaptive_polish_dir = lamella_directory / f"adaptive_polish_{TIMESTAMP}"
-
-    # Check fibsem loads protocol and loads strategy correctly
-    protocol = validate_protocol(utils.load_protocol(protocol_path=protocol_path))
-
-    milling_stages = get_milling_stages("mill_polishing", protocol["milling"])
-    assert milling_stages[0].strategy.config == protocol_strategy_config, (
-        "The strategy and protocol configs do not match"
-    )
 
     # Set stage imaging settings
     milling_stages[0].imaging.resolution = (3072, 2048)

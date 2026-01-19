@@ -29,15 +29,19 @@ def setup_protocol_path(
     ap_index = 1 if ap_type == "bitmap" else 0
 
     # Update protocol from config
-    protocol_dict["milling"]["mill_polishing"][ap_index]["strategy"]["config"] = (
-        adaptive_polish_config_dict
-    )
+    stage_dict = protocol_dict["tasks"]["Polishing"]["milling"]["mill_polishing"][
+        "stages"
+    ][ap_index]
+    stage_dict["strategy"]["config"] = adaptive_polish_config_dict
+
+    # Remove the unwanted AP strategy
+    protocol_dict["tasks"]["Polishing"]["milling"]["mill_polishing"]["stages"] = [
+        stage_dict
+    ]
 
     if ap_only:
         # Optionally remove non-AP milling steps
-        protocol_dict["milling"] = {
-            "mill_polishing": [protocol_dict["milling"]["mill_polishing"][ap_index]]
-        }
+        protocol_dict["tasks"] = {"Polishing": protocol_dict["tasks"]["Polishing"]}
 
     protocol_path = temporary_directory / "protocol.yaml"
     with protocol_path.open("w") as f:

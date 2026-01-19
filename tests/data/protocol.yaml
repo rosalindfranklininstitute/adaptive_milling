@@ -1,268 +1,500 @@
-milling:
-  fiducial:
-    - milling:
-        milling_current: 2.0e-09
-        # spot_size:
-        # rate:
-        # dwell_time:
-        hfw: 8.0e-05
-        # patterning_mode:
-        application_file: Si
-        preset: 30 keV; 20 nA
-        # spacing:
-        # milling_voltage:
-        # milling_channel:
-        # acquire_images:
-      name: Fiducial
-      pattern:
-        width: 1.0e-06
-        height: 1.0e-05
-        depth: 1.0e-06
-        rotation: 45
-        cross_section: Rectangle
-        point: { "x": 2.5e-05, "y": 0.0 }
-        shapes: null
-        name: Fiducial
-      strategy: {}
-  mill_rough:
-    - milling:
-        milling_current: 2.0e-09
-        spot_size: 5.0e-08
-        rate: 0.0001
-        dwell_time: 1.0e-06
-        hfw: 4.0e-05
-        patterning_mode: Parallel
-        application_file: Si
-        preset: ""
-        # spacing:
-        # milling_voltage:
-        # milling_channel:
-        # acquire_images:
-      name: Rough Cut
-      pattern:
-        width: 1.1e-05
-        depth: 2.2e-06
-        spacing: 3.0e-06
-        upper_trench_height: 7.5e-06
-        lower_trench_height: 7.5e-06
-        cross_section: Rectangle
-        # time:
-        # point:
-        name: Trench
-        # shapes:
-      strategy: {}
-    - milling:
-        milling_current: 7.4e-10
-        spot_size: 5.0e-08
-        rate: 0.0001
-        dwell_time: 1.0e-06
-        hfw: 4.0e-05
-        patterning_mode: Parallel
-        application_file: Si
-        preset: ""
-        # spacing:
-        # milling_voltage:
-        # milling_channel:
-        # acquire_images:
-      name: Regular Cut 1
-      pattern:
-        width: 1.1e-05
-        depth: 1.3e-06
-        spacing: 1.2e-06
-        upper_trench_height: 1.35e-06
-        lower_trench_height: 1.35e-06
-        cross_section: Rectangle
-        # time:
-        # point:
-        name: Trench
-        # shapes:
-      strategy: {}
-    - milling:
-        milling_current: 6.0e-11
-        spot_size: 5.0e-08
-        rate: 0.0001
-        dwell_time: 1.0e-06
-        hfw: 4.0e-05
-        patterning_mode: Parallel
-        application_file: Si
-        preset: ""
-        # spacing:
-        # milling_voltage:
-        # milling_channel:
-        # acquire_images:
-      name: Regular Cut 2
-      pattern:
-        width: 1.05e-05
-        depth: 1.3e-06
-        spacing: 6.0e-07
-        upper_trench_height: 4.0e-07
-        lower_trench_height: 4.0e-07
-        cross_section: Rectangle
-        # time:
-        # point:
-        name: Trench
-        # shapes:
-      strategy: {}
-    - milling:
-        milling_current: 6.0e-11
-        spot_size: 5.0e-08
-        rate: 0.0001
-        dwell_time: 1.0e-06
-        hfw: 4.0e-05
-        patterning_mode: Parallel
-        application_file: Si
-        preset: ""
-        # spacing:
-        # milling_voltage:
-        # milling_channel:
-        # acquire_images:
-      name: Regular Cut 3
-      pattern:
-        width: 1.0e-05
-        depth: 5.0e-07
-        spacing: 5.5e-07
-        upper_trench_height: 3.5e-07
-        lower_trench_height: 3.5e-07
-        cross_section: Rectangle
-        # time:
-        # point:
-        name: Trench
-        # shapes:
-      strategy: {}
-  mill_polishing:
-    - milling:
-        milling_current: 2.0e-11
-        spot_size: 5.0e-08
-        rate: 0.0001
-        dwell_time: 1.0e-06
-        hfw: 4.0e-05
-        patterning_mode: Parallel
-        application_file: Si
-        preset: ""
-        # spacing:
-        # milling_voltage:
-        # milling_channel:
-        # acquire_images:
-      name: Adaptive Polishing
-      pattern:
-        width: 1.0e-05
-        depth: 5.0e-08
-        spacing: 2.25e-07
-        upper_trench_height: 3.5e-07
-        lower_trench_height: 3.5e-07
-        cross_section: Rectangle
-        # time:
-        # point:
-        name: Trench
-        # shapes:
-      strategy: { name: AdaptivePolishing, config: {} }
-    - milling:
-        milling_current: 2.0e-11
-        spot_size: 5.0e-08
-        rate: 0.0001
-        dwell_time: 1.0e-06
-        hfw: 4.0e-05
-        patterning_mode: Parallel
-        application_file: Si
-        preset: ""
-        # spacing:
-        # milling_voltage:
-        # milling_channel:
-        # acquire_images:
-      name: Localised Adaptive Polishing
-      pattern:
-        width: 1.0e-05
-        depth: 5.0e-08
-        spacing: 2.25e-07
-        upper_trench_height: 3.5e-07
-        lower_trench_height: 3.5e-07
-        cross_section: Rectangle
-        # time:
-        # point:
-        name: Trench
-        # shapes:
-      strategy: { name: BitmapAdaptivePolishing, config: {} }
-  microexpansion:
-    - milling:
-        milling_current: 2.0e-09
-        # spot_size:
-        # rate:
-        # dwell_time:
-        hfw: 200e-6
-        # patterning_mode:
-        application_file: Si
-        preset: 30 keV; 2.5 nA
-        # spacing:
-        # milling_voltage:
-        # milling_channel:
-        # acquire_images:
-      name: Microexpansion
-      pattern:
-        width: 5.0e-07
-        height: 1.8e-05
-        depth: 1.0e-06
-        distance: 1.0e-05
-        name: Microexpansion
-        # point:
-        # shapes:
-      strategy: {}
-  notch:
-    - milling:
-        milling_current: 2.0e-06
-        # spot_size:
-        # rate:
-        # dwell_time:
-        hfw: 80e-6
-        # patterning_mode:
-        application_file: Si
-        preset: 30 keV; 2.5 nA
-        # spacing:
-        # milling_voltage:
-        # milling_channel:
-        # acquire_images:
-      name: Notch
-      pattern:
-        vheight: 2.0e-06
-        vwidth: 2.0e-07
-        hheight: 2.0e-07
-        hwidth: 4.0e-06
-        depth: 2.5e-06
-        distance: 2.0e-06
-        inverted: False
-        # cross_section:
-        name: WaffleNotch
-        # point:
-        # shapes:
-
+name: autolamella-adaptive-polish
+description: adaptive polish test protocol
+version: '1.0'
+tasks:
+    Rough Milling:
+        task_type: MILL_ROUGH
+        parameters:
+            sync_polishing_position: true
+            sync_to_poi: true
+        milling:
+            mill_rough:
+                name: Rough Milling
+                field_of_view: 4.0e-05
+                channel: ION
+                alignment:
+                    enabled: false
+                    interval_enabled: false
+                    interval: 30
+                    rect:
+                        left: 0.7
+                        top: 0.3
+                        width: 0.25
+                        height: 0.4
+                    use_autocontrast: true
+                    use_autofocus: false
+                    steps: 3
+                    imaging:
+                        beam_type: ELECTRON
+                        resolution:
+                        - 1536
+                        - 1024
+                        dwell_time: 1.0e-06
+                        hfw: 0.00015
+                        autocontrast: false
+                        autogamma: false
+                        save: false
+                        drift_correction: false
+                acquisition:
+                    acquire_sem: false
+                    acquire_fib: false
+                    imaging:
+                        beam_type: ELECTRON
+                        resolution:
+                        - 1536
+                        - 1024
+                        dwell_time: 1.0e-06
+                        hfw: 0.00015
+                        autocontrast: false
+                        autogamma: false
+                        save: false
+                        drift_correction: false
+                stages:
+                -   name: Rough Cut
+                    milling:
+                        milling_current: 2.0e-09
+                        spot_size: 5.0e-08
+                        rate: 0.0001
+                        dwell_time: 1.0e-06
+                        hfw: 4.0e-05
+                        patterning_mode: Parallel
+                        application_file: Si
+                        preset: ''
+                        spacing: 1.0
+                        milling_voltage: 30000.0
+                        milling_channel: ION
+                    pattern:
+                        point:
+                            x: 0.0
+                            y: 0.0
+                        width: 1.1e-05
+                        depth: 2.2e-06
+                        spacing: 3.0e-06
+                        upper_trench_height: 7.5e-06
+                        lower_trench_height: 7.5e-06
+                        cross_section: Rectangle
+                        time: 0.0
+                        fillet: 0.0
+                        name: Trench
+                    strategy:
+                        name: Standard
+                        config: {}
+                -   name: Regular Cut 1
+                    milling:
+                        milling_current: 7.4e-10
+                        spot_size: 5.0e-08
+                        rate: 0.0001
+                        dwell_time: 1.0e-06
+                        hfw: 4.0e-05
+                        patterning_mode: Parallel
+                        application_file: Si
+                        preset: ''
+                        spacing: 1.0
+                        milling_voltage: 30000.0
+                        milling_channel: ION
+                    pattern:
+                        point:
+                            x: 0.0
+                            y: 0.0
+                        width: 1.1e-05
+                        depth: 1.3e-06
+                        spacing: 1.2e-06
+                        upper_trench_height: 1.35e-06
+                        lower_trench_height: 1.35e-06
+                        cross_section: Rectangle
+                        time: 0.0
+                        fillet: 0.0
+                        name: Trench
+                    strategy:
+                        name: Standard
+                        config: {}
+                -   name: Regular Cut 2
+                    milling:
+                        milling_current: 6.0e-11
+                        spot_size: 5.0e-08
+                        rate: 0.0001
+                        dwell_time: 1.0e-06
+                        hfw: 4.0e-05
+                        patterning_mode: Parallel
+                        application_file: Si
+                        spacing: 1.0
+                        milling_voltage: 30000.0
+                        milling_channel: ION
+                    pattern:
+                        point:
+                            x: 0.0
+                            y: 0.0
+                        width: 1.05e-05
+                        depth: 1.3e-06
+                        spacing: 6.0e-07
+                        upper_trench_height: 4.0e-07
+                        lower_trench_height: 4.0e-07
+                        cross_section: Rectangle
+                        time: 0.0
+                        fillet: 0.0
+                        name: Trench
+                    strategy:
+                        name: Standard
+                        config: {}
+                -   name: Regular Cut 3
+                    milling:
+                        milling_current: 6.0e-11
+                        spot_size: 5.0e-08
+                        rate: 0.0001
+                        dwell_time: 1.0e-06
+                        hfw: 4.0e-05
+                        patterning_mode: Parallel
+                        application_file: Si
+                        spacing: 1.0
+                        milling_voltage: 30000.0
+                        milling_channel: ION
+                    pattern:
+                        point:
+                            x: 0.0
+                            y: 0.0
+                        width: 1.0e-05
+                        depth: 5.0e-07
+                        spacing: 5.5e-07
+                        upper_trench_height: 3.5e-07
+                        lower_trench_height: 3.5e-07
+                        cross_section: Rectangle
+                        time: 0.0
+                        fillet: 0.0
+                        name: Trench
+                    strategy:
+                        name: Standard
+                        config: {}
+                -   name: Microexpansion
+                    milling:
+                        milling_current: 2.0e-09
+                        spot_size: 5.0e-08
+                        rate: 3.0e-11
+                        dwell_time: 1.0e-06
+                        hfw: 0.0002
+                        patterning_mode: Serial
+                        application_file: Si
+                        preset: 30 keV; 2.5 nA
+                        spacing: 1.0
+                        milling_voltage: 30000.0
+                        milling_channel: ION
+                    pattern:
+                        point:
+                            x: 0.0
+                            y: 0.0
+                        width: 5.0e-07
+                        height: 1.8e-05
+                        depth: 1.0e-06
+                        distance: 1.0e-05
+                        name: MicroExpansion
+                    strategy:
+                        name: Standard
+                        config: {}
+        reference_imaging:
+            imaging:
+                beam_type: ELECTRON
+                resolution:
+                - 1536
+                - 1024
+                dwell_time: 1.0e-06
+                hfw: 0.00015
+                autocontrast: false
+                autogamma: false
+                save: false
+                drift_correction: false
+            field_of_view1: 0.00012
+            field_of_view2: 0.00015
+            acquire_sem: true
+            acquire_fib: true
+            acquire_image1: true
+            acquire_image2: true
+    Polishing:
+        task_type: MILL_POLISHING
+        parameters:
+            sync_to_poi: true
+        milling:
+            mill_polishing:
+                name: Polishing
+                field_of_view: 4.0e-05
+                channel: ION
+                alignment:
+                    enabled: false
+                    interval_enabled: false
+                    interval: 30
+                    rect:
+                        left: 0.7
+                        top: 0.3
+                        width: 0.25
+                        height: 0.4
+                    use_autocontrast: true
+                    use_autofocus: false
+                    steps: 3
+                    imaging:
+                        beam_type: ELECTRON
+                        resolution:
+                        - 1536
+                        - 1024
+                        dwell_time: 1.0e-06
+                        hfw: 0.00015
+                        autocontrast: false
+                        autogamma: false
+                        save: false
+                        drift_correction: false
+                acquisition:
+                    acquire_sem: false
+                    acquire_fib: false
+                    imaging:
+                        beam_type: ELECTRON
+                        resolution:
+                        - 1536
+                        - 1024
+                        dwell_time: 1.0e-06
+                        hfw: 0.00015
+                        autocontrast: false
+                        autogamma: false
+                        save: false
+                        drift_correction: false
+                stages:
+                -   name: Adaptive Polishing
+                    milling:
+                        milling_current: 2.0e-11
+                        spot_size: 5.0e-08
+                        rate: 0.0001
+                        dwell_time: 1.0e-06
+                        hfw: 4.0e-05
+                        patterning_mode: Parallel
+                        application_file: Si
+                        preset: ''
+                        spacing: 1.0
+                        milling_voltage: 30000.0
+                        milling_channel: ION
+                    pattern:
+                        point:
+                            x: 0.0
+                            y: 0.0
+                        width: 1.0e-05
+                        depth: 5.0e-08
+                        spacing: 2.25e-07
+                        upper_trench_height: 3.5e-07
+                        lower_trench_height: 3.5e-07
+                        cross_section: Rectangle
+                        time: 0.0
+                        fillet: 0.0
+                        name: Trench
+                    strategy:
+                        name: AdaptivePolishing
+                        config:
+                            model_path: ''
+                            model_generation: 1.4fpn
+                            gis_stop_min_um: 0.2
+                            gis_stop_median_um: 0.25
+                            max_crack_area_um2: 2.0
+                            max_milling_cycles: 30
+                            minimum_lamella_area_um2: 30.0
+                            maximum_drift_um: 70
+                            align_sem: true
+                            save_predictions: true
+                            gis_filter_sigma: 1.6666666666666667
+                            lamella_pad_x: 0.0
+                -   name: Localised Adaptive Polishing
+                    milling:
+                        milling_current: 2.0e-11
+                        spot_size: 5.0e-08
+                        rate: 0.0001
+                        dwell_time: 1.0e-06
+                        hfw: 4.0e-05
+                        patterning_mode: Parallel
+                        application_file: Si
+                        preset: ''
+                        spacing: 1.0
+                        milling_voltage: 30000.0
+                        milling_channel: ION
+                    pattern:
+                        point:
+                            x: 0.0
+                            y: 0.0
+                        width: 1.0e-05
+                        depth: 5.0e-08
+                        spacing: 2.25e-07
+                        upper_trench_height: 3.5e-07
+                        lower_trench_height: 3.5e-07
+                        cross_section: Rectangle
+                        time: 0.0
+                        fillet: 0.0
+                        name: Trench
+                    strategy:
+                        name: BitmapAdaptivePolishing
+                        config:
+                            model_path: ''
+                            model_generation: 1.4fpn
+                            gis_stop_min_um: 0.2
+                            gis_stop_median_um: 0.25
+                            max_crack_area_um2: 2.0
+                            max_milling_cycles: 30
+                            minimum_lamella_area_um2: 30.0
+                            maximum_drift_um: 70
+                            align_sem: true
+                            save_predictions: true
+                            gis_filter_sigma: 1.6666666666666667
+                            lamella_pad_x: 0.0
+                            gis_max_um: 2
+                            gis_min_um: 0.15
+                            dwell_multiplier_mean_stop: 0.03
+                            dwell_multiplier_max_stop: 0.05
+                            bitmap_erosion_px: 20
+                            bitmap_gaussian_sigma: 20
+                            apply_boundary_smoothing: false
+                            boundary_smoothing_sigma: 5.0
+                            incident_angle_sputter_ratio: 4.3
+                            incident_angle_scale_with_gis_min: false
+                            mask_cracks: true
+                            pattern_alignment: centre
+        reference_imaging:
+            imaging:
+                beam_type: ELECTRON
+                resolution:
+                - 1536
+                - 1024
+                dwell_time: 1.0e-06
+                hfw: 0.00015
+                autocontrast: false
+                autogamma: false
+                save: false
+                path: null
+                filename: default_image
+                reduced_area: null
+                line_integration: null
+                scan_interlacing: null
+                frame_integration: null
+                drift_correction: false
+            field_of_view1: 0.00012
+            field_of_view2: 0.00015
+            acquire_sem: true
+            acquire_fib: true
+            acquire_image1: true
+            acquire_image2: true
+    Setup Lamella:
+        task_type: MILL_FIDUCIAL
+        parameters:
+            alignment_expansion: 100.0
+        milling:
+            fiducial:
+                name: Fiducial
+                field_of_view: 8.0e-05
+                channel: ION
+                alignment:
+                    enabled: false
+                    interval_enabled: false
+                    interval: 30
+                    rect:
+                        left: 0.7
+                        top: 0.3
+                        width: 0.25
+                        height: 0.4
+                    use_autocontrast: true
+                    use_autofocus: false
+                    steps: 3
+                    imaging:
+                        beam_type: ELECTRON
+                        resolution:
+                        - 1536
+                        - 1024
+                        dwell_time: 1.0e-06
+                        hfw: 0.00015
+                        autocontrast: false
+                        autogamma: false
+                        save: false
+                        reduced_area: null
+                        line_integration: null
+                        scan_interlacing: null
+                        frame_integration: null
+                        drift_correction: false
+                acquisition:
+                    acquire_sem: false
+                    acquire_fib: false
+                    imaging:
+                        beam_type: ELECTRON
+                        resolution:
+                        - 1536
+                        - 1024
+                        dwell_time: 1.0e-06
+                        hfw: 0.00015
+                        autocontrast: false
+                        autogamma: false
+                        save: false
+                        path: null
+                        filename: default_image
+                        reduced_area: null
+                        line_integration: null
+                        scan_interlacing: null
+                        frame_integration: null
+                        drift_correction: false
+                stages:
+                -   name: Fiducial
+                    milling:
+                        milling_current: 2.0e-09
+                        spot_size: 5.0e-08
+                        rate: 3.0e-11
+                        dwell_time: 1.0e-06
+                        hfw: 8.0e-05
+                        patterning_mode: Serial
+                        application_file: Si
+                        preset: 30 keV; 20 nA
+                        spacing: 1.0
+                        milling_voltage: 30000.0
+                        milling_channel: ION
+                    pattern:
+                        point:
+                            x: 2.5e-05
+                            y: 0.0
+                        width: 1.0e-06
+                        height: 1.0e-05
+                        depth: 1.0e-06
+                        rotation: 45
+                        cross_section: Rectangle
+                        asymmetric: false
+                        name: Fiducial
+                    strategy:
+                        name: Standard
+                        config: {}
+        reference_imaging:
+            imaging:
+                beam_type: ELECTRON
+                resolution:
+                - 1536
+                - 1024
+                dwell_time: 1.0e-06
+                hfw: 0.00015
+                autocontrast: false
+                autogamma: false
+                save: false
+                reduced_area: null
+                line_integration: null
+                scan_interlacing: null
+                frame_integration: null
+                drift_correction: false
+            field_of_view1: 0.00012
+            field_of_view2: 0.00015
+            acquire_sem: true
+            acquire_fib: true
+            acquire_image1: true
+            acquire_image2: true
+workflow:
+    name: autolamella-adaptive-polish
+    description: adaptive polish test protocol
+    tasks:
+    -   name: Setup Lamella
+        supervise: false
+        required: true
+        requires: []
+    -   name: Rough Milling
+        supervise: false
+        required: true
+        requires:
+        - Setup Lamella
+    -   name: Polishing
+        supervise: false
+        required: true
+        requires:
+        - Rough Milling
 options:
-  name: autolamella-adaptive-polish
-  method: autolamella-on-grid
-  checkpoint: autolamella-mega-20240107.pt
-  alignment_attempts: 3
-  alignment_at_milling_current: false
-  take_final_overview_image: true
-  take_final_reference_images: true
-  use_fiducial: true
-  use_microexpansion: true
-  use_notch: false
-  num_polishing_stages: 2
-  lamella_tilt_angle: -23
-
-  high_quality_image:
-    dwell_time: 2.0e-06
-    enabled: false
-    frame_integration: 2
-    hfw: 5.0e-05
-    resolution:
-      - 3072
-      - 2048
-
-  supervise:
-    features: false
-    lamella: false
-    mill_polishing: false
-    mill_regular: false
-    mill_rough: false
-    setup_lamella: false
-    trench: false
-    undercut: false
+    turn_beams_off: false
