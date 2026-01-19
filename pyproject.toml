@@ -82,7 +82,8 @@ scripts = [
   "ipywidgets",
 ]
 ui = [
-  "napari[all]",
+  "pyqt5",
+  "napari[all] < 0.5",
   "fibsem[ui]@git+https://github.com/rosalindfranklininstitute/fibsem-os.git",
 ]
 reporting = [
