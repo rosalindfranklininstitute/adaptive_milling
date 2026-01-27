@@ -61,7 +61,7 @@ def open_image(path: str | PathLike[str]) -> NDArray[Any]:
         # opens as png file
         import cv2
 
-        return cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
+        return np.asarray(cv2.imread(str(path), cv2.IMREAD_UNCHANGED))
 
     raise ValueError(f"Not a supported image '{path}'")
 
@@ -218,7 +218,7 @@ class Gen0Model(AbstractAdaptivePolishingModel):
         # Decide what smp model to load to use
         model_arch = None
 
-        model_kwargs = {
+        model_kwargs: dict[str, Any] = {
             "classes": self.num_classes,
             "encoder_weights": None,
             "in_channels": 1,

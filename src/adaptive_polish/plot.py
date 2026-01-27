@@ -22,6 +22,7 @@ if typing.TYPE_CHECKING:
     from os import PathLike
     from collections.abc import Sequence
     from numpy.typing import NDArray, ArrayLike
+    from matplotlib.axes import Axes
     from fibsem.structures import FibsemImage
     from adaptive_polish._dataclasses import StrategyRunInformation
 
@@ -140,7 +141,7 @@ def create_centring_plot(
 
 
 def plot_segmentation_overlay(
-    ax: plt.axes.Axes,
+    ax: Axes,
     sem_image: NDArray[typing.Any],
     prediction: NDArray[np.integer[typing.Any]],
     alpha: float = 0.4,
