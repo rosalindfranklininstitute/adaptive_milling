@@ -58,7 +58,7 @@ if typing.TYPE_CHECKING:
         ImageSettings,
         Point,
     )
-    from fibsem.ui import FibsemMillingWidget
+    from fibsem.ui.FibsemMillingWidget import FibsemMillingWidget
     from adaptive_polish.processing.sem_segmentation import (
         AbstractAdaptivePolishingModel,
     )
@@ -83,9 +83,7 @@ def _restore_beam_shifts(
 class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig]):
     name: str = "AdaptivePolishing"
     fullname: str = "Adaptive polishing according to GIS thickness"
-    config_class: typing.ClassVar[type[AdaptivePolishMillingConfig]] = (
-        AdaptivePolishMillingConfig
-    )
+    config_class: type[AdaptivePolishMillingConfig] = AdaptivePolishMillingConfig
 
     def __init__(self, config: TAdaptivePolishMillingConfig | None = None) -> None:
         super().__init__(config=config)

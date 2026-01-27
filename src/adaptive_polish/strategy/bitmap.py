@@ -32,7 +32,7 @@ from adaptive_polish.exceptions import StopMillingException
 from adaptive_polish.enums import StopReasons
 
 if TYPE_CHECKING:
-    from typing import ClassVar, Any
+    from typing import Any
     from pathlib import Path
     from numpy.typing import NDArray
     from fibsem.milling import FibsemMillingStage
@@ -49,7 +49,7 @@ class BitmapAdaptivePolishMillingStrategy(
 ):
     name: str = "BitmapAdaptivePolishing"
     fullname: str = "Adaptive polishing using bitmap milling"
-    config_class: ClassVar[type[BitmapAdaptivePolishMillingConfig]] = (
+    config_class: type[BitmapAdaptivePolishMillingConfig] = (
         BitmapAdaptivePolishMillingConfig
     )
 
