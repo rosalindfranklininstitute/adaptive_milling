@@ -117,6 +117,7 @@ tasks:
                         hfw: 4.0e-05
                         patterning_mode: Parallel
                         application_file: Si
+                        preset: ''
                         spacing: 1.0
                         milling_voltage: 30000.0
                         milling_channel: ION
@@ -145,6 +146,7 @@ tasks:
                         hfw: 4.0e-05
                         patterning_mode: Parallel
                         application_file: Si
+                        preset: ''
                         spacing: 1.0
                         milling_voltage: 30000.0
                         milling_channel: ION
@@ -359,12 +361,6 @@ tasks:
                 autocontrast: false
                 autogamma: false
                 save: false
-                path: null
-                filename: default_image
-                reduced_area: null
-                line_integration: null
-                scan_interlacing: null
-                frame_integration: null
                 drift_correction: false
             field_of_view1: 0.00012
             field_of_view2: 0.00015
@@ -372,7 +368,7 @@ tasks:
             acquire_fib: true
             acquire_image1: true
             acquire_image2: true
-    Setup Lamella:
+    Mill Fiducial:
         task_type: MILL_FIDUCIAL
         parameters:
             alignment_expansion: 100.0
@@ -403,10 +399,6 @@ tasks:
                         autocontrast: false
                         autogamma: false
                         save: false
-                        reduced_area: null
-                        line_integration: null
-                        scan_interlacing: null
-                        frame_integration: null
                         drift_correction: false
                 acquisition:
                     acquire_sem: false
@@ -421,12 +413,6 @@ tasks:
                         autocontrast: false
                         autogamma: false
                         save: false
-                        path: null
-                        filename: default_image
-                        reduced_area: null
-                        line_integration: null
-                        scan_interlacing: null
-                        frame_integration: null
                         drift_correction: false
                 stages:
                 -   name: Fiducial
@@ -467,10 +453,31 @@ tasks:
                 autocontrast: false
                 autogamma: false
                 save: false
-                reduced_area: null
-                line_integration: null
-                scan_interlacing: null
-                frame_integration: null
+                drift_correction: false
+            field_of_view1: 0.00012
+            field_of_view2: 0.00015
+            acquire_sem: true
+            acquire_fib: true
+            acquire_image1: true
+            acquire_image2: true
+    Setup Lamella Position:
+        task_type: SELECT_MILLING_POSITION
+        parameters:
+            milling_angle: -23
+            auto_milling_alignment: false
+            use_autofocus: true
+        milling: {}
+        reference_imaging:
+            imaging:
+                beam_type: ELECTRON
+                resolution:
+                - 1536
+                - 1024
+                dwell_time: 1.0e-06
+                hfw: 0.00015
+                autocontrast: false
+                autogamma: false
+                save: false
                 drift_correction: false
             field_of_view1: 0.00012
             field_of_view2: 0.00015
@@ -482,7 +489,11 @@ workflow:
     name: autolamella-adaptive-polish
     description: adaptive polish test protocol
     tasks:
-    -   name: Setup Lamella
+    -   name: Setup Lamella Position
+        supervise: false
+        required: true
+        requires: []
+    -   name: Mill Fiducial
         supervise: false
         required: true
         requires: []
@@ -490,7 +501,7 @@ workflow:
         supervise: false
         required: true
         requires:
-        - Setup Lamella
+        - Mill Fiducial
     -   name: Polishing
         supervise: false
         required: true

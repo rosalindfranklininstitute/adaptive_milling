@@ -1,5 +1,5 @@
 name: autolamella-adaptive-polish
-description: An example protocol for using the adaptive polish strategy. As a minimum, the model path will need to be updated to use this.
+description: An example protocol for using the localised adaptive polish strategy. As a minimum, the model path will need to be updated to use this.
 version: '1.0'
 tasks:
     Rough Milling:
@@ -283,7 +283,7 @@ tasks:
                         fillet: 0.0
                         name: Trench
                     strategy:
-                        name: AdaptivePolishing
+                        name: BitmapAdaptivePolishing
                         config:
                             model_path: null
                             model_generation: 1.4fpn
@@ -297,6 +297,18 @@ tasks:
                             save_predictions: true
                             gis_filter_sigma: 1.6666666666666667
                             lamella_pad_x: 0.0
+                            gis_max_um: 2
+                            gis_min_um: 0.15
+                            dwell_multiplier_mean_stop: 0.03
+                            dwell_multiplier_max_stop: 0.05
+                            bitmap_erosion_px: 20
+                            bitmap_gaussian_sigma: 5
+                            apply_boundary_smoothing: False
+                            boundary_smoothing_sigma: 5.0
+                            incident_angle_sputter_ratio: 4.3
+                            incident_angle_scale_with_gis_min: False
+                            mask_cracks: true
+                            pattern_alignment: centre
         reference_imaging:
             imaging:
                 beam_type: ELECTRON
@@ -433,8 +445,8 @@ tasks:
             acquire_image1: true
             acquire_image2: true
 workflow:
-    name: Adaptive Polish example
-    description: An example protocol for using the adaptive polish strategy. As a minimum, the model path will need to be updated to use this.
+    name: Localised Adaptive Polish example
+    description: An example protocol for using the localised adaptive polish strategy. As a minimum, the model path will need to be updated to use this.
     tasks:
     -   name: Setup Lamella Position
         supervise: false
