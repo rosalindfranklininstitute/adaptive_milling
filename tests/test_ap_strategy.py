@@ -809,17 +809,12 @@ def test_check_lamella(
         ):
             # Not set in this test, as that is done by _mill
             assert value is None, f"{key} should be None"
-        elif not saves_results and key in (
-            "lamella_bounding_box_prediction_px",
-            "lamella_bounding_box_image_px",
-            "gis_thickness_image_px",
-            "xlims_prediction_px",
-            "xlims_image_px",
-            "gis_thickness_image_px",
-            "gis_thickness_filtered_image_px",
-            "gis_thickness_min_image_px",
-            "gis_thickness_median_image_px",
-            "gis_thickness_mean_image_px",
+        elif not saves_results and key not in (
+            "image_pixel_size_m",
+            "prediction_pixel_size_m",
+            "crack_count",
+            "lamella_thickness_prediction_px",
+            "crack_thickness_prediction_px",
         ):
             assert value is None, f"{key} should be None"
         else:
