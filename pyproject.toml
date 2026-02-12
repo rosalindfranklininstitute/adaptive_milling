@@ -1,7 +1,7 @@
 [build-system]
 requires = [
   "setuptools >= 77.0.3, < 81",
-  "setuptools_scm"
+  "setuptools_scm",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -57,7 +57,7 @@ readme = { file = "README.md", content-type = "text/markdown" }
 
 [tool.setuptools_scm]
 version_file = "src/adaptive_polish/_version.py"
-version_scheme="release-branch-semver"
+version_scheme = "release-branch-semver"
 
 [tool.setuptools.packages.find]
 where = [
@@ -182,7 +182,10 @@ addopts = "-vvvv --cov=src --cov-report term --cov-report html -p no:faulthandle
 testpaths = [
   "tests",
 ]
-norecursedirs = ["tests/data", "htmlcov"]
+norecursedirs = [
+  "tests/data",
+  "htmlcov",
+]
 
 [tool.mypy]
 mypy_path = "$MYPY_CONFIG_FILE_DIR/src"
