@@ -8,9 +8,7 @@ from pathlib import Path
 
 import numpy as np
 
-from fibsem import utils as fibsem_utils
-from fibsem.milling.base import get_milling_stages
-from fibsem.applications.autolamella.protocol.validation import validate_protocol
+from fibsem.applications.autolamella.structures import AutoLamellaTaskProtocol
 
 from adaptive_polish.strategy import bitmap as bitmap_strategy
 from adaptive_polish._dataclasses import (
@@ -25,11 +23,11 @@ if typing.TYPE_CHECKING:
 TIMESTAMP = "timestamp"
 
 
-def setup_protocol_and_milling_stages(
+def get_polishing_stages(
     config_dict: dict[str, typing.Any],
     protocol_template_path: Path,
     temporary_path: Path,
-) -> tuple[dict[str, typing.Any], list[FibsemMillingStage]]:
+) -> list[FibsemMillingStage]:
     protocol_path = setup.setup_protocol_path(
         protocol_template_path,
         temporary_path,
@@ -38,15 +36,9 @@ def setup_protocol_and_milling_stages(
         ap_type="bitmap",
     )
 
-    protocol = validate_protocol(
-        fibsem_utils.load_protocol(protocol_path=protocol_path)
-    )
+    protocol = AutoLamellaTaskProtocol.load(str(protocol_path))
 
-    milling_stages: typing.List[bitmap_strategy.FibsemMillingStage] = (
-        get_milling_stages("mill_polishing", protocol["milling"])
-    )
-
-    return protocol, milling_stages
+    return protocol.task_config["Polishing"].milling["mill_polishing"].stages
 
 
 def test_default_config(tmp_path: Path) -> None:
@@ -72,10 +64,10 @@ def test_milling_stage_loads_defaults(
     model_path.touch()
     config_dict = {"model_path": str(model_path)}
     config = bitmap_strategy.BitmapAdaptivePolishMillingConfig.from_dict(config_dict)
-    _, milling_stages = setup_protocol_and_milling_stages(
+    polishing_stages = get_polishing_stages(
         config_dict, protocol_template_path, tmp_path
     )
-    strategy = milling_stages[0].strategy
+    strategy = polishing_stages[0].strategy
     assert isinstance(strategy, bitmap_strategy.BitmapAdaptivePolishMillingStrategy), (
         "Milling stage strategy is not AdaptivePolishMillingStrategy"
     )
@@ -156,8 +148,8 @@ def test_create_bitmap_array_calls(
     mock_create_bitmap_array.assert_called_once_with(
         input_signal=mock_filter_bitmap_signal.return_value,
         xlims=(0, len(mock_filter_bitmap_signal.return_value) - 1),
-        min_dwell_threshold=bitmap_config.gis_min_um,
-        max_dwell_threshold=bitmap_config.gis_max_um,
+        min_dwell_threshold=bitmap_config.gis_min * 1e6,
+        max_dwell_threshold=bitmap_config.gis_max * 1e6,
         as_image=False,
     )
 
@@ -203,8 +195,8 @@ def test_create_bitmap_array_simple_values(mask_cracks: bool) -> None:
             bitmap_erosion_px=0,
             apply_boundary_smoothing=False,
             mask_cracks=mask_cracks,
-            gis_min_um=5,
-            gis_max_um=10,
+            gis_min=5e-6,
+            gis_max=10e-6,
             incident_angle_sputter_ratio=1,  # Disables incident angle scaling
         )
     strategy = bitmap_strategy.BitmapAdaptivePolishMillingStrategy(config=bitmap_config)

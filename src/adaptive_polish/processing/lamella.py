@@ -139,7 +139,7 @@ def filter_gis_thickness(
     gis_thickness_px: NDArray[np.integer | np.float64 | np.float32],
     xlims_px: tuple[int, int],
     sigma: float,
-) -> NDArray[np.float_]:
+) -> NDArray[np.float64]:
     # Filter GIS thickness within xlims to a avoid edge artifacts
     gis_thickness_filtered_px = np.zeros_like(gis_thickness_px, dtype=float)
     gis_thickness_filtered_px[xlims_px[0] : xlims_px[1] + 1] = gaussian_filter1d(
@@ -221,7 +221,7 @@ def get_gis_thickness_old(
     for y, x in get_mask_edge(mask_lamella, axis=0, side="max"):
         mask_gis_background[: y + 1, x] = False
 
-    new_mask_gis: NDArray[typing.Union[np.bool_, np.float_]]
+    new_mask_gis: NDArray[typing.Union[np.bool_, np.float64]]
     new_mask_gis = np.zeros(prediction.shape, dtype=np.bool_)
     new_mask_gis[slicer] = mask_gis_background
 
@@ -290,7 +290,7 @@ def get_gis_thickness(
     for y, x in get_mask_edge(mask_lamella, axis=0, side="max"):
         mask_gis_background[: y + 1, x] = False
 
-    new_mask_gis: NDArray[typing.Union[np.bool_, np.float_]]
+    new_mask_gis: NDArray[typing.Union[np.bool_, np.float64]]
     new_mask_gis = np.full(
         prediction.shape, fill_value=np.nan if clean_edges else 0, dtype=np.float64
     )
@@ -407,10 +407,10 @@ def crop_xlims_centre(
 def get_lamella_gis_boundary_peturbations(
     prediction: NDArray[np.integer[typing.Any]],
     sigma: float,
-) -> NDArray[np.float_]:
+) -> NDArray[np.float64]:
     lamella_mask = prediction == SemSegmentationLabels.LAMELLA.value
     lower_edge_coords = get_mask_edge(lamella_mask, axis=0, side="max").astype(
-        np.float_
+        np.float64
     )
     filtered_edge = gaussian_filter1d(
         lower_edge_coords[:, 0],

@@ -14,8 +14,7 @@ from PIL import Image
 
 from fibsem import utils as fibsem_utils, acquire
 from fibsem.structures import BeamType, Point, FibsemImage
-from fibsem.milling.base import get_milling_stages
-from fibsem.applications.autolamella.protocol.validation import validate_protocol
+from fibsem.applications.autolamella.structures import AutoLamellaTaskProtocol
 
 from adaptive_polish.strategy import adaptive_polish as ap_strategy
 from adaptive_polish._dataclasses import CycleInformation
@@ -29,31 +28,31 @@ if typing.TYPE_CHECKING:
     from fibsem.milling.base import FibsemMillingStage
 
 _AP_PASS_CHECKS_CONFIG = {
-    "gis_stop_min_um": 0,
-    "max_crack_area_um2": np.inf,
-    "minimum_lamella_area_um2": 0,
-    "maximum_drift_um": np.inf,
+    "gis_stop_min": 0,
+    "max_crack_area": np.inf,
+    "minimum_lamella_area": 0,
+    "maximum_drift": np.inf,
 }
 
 TIMESTAMP = "timestamp"
 
 
-def setup_protocol_and_milling_stages(
+def get_polishing_stages(
     config_dict: dict[str, typing.Any],
     protocol_template_path: Path,
     temporary_path: Path,
-) -> tuple[dict[str, typing.Any], list[FibsemMillingStage]]:
+) -> list[FibsemMillingStage]:
     protocol_path = setup.setup_protocol_path(
-        protocol_template_path, temporary_path, config_dict, ap_only=True
+        protocol_template_path,
+        temporary_path,
+        config_dict,
+        ap_only=True,
+        ap_type="normal",
     )
 
-    protocol = validate_protocol(
-        fibsem_utils.load_protocol(protocol_path=protocol_path)
-    )
+    protocol = AutoLamellaTaskProtocol.load(str(protocol_path))
 
-    milling_stages = get_milling_stages("mill_polishing", protocol["milling"])
-
-    return protocol, milling_stages
+    return protocol.task_config["Polishing"].milling["mill_polishing"].stages
 
 
 def assert_results_dicts_equal(
@@ -128,10 +127,8 @@ def test_milling_stage_loads_defaults(
     model_path.touch()
     config_dict = {"model_path": str(model_path)}
     config = ap_strategy.AdaptivePolishMillingConfig.from_dict(config_dict)
-    _, milling_stages = setup_protocol_and_milling_stages(
-        config_dict, protocol_template_path, tmp_path
-    )
-    strategy = milling_stages[0].strategy
+    stages = get_polishing_stages(config_dict, protocol_template_path, tmp_path)
+    strategy = stages[0].strategy
     assert isinstance(strategy, ap_strategy.AdaptivePolishMillingStrategy), (
         "Milling stage strategy is not AdaptivePolishMillingStrategy"
     )
@@ -150,9 +147,7 @@ def test_ap_folders_created(
     model_path = tmp_path / "model.file"
     model_path.touch()
     ap_config = ap_strategy.AdaptivePolishMillingConfig(model_path=str(model_path))
-    _, stages = setup_protocol_and_milling_stages(
-        ap_config.to_dict(), protocol_template_path, tmp_path
-    )
+    stages = get_polishing_stages(ap_config.to_dict(), protocol_template_path, tmp_path)
     stage = stages[0]
 
     microscope, _ = fibsem_utils.setup_session(config_path=microscope_config_path)
@@ -190,9 +185,7 @@ def test_loads_sem_model_on_first_run(
     ap_config = ap_strategy.AdaptivePolishMillingConfig(
         model_path=str(model_path), align_sem=False
     )
-    _, stages = setup_protocol_and_milling_stages(
-        ap_config.to_dict(), protocol_template_path, tmp_path
-    )
+    stages = get_polishing_stages(ap_config.to_dict(), protocol_template_path, tmp_path)
     stage = stages[0]
 
     microscope, _ = fibsem_utils.setup_session(config_path=microscope_config_path)
@@ -235,9 +228,7 @@ def test_reference_images_saved_correctly(
     ap_config = ap_strategy.AdaptivePolishMillingConfig(
         model_path=str(model_path), align_sem=False
     )
-    _, stages = setup_protocol_and_milling_stages(
-        ap_config.to_dict(), protocol_template_path, tmp_path
-    )
+    stages = get_polishing_stages(ap_config.to_dict(), protocol_template_path, tmp_path)
 
     microscope, _ = fibsem_utils.setup_session(config_path=microscope_config_path)
     stage = stages[0]
@@ -292,9 +283,7 @@ def test_max_milling_cycles_not_exceeded(
         align_sem=False,
         **pass_checks_kwargs,  # type: ignore[arg-type]
     )
-    _, stages = setup_protocol_and_milling_stages(
-        ap_config.to_dict(), protocol_template_path, tmp_path
-    )
+    stages = get_polishing_stages(ap_config.to_dict(), protocol_template_path, tmp_path)
     stage = stages[0]
 
     microscope, _ = fibsem_utils.setup_session(config_path=microscope_config_path)
@@ -410,11 +399,11 @@ def test_max_milling_cycles_not_exceeded(
                         i
                     ].statistics.gis_thickness_median_um,
                     crack_area_um2=lamella_infos[i].statistics.crack_area_um2,
-                    gis_min_stop_threshold_um=strategy.config.gis_stop_min_um,
-                    gis_median_stop_threshold_um=strategy.config.gis_stop_median_um,
+                    gis_min_stop_threshold_um=strategy.config.gis_stop_min * 1e6,
+                    gis_median_stop_threshold_um=strategy.config.gis_stop_median * 1e6,
                     milling_stage=milling_stages[i],
                     image_xlims=lamella_infos[i].statistics.xlims_image_px,
-                    max_crack_area_um2=strategy.config.max_crack_area_um2,
+                    max_crack_area_um2=strategy.config.max_crack_area * 1e12,
                     img_name=lamella_infos[i].identifier,
                 )
                 for i in range(max_milling_cycles + 1)
@@ -464,9 +453,7 @@ def test_results_saved(
         align_sem=False,
         **pass_checks_kwargs,  # type: ignore[arg-type]
     )
-    _, stages = setup_protocol_and_milling_stages(
-        ap_config.to_dict(), protocol_template_path, tmp_path
-    )
+    stages = get_polishing_stages(ap_config.to_dict(), protocol_template_path, tmp_path)
     stage = stages[0]
 
     lamella_name = f"lamella_{uuid4()}"
@@ -584,7 +571,7 @@ def test_results_saved(
                     "gis_thickness_filtered_image_px": expected_filtered_gis_thicknesses[
                         i
                     ]
-                    .astype(np.float_)
+                    .astype(np.float64)
                     .tolist(),
                     "gis_thickness_min_image_px": float(
                         expected_min_gis_thicknesses[i]
@@ -743,23 +730,23 @@ def test_check_lamella(
     if failure_reason == "min_gis":
         saves_results = True
         check_exception = ap_strategy.StopMillingException
-        pass_checks_kwargs["gis_stop_min_um"] = 500
+        pass_checks_kwargs["gis_stop_min"] = 500e-6
     elif failure_reason == "mean_gis":
         saves_results = True
         check_exception = ap_strategy.StopMillingException
-        pass_checks_kwargs["gis_stop_median_um"] = 500
+        pass_checks_kwargs["gis_stop_median"] = 500e-6
     elif failure_reason == "crack":
         saves_results = True
         check_exception = ap_strategy.StopMillingException
-        pass_checks_kwargs["max_crack_area_um2"] = 0
+        pass_checks_kwargs["max_crack_area"] = 0
     elif failure_reason == "lamella area":
         saves_results = False
         check_exception = ap_strategy.StopEarlyError
-        pass_checks_kwargs["minimum_lamella_area_um2"] = 1e5
+        pass_checks_kwargs["minimum_lamella_area"] = 0.1
     elif failure_reason == "centring":
         saves_results = True
         check_exception = ap_strategy.StopEarlyError
-        pass_checks_kwargs["maximum_drift_um"] = 0
+        pass_checks_kwargs["maximum_drift"] = 0
     elif failure_reason == "none":
         saves_results = True
     else:

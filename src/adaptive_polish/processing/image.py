@@ -47,10 +47,10 @@ def keep_only_largest_object(
 
 def resize_image(
     image: NDArray[typing.Any], new_shape: typing.Tuple[int, int]
-) -> NDArray[np.float_]:
+) -> NDArray[np.float64]:
     if not isinstance(image.dtype, np.floating):
         # Needs to be floating type if we want interpolation
-        image = image.astype(np.float_)
+        image = image.astype(np.float64)
     return transform.resize(
         image,
         output_shape=new_shape,
@@ -286,7 +286,7 @@ def get_centre_points_from_bounding_box(
 def resize_interp_1d(
     array_1d: Sequence[int | float] | NDArray[typing.Any],
     target_size: int,
-) -> NDArray[np.float_]:
+) -> NDArray[np.float64]:
     if len(array_1d) == target_size:
         return np.asarray(array_1d, dtype=float)
     return np.interp(
@@ -300,5 +300,5 @@ def rescale_values(
     array: NDArray[typing.Any],
     input_range: tuple[float, float],
     output_range: tuple[float, float],
-) -> NDArray[np.float_]:
+) -> NDArray[np.float64]:
     return np.interp(array, input_range, output_range)

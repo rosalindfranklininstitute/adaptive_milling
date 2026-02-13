@@ -445,21 +445,21 @@ def create_summary_gis_plot(
     _logger.debug("Creating GIS summary plot")
     save_path = Path(save_path)
     fig, ax = plt.subplots(1, 1)
-    cumulative_milling_time = np.nancumsum(np.asarray(milling_times, dtype=np.float_))
+    cumulative_milling_time = np.nancumsum(np.asarray(milling_times, dtype=np.float64))
     ax.plot(
         cumulative_milling_time,
-        np.asarray(min_gis_thicknesses, dtype=np.float_),
+        np.asarray(min_gis_thicknesses, dtype=np.float64),
         label="Minimum",
     )
     ax.plot(
         cumulative_milling_time,
-        np.asarray(mean_gis_thicknesses, dtype=np.float_),
+        np.asarray(mean_gis_thicknesses, dtype=np.float64),
         label="Mean",
         linestyle=":",
     )
     ax.plot(
         cumulative_milling_time,
-        np.asarray(median_gis_thicknesses, dtype=np.float_),
+        np.asarray(median_gis_thicknesses, dtype=np.float64),
         label="Median",
         linestyle="--",
     )
