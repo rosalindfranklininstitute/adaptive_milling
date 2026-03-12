@@ -95,6 +95,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
             "scale": 1e6,
             "dimensions": 2,
             "unit": "m²",
+            "advanced": True,
         },
     )
     maximum_drift: float = field(
@@ -107,6 +108,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
             "scale": 1e6,
             "decimals": 1,
             "unit": "m",
+            "advanced": True,
         },
     )
     align_sem: bool = field(
