@@ -1,19 +1,54 @@
 from __future__ import annotations
 import math
 import typing
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from fibsem.milling.patterning import BasePattern
 from fibsem.structures import FibsemRectangleSettings, CrossSectionPattern
+from fibsem.milling.properties import (
+    DEFAULT_DISTANCE_METADATA,
+    DEFAULT_ANGLE_METADATA,
+    DEFAULT_CROSS_SECTION_METADATA,
+)
 
 
 @dataclass
 class AsymmetricFiducialPattern(BasePattern[FibsemRectangleSettings]):
-    width: float = 0.1e-6
-    height: float = 10.0e-6
-    depth: float = 0.5e-6
-    rotation: float = 45.0
-    cross_section: CrossSectionPattern = CrossSectionPattern.Rectangle
+    width: float = field(
+        default=0.1e-6,
+        metadata={
+            "label": "Width",
+            **DEFAULT_DISTANCE_METADATA,
+            "tooltip": "Width of the asymmetric fiducial pattern.",
+        },
+    )
+    height: float = field(
+        default=10.0e-6,
+        metadata={
+            "label": "Height",
+            **DEFAULT_DISTANCE_METADATA,
+            "tooltip": "Width of the asymmetric fiducial pattern.",
+        },
+    )
+    depth: float = field(
+        default=0.5e-6,
+        metadata={
+            "label": "Depth",
+            **DEFAULT_DISTANCE_METADATA,
+            "tooltip": "Depth of the asymmetric fiducial pattern.",
+        },
+    )
+    rotation: float = field(
+        default=45.0,
+        metadata={
+            **DEFAULT_ANGLE_METADATA,
+            "tooltip": "Rotation of the asymmetric fiducial in degrees.",
+        },
+    )
+    cross_section: CrossSectionPattern = field(
+        default=CrossSectionPattern.Rectangle,
+        metadata=DEFAULT_CROSS_SECTION_METADATA,
+    )
 
     name: typing.ClassVar[str] = "AsymmetricFiducial"
 
