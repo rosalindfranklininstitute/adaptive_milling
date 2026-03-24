@@ -674,8 +674,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             logging.info(
                 f"Estimated time for {stage.name}: {estimated_time:.2f} seconds"
             )
-            if parent_ui is not None and hasattr(parent_ui, "milling_progress_signal"):
-                parent_ui.milling_progress_signal.emit(
+            if hasattr(microscope, "milling_progress_signal"):
+                microscope.milling_progress_signal.emit(
                     {
                         "msg": f"Running {stage.name} cycle {milling_cycle}...",
                         "progress": {
