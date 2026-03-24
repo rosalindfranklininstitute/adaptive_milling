@@ -149,14 +149,15 @@ def test_runs(
 
     lamella_directory = tmp_path / "lamella"
     lamella_directory.mkdir()
-    adaptive_polish_dir = lamella_directory / f"adaptive_polish_{TIMESTAMP}"
+    output_directory = lamella_directory / "Milling" / "Task"
+    adaptive_polish_dir = output_directory / f"adaptive_polish_{TIMESTAMP}"
 
     # Set stage imaging settings
     milling_stages[0].imaging.resolution = (3072, 2048)
     milling_stages[0].imaging.hfw = 4e-5
     milling_stages[0].imaging.dwell_time = 2e-7
     milling_stages[0].imaging.frame_integration = 2
-    milling_stages[0].imaging.path = lamella_directory
+    milling_stages[0].imaging.path = output_directory
 
     # Check milling loop runs but exits at the end of loop calls_before_exception + 1
     with (
