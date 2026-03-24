@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 from fibsem.milling.base import MillingStrategyConfig
 
-from adaptive_polish.processing.sem_segmentation import (
+from adaptive_milling.processing.sem_segmentation import (
     get_latest_generation_key,
     MODEL_GENERATIONS_DICT,
 )

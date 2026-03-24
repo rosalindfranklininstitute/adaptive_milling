@@ -6,7 +6,7 @@ Adaptive milling plugins for [fibsemOS](https://github.com/fibsem-os/fibsem-os).
 * AsymmetricFiducial milling pattern, which adds some asymmetry to the default Fiducial pattern to hopefully improve alignment.
 
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
-[![CI](https://github.com/rosalindfranklininstitute/adaptive_polish/actions/workflows/python-test.yml/badge.svg)](https://github.com/rosalindfranklininstitute/adaptive_polish/actions/workflows/python-test.yml)
+[![CI](https://github.com/rosalindfranklininstitute/adaptive_milling/actions/workflows/python-test.yml/badge.svg)](https://github.com/rosalindfranklininstitute/adaptive_milling/actions/workflows/python-test.yml)
 
 ## Installation
 
@@ -43,7 +43,7 @@ pytest
 
 ## Issues
 
-Please use the [GitHub issue tracker](https://github.com/rosalindfranklininstitute/adaptive_polish/issues) to submit bugs or request features.
+Please use the [GitHub issue tracker](https://github.com/rosalindfranklininstitute/adaptive_milling/issues) to submit bugs or request features.
 
 ## Contributions
 

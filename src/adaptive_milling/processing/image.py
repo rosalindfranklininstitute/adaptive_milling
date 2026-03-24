@@ -9,7 +9,7 @@ from skimage import measure, transform
 from fibsem import conversions
 from fibsem.structures import Point
 
-from adaptive_polish.exceptions import CentringException
+from adaptive_milling.exceptions import CentringException
 
 if typing.TYPE_CHECKING:
     from numpy.typing import NDArray

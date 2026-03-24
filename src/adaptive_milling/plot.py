@@ -14,7 +14,7 @@ from fibsem.structures import Point, FibsemImage
 from fibsem.milling import FibsemMillingStage
 from fibsem.milling.patterning.plotting import draw_milling_patterns
 
-from adaptive_polish.processing.sem_segmentation import (
+from adaptive_milling.processing.sem_segmentation import (
     SegmentationLabels as SemSegmentationLabels,
 )
 
@@ -24,7 +24,7 @@ if typing.TYPE_CHECKING:
     from numpy.typing import NDArray, ArrayLike
     from matplotlib.axes import Axes
     from fibsem.structures import FibsemImage
-    from adaptive_polish._dataclasses import StrategyRunInformation
+    from adaptive_milling._dataclasses import StrategyRunInformation
 
 _logger = logging.getLogger(__name__)
 

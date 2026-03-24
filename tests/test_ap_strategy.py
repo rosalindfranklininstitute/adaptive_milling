@@ -16,11 +16,11 @@ from fibsem import utils as fibsem_utils, acquire
 from fibsem.structures import BeamType, Point, FibsemImage
 from fibsem.applications.autolamella.structures import AutoLamellaTaskProtocol
 
-from adaptive_polish.strategy import adaptive_polish as ap_strategy
-from adaptive_polish._dataclasses import CycleInformation
-from adaptive_polish.processing.sem_segmentation import SegmentationLabels as SemLabels
-from adaptive_polish.exceptions import SegmentationException
-from adaptive_polish.enums import StopReasons
+from adaptive_milling.strategy import adaptive_polish as ap_strategy
+from adaptive_milling._dataclasses import CycleInformation
+from adaptive_milling.processing.sem_segmentation import SegmentationLabels as SemLabels
+from adaptive_milling.exceptions import SegmentationException
+from adaptive_milling.enums import StopReasons
 
 from . import setup, utils
 
@@ -816,7 +816,7 @@ def test_check_lamella(
 @pytest.mark.parametrize("file_exists", [True, False], ids=["file", "no file"])
 @patch("pathlib.Path.is_file")
 @patch("os.path.isfile")
-@patch("adaptive_polish.strategy.adaptive_polish.sem_seg_proc.load_model")
+@patch("adaptive_milling.strategy.adaptive_polish.sem_seg_proc.load_model")
 def test_load_model(
     mock_load_sem_model, mock_os_isfile, mock_pathlib_is_file, file_exists: bool
 ) -> None:

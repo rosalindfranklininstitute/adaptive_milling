@@ -13,10 +13,10 @@ from fibsem.structures import FibsemImage
 from fibsem.milling import FibsemMillingStage, get_milling_stages
 from fibsem.utils import load_protocol
 
-from adaptive_polish.config import BitmapAdaptivePolishMillingConfig
-from adaptive_polish.strategy import BitmapAdaptivePolishMillingStrategy
-from adaptive_polish._dataclasses import CycleInformation, CycleTimestamps
-from adaptive_polish.processing.lamella import (
+from adaptive_milling.config import BitmapAdaptivePolishMillingConfig
+from adaptive_milling.strategy import BitmapAdaptivePolishMillingStrategy
+from adaptive_milling._dataclasses import CycleInformation, CycleTimestamps
+from adaptive_milling.processing.lamella import (
     crop_xlims_centre,
     crop_xlims_convolve,
     crop_xlims_convolve_filtered,

@@ -20,27 +20,27 @@ from fibsem.milling import (
 from fibsem.structures import BeamType
 
 # Adaptive polish
-import adaptive_polish.utils as ap_utils
-from adaptive_polish.exceptions import (
+import adaptive_milling.utils as ap_utils
+from adaptive_milling.exceptions import (
     StopEarlyError,
     StopMillingException,
     SegmentationException,
     CentringException,
 )
-from adaptive_polish.enums import StopReasons
-from adaptive_polish.processing import sem_segmentation as sem_seg_proc
-from adaptive_polish.processing import image as image_proc
-from adaptive_polish.processing import lamella as lamella_proc
-from adaptive_polish.plot import (
+from adaptive_milling.enums import StopReasons
+from adaptive_milling.processing import sem_segmentation as sem_seg_proc
+from adaptive_milling.processing import image as image_proc
+from adaptive_milling.processing import lamella as lamella_proc
+from adaptive_milling.plot import (
     create_centring_plot,
     create_milling_cycle_plot,
     create_summary_gis_plot,
 )
-from adaptive_polish.config import (
+from adaptive_milling.config import (
     AdaptivePolishMillingConfig,
     TAdaptivePolishMillingConfig,
 )
-from adaptive_polish._dataclasses import (
+from adaptive_milling._dataclasses import (
     LamellaInformation,
     LamellaStatistics,
     StrategyRunInformation,
@@ -59,7 +59,7 @@ if typing.TYPE_CHECKING:
         Point,
     )
     from fibsem.ui.widgets.milling_widget import FibsemMillingWidget2
-    from adaptive_polish.processing.sem_segmentation import (
+    from adaptive_milling.processing.sem_segmentation import (
         AbstractAdaptivePolishingModel,
     )
 

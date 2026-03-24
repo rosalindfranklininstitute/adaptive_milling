@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 
 if TYPE_CHECKING:
-    from adaptive_polish.enums import StopReasons
+    from adaptive_milling.enums import StopReasons
 
 
 class _AdaptivePolishException(Exception):

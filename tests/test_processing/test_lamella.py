@@ -7,9 +7,9 @@ import typing
 import itertools
 import numpy as np
 
-from adaptive_polish.processing import lamella as lamella_proc
-from adaptive_polish.processing import image as image_proc
-from adaptive_polish.processing.sem_segmentation import (
+from adaptive_milling.processing import lamella as lamella_proc
+from adaptive_milling.processing import image as image_proc
+from adaptive_milling.processing.sem_segmentation import (
     SegmentationLabels as SemLabels,
 )
 

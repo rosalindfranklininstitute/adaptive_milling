@@ -8,7 +8,7 @@ from datetime import datetime
 
 import numpy as np
 
-from adaptive_polish.processing.sem_segmentation import (
+from adaptive_milling.processing.sem_segmentation import (
     SegmentationLabels as SemLabels,
 )
 

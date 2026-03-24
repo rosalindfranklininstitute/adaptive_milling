@@ -11,32 +11,32 @@ from fibsem.milling.patterning import (
     BitmapPattern,
 )
 
-from adaptive_polish.strategy import AdaptivePolishMillingStrategy
-from adaptive_polish.config import BitmapAdaptivePolishMillingConfig
-from adaptive_polish.processing.bitmap import (
+from adaptive_milling.strategy import AdaptivePolishMillingStrategy
+from adaptive_milling.config import BitmapAdaptivePolishMillingConfig
+from adaptive_milling.processing.bitmap import (
     filter_bitmap_signal,
     create_bitmap_array,
     get_angle_dwell_multiplier,
 )
-from adaptive_polish.processing.lamella import (
+from adaptive_milling.processing.lamella import (
     crop_xlims_centre,
     crop_xlims_convolve_filtered,
     get_lamella_gis_boundary_peturbations,
 )
-from adaptive_polish.processing.image import resize_interp_1d, get_mask_edge
-from adaptive_polish.processing.sem_segmentation import (
+from adaptive_milling.processing.image import resize_interp_1d, get_mask_edge
+from adaptive_milling.processing.sem_segmentation import (
     SegmentationLabels as SemSegmentationLabels,
 )
-from adaptive_polish.plot import create_milling_cycle_plot
-from adaptive_polish.exceptions import StopMillingException
-from adaptive_polish.enums import StopReasons
+from adaptive_milling.plot import create_milling_cycle_plot
+from adaptive_milling.exceptions import StopMillingException
+from adaptive_milling.enums import StopReasons
 
 if TYPE_CHECKING:
     from typing import Any
     from pathlib import Path
     from numpy.typing import NDArray
     from fibsem.milling import FibsemMillingStage
-    from adaptive_polish._dataclasses import (
+    from adaptive_milling._dataclasses import (
         LamellaInformation,
         LamellaStatistics,
     )
