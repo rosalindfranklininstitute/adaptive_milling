@@ -157,13 +157,15 @@ def test_ap_folders_created(
     lamella_directory = tmp_path / "lamella"
     lamella_directory.mkdir()
 
-    stage.imaging.path = lamella_directory
+    output_directory = lamella_directory / "Milling" / "Task"
+
+    stage.imaging.path = output_directory
 
     with pytest.raises(SegmentationException):
         # This will raise an error but should make directories first
         strategy.run(microscope, stage)
 
-    adaptive_polish_dir = lamella_directory / f"adaptive_polish_{TIMESTAMP}"
+    adaptive_polish_dir = output_directory / f"adaptive_polish_{TIMESTAMP}"
     # Check directories were created
     assert adaptive_polish_dir.is_dir(), "adaptive_polish directory wasn't created"
     for name in ("plots", "sem", "fib"):
@@ -237,8 +239,9 @@ def test_reference_images_saved_correctly(
 
     lamella_directory = tmp_path / "lamella"
     lamella_directory.mkdir()
+    output_directory = lamella_directory / "Milling" / "Task"
 
-    stage.imaging.path = lamella_directory
+    stage.imaging.path = output_directory
 
     with patch.object(strategy, "model") as mock_model:
         # Exit test at prediction step
@@ -249,7 +252,7 @@ def test_reference_images_saved_correctly(
 
         mock_model.predict.assert_called_once()
 
-    adaptive_polish_dir = lamella_directory / f"adaptive_polish_{TIMESTAMP}"
+    adaptive_polish_dir = output_directory / f"adaptive_polish_{TIMESTAMP}"
     for image_type in ("sem", "fib"):
         image_path = adaptive_polish_dir / image_type
         image_paths = tuple(image_path.glob("*.tif"))
@@ -291,12 +294,13 @@ def test_max_milling_cycles_not_exceeded(
     strategy = ap_strategy.AdaptivePolishMillingStrategy(config=ap_config)
 
     lamella_directory = tmp_path / "lamella"
-    lamella_ap_folder = lamella_directory / f"adaptive_polish_{TIMESTAMP}"
-    plots_directory = lamella_ap_folder / "plots"
-
     lamella_directory.mkdir()
 
-    stage.imaging.path = lamella_directory
+    output_directory = lamella_directory / "Milling" / "Task"
+    lamella_ap_folder = output_directory / f"adaptive_polish_{TIMESTAMP}"
+    plots_directory = lamella_ap_folder / "plots"
+
+    stage.imaging.path = output_directory
 
     # Stop it trying to load a model
     with (
@@ -459,9 +463,10 @@ def test_results_saved(
     lamella_name = f"lamella_{uuid4()}"
     lamella_directory = tmp_path / lamella_name
     lamella_directory.mkdir()
-    adaptive_polish_dir = lamella_directory / f"adaptive_polish_{TIMESTAMP}"
+    output_directory = lamella_directory / "Milling" / "Task"
+    adaptive_polish_dir = output_directory / f"adaptive_polish_{TIMESTAMP}"
 
-    stage.imaging.path = lamella_directory
+    stage.imaging.path = output_directory
 
     microscope, _ = fibsem_utils.setup_session(config_path=microscope_config_path)
 
