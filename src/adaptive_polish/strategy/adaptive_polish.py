@@ -58,7 +58,7 @@ if typing.TYPE_CHECKING:
         ImageSettings,
         Point,
     )
-    from fibsem.ui.FibsemMillingWidget import FibsemMillingWidget
+    from fibsem.ui.widgets.milling_widget import FibsemMillingWidget2
     from adaptive_polish.processing.sem_segmentation import (
         AbstractAdaptivePolishingModel,
     )
@@ -94,7 +94,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         microscope: FibsemMicroscope,
         stage: FibsemMillingStage,
         asynch: bool = False,  # what does this do
-        parent_ui: FibsemMillingWidget | None = None,  # what does this do
+        parent_ui: FibsemMillingWidget2 | None = None,  # what does this do
     ) -> None:
         """Run adaptive polishing
 
@@ -102,7 +102,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             microscope (FibsemMicroscope): See `fibsem.microscope.FibsemMicroscope`
             stage (FibsemMillingStage): See `fibsem.milling.base.FibsemMillingStage`
             asynch (bool, optional): Run asynchronously? Defaults to False.
-            parent_ui (FibsemMillingWidget, optional): Defaults to None.
+            parent_ui (FibsemMillingWidget2, optional): Defaults to None.
         """
         logging.info("Running %s for %s", self.fullname, stage.name)
         run_info = StrategyRunInformation(
@@ -277,7 +277,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         expected_lamella_centre_m: Point | None,
         mill: bool = True,
         asynch: bool = False,
-        parent_ui: FibsemMillingWidget | None = None,
+        parent_ui: FibsemMillingWidget2 | None = None,
     ) -> None:
         # Acquire images
         _logger.info(
@@ -646,7 +646,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         microscope: FibsemMicroscope,
         stage: FibsemMillingStage,
         asynch: bool = False,
-        parent_ui: FibsemMillingWidget | None = None,
+        parent_ui: FibsemMillingWidget2 | None = None,
     ) -> float | None:
         # Process UI stop after checks to ensure reporting isn't skipped
         if parent_ui is not None and hasattr(parent_ui, "_milling_stop_event"):
