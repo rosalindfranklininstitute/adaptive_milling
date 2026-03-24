@@ -121,20 +121,25 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                 if fib_imaging_settings.path is None:
                     raise ValueError(f"Imaging path has not been set for {stage.name}")
 
-                lamella_directory = Path(fib_imaging_settings.path)
+                # output_directory is <lamella name>/Milling/<task name>
+                output_directory = Path(fib_imaging_settings.path)
+                lamella_directory = output_directory.parent.parent
                 lamella_name = lamella_directory.stem
+                if not lamella_directory.is_dir():
+                    raise FileNotFoundError(
+                        f"Lamella directory '{lamella_directory}' does not exist"
+                    )
                 run_info.lamella_name = lamella_name
                 lamella_ap_directory = (
-                    lamella_directory
-                    / f"adaptive_polish_{fs_utils.current_timestamp()}"
+                    output_directory / f"adaptive_polish_{fs_utils.current_timestamp()}"
                 )
                 if lamella_ap_directory.is_dir():
-                    logging.info(
+                    logging.warning(
                         "Lamella directory %s already exists, some data may be overwritten",
                         lamella_ap_directory,
                     )
                 else:
-                    lamella_ap_directory.mkdir()
+                    lamella_ap_directory.mkdir(parents=True)
 
                 (
                     lamella_ap_plots_directory,
@@ -406,6 +411,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
     def _get_imaging_settings(
         self, stage: FibsemMillingStage
     ) -> tuple[ImageSettings, ImageSettings]:
+        print(stage.imaging.to_dict())
         fib_imaging_settings = deepcopy(stage.imaging)
         sem_imaging_settings = deepcopy(stage.imaging)
 
