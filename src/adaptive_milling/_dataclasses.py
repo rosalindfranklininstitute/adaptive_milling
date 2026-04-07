@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pandas as pd
 
-from adaptive_polish.enums import StopReasons
+from adaptive_milling.enums import StopReasons
 
 if TYPE_CHECKING:
     from typing import Any

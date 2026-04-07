@@ -20,7 +20,7 @@ import numpy as np
 from scipy.signal.windows import gaussian
 from scipy.ndimage import median_filter, gaussian_filter1d
 
-from adaptive_polish.processing.image import (
+from adaptive_milling.processing.image import (
     resize_image,
     keep_only_largest_object,
     get_mask_edge,
@@ -30,7 +30,7 @@ from adaptive_polish.processing.image import (
     get_bounding_box_from_edges,
     get_centre_from_bounding_box,
 )
-from adaptive_polish.processing.sem_segmentation import (
+from adaptive_milling.processing.sem_segmentation import (
     SegmentationLabels as SemSegmentationLabels,
 )
 

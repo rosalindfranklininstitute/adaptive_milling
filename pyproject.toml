@@ -6,8 +6,8 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "adaptive_polish"
-description = "Adaptive polishing strategy for fibsemOS"
+name = "adaptive_milling"
+description = "Adaptive milling plugins for fibsemOS"
 license = { file = "LICENSE" }
 dynamic = [
   "version",
@@ -25,6 +25,10 @@ classifiers = [
   "License :: OSI Approved :: Apache Software License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 requires-python = ">=3.9"
 dependencies = [
@@ -45,14 +49,14 @@ dependencies = [
 ]
 
 [project.urls]
-"Source" = "https://github.com/rosalindfranklininstitute/adaptive_polish"
-"Tracker" = "https://github.com/rosalindfranklininstitute/adaptive_polish/issues"
+"Source" = "https://github.com/rosalindfranklininstitute/adaptive_milling"
+"Tracker" = "https://github.com/rosalindfranklininstitute/adaptive_milling/issues"
 
 [tool.setuptools.dynamic]
 readme = { file = "README.md", content-type = "text/markdown" }
 
 [tool.setuptools_scm]
-version_file = "src/adaptive_polish/_version.py"
+version_file = "src/adaptive_milling/_version.py"
 version_scheme = "release-branch-semver"
 
 [tool.setuptools.packages.find]
@@ -70,7 +74,7 @@ test = [
   "pytest-cov",
   "jinja2",
   "Pillow",
-  "adaptive_polish[ui]",
+  "adaptive_milling[ui]",
 ]
 dev = [
   "ruff",
@@ -91,7 +95,7 @@ reporting = [
   "fibsem[reporting]@git+https://github.com/fibsem-os/fibsem-os.git",
 ]
 all = [
-  "adaptive_polish[test,dev,scripts,ui,reporting]",
+  "adaptive_milling[test,dev,scripts,ui,reporting]",
 ]
 
 # Extras that are linked with the PyTorch index for CPU or CUDA version (if using uv)
@@ -170,11 +174,11 @@ explicit = true
 
 [project.entry-points.'fibsem.strategies']
 # Make the strategy discoverable by fibsem
-adaptive_polish = "adaptive_polish.strategy:AdaptivePolishMillingStrategy"
-bitmap_adaptive_polish = "adaptive_polish.strategy:BitmapAdaptivePolishMillingStrategy"
+adaptive_polish = "adaptive_milling.strategy:AdaptivePolishMillingStrategy"
+bitmap_adaptive_polish = "adaptive_milling.strategy:BitmapAdaptivePolishMillingStrategy"
 
 [project.entry-points.'fibsem.patterns']
-asymmetric_fiducial = "adaptive_polish.patterns:AsymmetricFiducialPattern"
+asymmetric_fiducial = "adaptive_milling.patterns:AsymmetricFiducialPattern"
 
 [tool.pytest.ini_options]
 addopts = "-vvvv --cov=src --cov-report term --cov-report html -p no:faulthandler -p no:napari -p no:napari-plugin-engine -p no:npe2"

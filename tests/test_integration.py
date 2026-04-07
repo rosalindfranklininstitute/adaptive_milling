@@ -13,7 +13,7 @@ from fibsem.milling import mill_stages
 from fibsem.milling.tasks import FibsemMillingTaskConfig
 from fibsem.applications.autolamella.structures import AutoLamellaTaskProtocol
 
-from adaptive_polish.config import (
+from adaptive_milling.config import (
     AdaptivePolishMillingConfig,
     BitmapAdaptivePolishMillingConfig,
 )
@@ -106,7 +106,7 @@ def raise_error_after_num_calls(
 @pytest.mark.usefixtures("skip_if_no_models")
 @pytest.mark.parametrize("protocol_path", ["normal", "bitmap"], indirect=True)
 @patch(
-    "adaptive_polish.strategy.adaptive_polish.fs_utils.current_timestamp",
+    "adaptive_milling.strategy.adaptive_polish.fs_utils.current_timestamp",
     new=MagicMock(return_value=TIMESTAMP),
 )
 def test_runs(

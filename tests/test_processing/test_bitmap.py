@@ -4,7 +4,7 @@ import pytest
 import numpy as np
 from numpy.testing import assert_array_equal
 
-from adaptive_polish.processing import bitmap as bitmap_proc
+from adaptive_milling.processing import bitmap as bitmap_proc
 
 
 @pytest.mark.parametrize(

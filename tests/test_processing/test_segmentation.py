@@ -12,12 +12,12 @@ import albumentations.pytorch
 import tifffile
 import numpy as np
 
-from adaptive_polish.processing import sem_segmentation
+from adaptive_milling.processing import sem_segmentation
 
 if typing.TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from adaptive_polish.processing.sem_segmentation import DeviceLikeType
+    from adaptive_milling.processing.sem_segmentation import DeviceLikeType
 
 
 class MockGen1Model(sem_segmentation.Gen1Model):

@@ -6,7 +6,7 @@ from typing import Literal
 
 import numpy as np
 
-from adaptive_polish.processing.image import (
+from adaptive_milling.processing.image import (
     get_mask_bounding_box,
     get_bounding_box_from_edges,
     get_centre_from_bounding_box,

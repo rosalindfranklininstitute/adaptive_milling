@@ -10,8 +10,8 @@ import numpy as np
 
 from fibsem.applications.autolamella.structures import AutoLamellaTaskProtocol
 
-from adaptive_polish.strategy import bitmap as bitmap_strategy
-from adaptive_polish._dataclasses import (
+from adaptive_milling.strategy import bitmap as bitmap_strategy
+from adaptive_milling._dataclasses import (
     LamellaStatistics,
 )
 
