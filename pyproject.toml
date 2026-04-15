@@ -32,7 +32,7 @@ dependencies = [
   "matplotlib",
   "numpy",
   "scikit-image",
-  "opencv-python",
+  "opencv-python-headless",
   "scipy",
   "tifffile",
   "imagecodecs",
