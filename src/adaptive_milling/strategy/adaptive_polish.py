@@ -15,7 +15,6 @@ from fibsem import acquire, utils as fs_utils
 from fibsem.milling import MillingStrategy
 from fibsem.milling import (
     setup_milling,
-    run_milling,
 )
 from fibsem.structures import BeamType
 
@@ -688,8 +687,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                 )
 
             # mill
-            run_milling(
-                microscope=microscope,
+            microscope.run_milling(
                 milling_current=stage.milling.milling_current,
                 milling_voltage=stage.milling.milling_voltage,
                 asynch=asynch,

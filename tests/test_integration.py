@@ -9,8 +9,7 @@ from pathlib import Path
 
 from fibsem import utils
 from fibsem.structures import FibsemImage, BeamType
-from fibsem.milling import mill_stages
-from fibsem.milling.tasks import FibsemMillingTaskConfig
+from fibsem.milling.tasks import FibsemMillingTaskConfig, run_milling_task
 from fibsem.applications.autolamella.structures import AutoLamellaTaskProtocol
 
 from adaptive_milling.config import (
@@ -180,7 +179,10 @@ def test_runs(
         ) as mock_stop_milling,
     ):
         # run milling stages
-        mill_stages(microscope=microscope, stages=milling_stages)
+        run_milling_task(
+            microscope=microscope,
+            config=FibsemMillingTaskConfig.from_stages(milling_stages),
+        )
 
         assert mock_stop_milling.call_count == expected_loops, (
             "stop_milling was called an unexpected number of times"
