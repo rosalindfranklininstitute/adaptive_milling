@@ -1,4 +1,4 @@
-# Code of Conduct - adaptive polish
+# Code of Conduct - Adaptive Milling
 
 ## Our Pledge
 
