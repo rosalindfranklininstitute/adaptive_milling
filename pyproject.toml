@@ -42,7 +42,7 @@ dependencies = [
   "imagecodecs",
   "albumentations",
   "segmentation-models-pytorch >= 0.4.0",
-  "fibsem@git+https://github.com/fibsem-os/fibsem-os.git",
+  "fibsem >= 0.5.0",
   "torch >= 2.7.0",
   "torchvision >= 0.22.0",
   "matplotlib_scalebar >= 0.8.1",
@@ -89,10 +89,10 @@ scripts = [
 ]
 ui = [
   "pyqt5-qt5 == 5.15.2 ; platform_system == 'Windows'",
-  "fibsem[ui]@git+https://github.com/fibsem-os/fibsem-os.git",
+  "fibsem[ui] >= 0.5.0",
 ]
 reporting = [
-  "fibsem[reporting]@git+https://github.com/fibsem-os/fibsem-os.git",
+  "fibsem[reporting] >= 0.5.0",
 ]
 all = [
   "adaptive_milling[test,dev,scripts,ui,reporting]",
