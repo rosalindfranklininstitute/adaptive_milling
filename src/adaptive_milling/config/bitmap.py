@@ -11,7 +11,7 @@ class BitmapAdaptivePolishMillingConfig(AdaptivePolishMillingConfig):
         default=2e-6,
         metadata={
             "label": "Max. milling GIS thickness",
-            "tooltip": "The milling dwell time will not be reduced where the GIS thickness above this threshold.",
+            "tooltip": "Milling dwell time will locally be reduced where the GIS thickness is below this threshold.",
             "type": float,
             "minimum": 0.01,
             "step": 0.01,
@@ -24,7 +24,7 @@ class BitmapAdaptivePolishMillingConfig(AdaptivePolishMillingConfig):
         default=0.15e-6,
         metadata={
             "label": "Min. milling GIS thickness",
-            "tooltip": "The milling dwell time will be 0 where the GIS thickness below this threshold.",
+            "tooltip": "Milling dwell time will locally be 0 where the GIS thickness below this threshold.",
             "type": float,
             "minimum": 0,
             "step": 0.01,
@@ -37,7 +37,7 @@ class BitmapAdaptivePolishMillingConfig(AdaptivePolishMillingConfig):
         default=0.03,
         metadata={
             "label": "Mean dwell multiplier threshold",
-            "tooltip": "Milling will be stopped if the mean dwell time multiplier drops below this threshold.",
+            "tooltip": "Stop polishing if the mean dwell time multiplier drops below this threshold.",
             "type": float,
             "minimum": 0,
             "maximum": 1,
@@ -49,7 +49,7 @@ class BitmapAdaptivePolishMillingConfig(AdaptivePolishMillingConfig):
         default=0.05,
         metadata={
             "label": "Max. dwell multiplier threshold",
-            "tooltip": "Milling will be stopped if the maximum dwell time multiplier drops below this threshold.",
+            "tooltip": "Stop polishing if the maximum dwell time multiplier drops below this threshold.",
             "type": float,
             "minimum": 0,
             "maximum": 1,
@@ -84,7 +84,7 @@ class BitmapAdaptivePolishMillingConfig(AdaptivePolishMillingConfig):
         default=False,
         metadata={
             "label": "Apply boundary smoothing",
-            "tooltip": "Option to apply smoothing to the lamella thickness based on shape of the lamella-GIS boundary when creating the bitmap patterns.",
+            "tooltip": "Apply smoothing to the lamella thickness based on shape of the lamella-GIS boundary when creating the bitmap patterns.",
             "type": bool,
             "advanced": True,
         },
@@ -103,7 +103,7 @@ class BitmapAdaptivePolishMillingConfig(AdaptivePolishMillingConfig):
         default=4.3,
         metadata={
             "label": "Incident angle sputter ratio",
-            "tooltip": "The ratio between the maximum sputter rate and the sputter rate at an incident angle of 0 degrees. Disabled if a ratio of 1 is given.",
+            "tooltip": "Ratio between the maximum sputter rate and the sputter rate at an incident angle of 0 degrees. Disabled if a ratio of 1 is given.",
             "minimum": 1,
         },
     )
@@ -111,7 +111,7 @@ class BitmapAdaptivePolishMillingConfig(AdaptivePolishMillingConfig):
         default=False,
         metadata={
             "label": "Incident angle above GIS min",
-            "tooltip": "Option to apply incident angle scaling (if used) to the entire signal or above the configured min. milling GIS thickness threshold.",
+            "tooltip": "Apply incident angle scaling (if used) to the entire signal or above the configured min. milling GIS thickness threshold.",
             "type": bool,
             "advanced": True,
         },
@@ -120,7 +120,7 @@ class BitmapAdaptivePolishMillingConfig(AdaptivePolishMillingConfig):
         default=True,
         metadata={
             "label": "Mask cracks",
-            "tooltip": "Option to mask out cracks in the bitmap pattern.",
+            "tooltip": "Mask out cracks in the bitmap pattern.",
         },
     )
     pattern_alignment: Literal["centre", "convolve"] = field(

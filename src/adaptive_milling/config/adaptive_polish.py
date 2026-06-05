@@ -87,7 +87,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         default=30.0e-12,  # 30μm²
         metadata={
             "label": "Min. lamella area",
-            "tooltip": "Minimum lamella area below which something is wrong.",
+            "tooltip": "Stop polishing if the segmented lamella area is smaller than this size, which may indicate a segmentation issue.",
             "type": float,
             "minimum": 0,
             "step": 0.1,
@@ -102,7 +102,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         default=70e-6,
         metadata={
             "label": "Max. lamella drift",
-            "tooltip": "Maximum lamella movement between cycles beyond which something is wrong.",
+            "tooltip": "Stop polishing if the segmented lamella area has moved more than this between cycles, which would suggest that something is wrong.",
             "type": float,
             "minimum": 0,
             "scale": 1e6,
@@ -115,7 +115,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         default=True,
         metadata={
             "label": "Align SEM",
-            "tooltip": "Option centre the lamella in the SEM image before beginning.",
+            "tooltip": "Centre the lamella in the SEM image before beginning.",
             "type": bool,
             "advanced": True,
         },
@@ -124,7 +124,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         default=True,
         metadata={
             "label": "Save segmentations",
-            "tooltip": "Option to save the raw and clean SEM segmentations (useful for improving segmentation model).",
+            "tooltip": "Save the raw and clean SEM segmentations (useful for improving segmentation model).",
             "type": bool,
             "advanced": True,
         },
