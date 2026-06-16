@@ -6,9 +6,6 @@ from math import ceil, floor
 import numpy as np
 from skimage import measure, transform
 
-from fibsem import conversions
-from fibsem.structures import Point
-
 from adaptive_milling.exceptions import CentringException
 
 if typing.TYPE_CHECKING:
@@ -259,28 +256,6 @@ def get_bounding_box_scaled_to_image(
         bbox_mask[2] * prediction_to_image_scale_multiplier,
         bbox_mask[3] * prediction_to_image_scale_multiplier,
     ), bbox_mask
-
-
-def get_centre_points_from_bounding_box(
-    bbox: typing.Tuple[float, float, float, float],
-    image: NDArray[typing.Any],
-    pixel_size_m: float,
-) -> tuple[Point, Point]:
-    centre_px = get_centre_from_bounding_box(bbox, subpixel_accuracy=True)
-
-    if np.any(np.isnan(centre_px)):
-        raise CentringException("Centre pixel coordinates contain a NaN")
-
-    centre_px_point = Point(x=centre_px[1], y=centre_px[0])
-
-    # Convert to microscope image coordinates (0, 0 at centre of image)
-    centre_m = conversions.image_to_microscope_image_coordinates(
-        centre_px_point,
-        image,
-        pixel_size_m,
-        subpixel_precision=True,
-    )
-    return centre_m, centre_px_point
 
 
 def resize_interp_1d(

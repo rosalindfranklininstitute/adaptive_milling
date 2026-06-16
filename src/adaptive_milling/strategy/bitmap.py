@@ -18,15 +18,13 @@ from adaptive_milling.processing.bitmap import (
     create_bitmap_array,
     get_angle_dwell_multiplier,
 )
-from adaptive_milling.processing.lamella import (
+from adaptive_milling.processing.segmentation import (
     crop_xlims_centre,
     crop_xlims_convolve_filtered,
     get_lamella_gis_boundary_peturbations,
+    SEMSegmentationLabels,
 )
 from adaptive_milling.processing.image import resize_interp_1d, get_mask_edge
-from adaptive_milling.processing.sem_segmentation import (
-    SegmentationLabels as SemSegmentationLabels,
-)
 from adaptive_milling.plot import create_milling_cycle_plot
 from adaptive_milling.exceptions import StopMillingException
 from adaptive_milling.enums import StopReasons
@@ -83,7 +81,7 @@ class BitmapAdaptivePolishMillingStrategy(
             boundary_peturbations = None
 
         if self.config.incident_angle_sputter_ratio > 1:
-            gis_mask = lamella_info.clean_prediction == SemSegmentationLabels.GIS.value
+            gis_mask = lamella_info.clean_prediction == SEMSegmentationLabels.GIS.value
             gis_lower_edge_coordinates = get_mask_edge(gis_mask, axis=0, side="max")
         else:
             gis_lower_edge_coordinates = None

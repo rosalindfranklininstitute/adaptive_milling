@@ -14,9 +14,8 @@ from fibsem.structures import Point, FibsemImage
 from fibsem.milling import FibsemMillingStage
 from fibsem.milling.patterning.plotting import draw_milling_patterns
 
-from adaptive_milling.processing.sem_segmentation import (
-    SegmentationLabels as SemSegmentationLabels,
-)
+from adaptive_milling.processing.segmentation import SEMSegmentationLabels
+
 
 if typing.TYPE_CHECKING:
     from os import PathLike
@@ -34,7 +33,7 @@ plt.rc("figure", titlesize="large")
 
 def __create_cmap() -> ListedColormap:
     _tab10 = plt.get_cmap("tab10")
-    return ListedColormap([_tab10(_.value) for _ in SemSegmentationLabels])
+    return ListedColormap([_tab10(_.value) for _ in SEMSegmentationLabels])
 
 
 LABEL_CMAP = __create_cmap()
@@ -65,7 +64,7 @@ def create_centring_plot(
         # Overlay the cleaned lamella
         mask_lamella_clean,
         cmap=ListedColormap(
-            [(0, 0, 0, 0), LABEL_CMAP(SemSegmentationLabels.LAMELLA.value)]
+            [(0, 0, 0, 0), LABEL_CMAP(SEMSegmentationLabels.LAMELLA.value)]
         ),
         extent=extent,
         alpha=0.5,

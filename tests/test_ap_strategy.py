@@ -18,7 +18,7 @@ from fibsem.applications.autolamella.structures import AutoLamellaTaskProtocol
 
 from adaptive_milling.strategy import adaptive_polish as ap_strategy
 from adaptive_milling._dataclasses import CycleInformation
-from adaptive_milling.processing.sem_segmentation import SegmentationLabels as SemLabels
+from adaptive_milling.processing.segmentation import SEMSegmentationLabels as SemLabels
 from adaptive_milling.exceptions import SegmentationException
 from adaptive_milling.enums import StopReasons
 
@@ -432,8 +432,8 @@ def test_max_milling_cycles_not_exceeded(
 @patch.object(
     ap_strategy.fs_utils, "current_timestamp", new=MagicMock(return_value=TIMESTAMP)
 )
-@patch.object(ap_strategy.lamella_proc, "clean_prediction")
-@patch.object(ap_strategy.lamella_proc, "filter_gis_thickness")
+@patch.object(ap_strategy.seg_proc, "clean_prediction")
+@patch.object(ap_strategy.seg_proc, "filter_gis_thickness")
 def test_results_saved(
     mock_filter_gis_thickness,
     mock_clean_prediction,
@@ -816,7 +816,7 @@ def test_check_lamella(
 @pytest.mark.parametrize("file_exists", [True, False], ids=["file", "no file"])
 @patch("pathlib.Path.is_file")
 @patch("os.path.isfile")
-@patch("adaptive_milling.strategy.adaptive_polish.sem_seg_proc.load_model")
+@patch("adaptive_milling.strategy.adaptive_polish.load_model")
 def test_load_model(
     mock_load_sem_model, mock_os_isfile, mock_pathlib_is_file, file_exists: bool
 ) -> None:
