@@ -24,7 +24,7 @@ if typing.TYPE_CHECKING:
     from pathlib import Path
     from fibsem.structures import ImageSettings
 
-_AP_MILLING_CONFIG_SETTINGS = {
+_AP_MILLING_CONFIG_SETTINGS: dict[str, typing.Any] = {
     "align_sem": True,
     "gis_stop_min": 0,  # Ensures check passes
     "gis_stop_median": 0,  # Ensures check passes
@@ -72,12 +72,17 @@ def create_dummy_acquire_image_function(
     fib_image_paths = itertools.cycle(fib_image_dir.glob("*.tif"))
     sem_image_paths = itertools.cycle(sem_image_dir.glob("*.tif"))
 
-    def dummy_acquire_image(image_settings: ImageSettings) -> FibsemImage:
-        if image_settings.beam_type == BeamType.ELECTRON:
+    def dummy_acquire_image(
+        image_settings: ImageSettings, beam_type: BeamType | None = None
+    ) -> FibsemImage:
+        if beam_type is None:
+            beam_type = image_settings.beam_type
+
+        if beam_type == BeamType.ELECTRON:
             return FibsemImage.load(str(next(sem_image_paths)))
-        elif image_settings.beam_type == BeamType.ION:
+        elif beam_type == BeamType.ION:
             return FibsemImage.load(str(next(fib_image_paths)))
-        raise ValueError(f"Invalid beam time {image_settings.beam_type}")
+        raise ValueError(f"Invalid beam type {beam_type}")
 
     return dummy_acquire_image
 
@@ -146,9 +151,11 @@ def test_runs(
         "The strategy and protocol configs do not match"
     )
 
-    lamella_directory = tmp_path / "lamella"
+    lamella_name = "lamella"
+    task_name = "Task"
+    lamella_directory = tmp_path / lamella_name
     lamella_directory.mkdir()
-    output_directory = lamella_directory / "Milling" / "Task"
+    output_directory = lamella_directory / "Milling" / task_name
     adaptive_polish_dir = output_directory / f"adaptive_polish_{TIMESTAMP}"
 
     # Set stage imaging settings
@@ -156,7 +163,7 @@ def test_runs(
     milling_stages[0].imaging.hfw = 4e-5
     milling_stages[0].imaging.dwell_time = 2e-7
     milling_stages[0].imaging.frame_integration = 2
-    milling_stages[0].imaging.path = output_directory
+    milling_stages[0].imaging.path = lamella_directory
 
     # Check milling loop runs but exits at the end of loop calls_before_exception + 1
     with (
@@ -181,7 +188,7 @@ def test_runs(
         # run milling stages
         run_milling_task(
             microscope=microscope,
-            config=FibsemMillingTaskConfig.from_stages(milling_stages),
+            config=FibsemMillingTaskConfig.from_stages(milling_stages, name=task_name),
         )
 
         assert mock_stop_milling.call_count == expected_loops, (
