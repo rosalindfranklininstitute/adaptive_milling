@@ -52,6 +52,9 @@ dependencies = [
 "Source" = "https://github.com/rosalindfranklininstitute/adaptive_milling"
 "Tracker" = "https://github.com/rosalindfranklininstitute/adaptive_milling/issues"
 
+[project.scripts]
+"am-segment" = "adaptive_milling.cli.segment:main"
+
 [tool.setuptools.dynamic]
 readme = { file = "README.md", content-type = "text/markdown" }
 
