@@ -26,12 +26,9 @@ from adaptive_milling.processing.image import (
     keep_only_largest_object,
     get_mask_edge,
     get_mask_edges,
-    bbox_to_xlims,
-    bbox_to_ylims,
     get_bounding_box_from_edges,
     get_centre_from_bounding_box,
 )
-
 
 if typing.TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -120,28 +117,6 @@ def get_lamella_centre(
     return get_centre_from_bounding_box(bbox, subpixel_accuracy=subpixel_accuracy)
 
 
-def filter_gis_thickness_OLD(
-    gis_thickness_px: NDArray[np.integer | np.float64 | np.float32],
-    window_size_m: float,
-    pixel_size_m: float,
-) -> NDArray[np.float64 | np.float32]:
-    # TODO: Change window_size_m to beam FWHM
-    # FWHM is 2 * sqrt(2 * np.log(2)) * sigma, which is approx 2.355 * sigma
-    # The number of points in the gaussian curve should be approx 6 * std for convolution
-    window_size_px = int(window_size_m / pixel_size_m)
-    if window_size_px % 2 == 0:
-        # An even window size means we won't get central point of the curve
-        window_size_px += 1
-    sigma = window_size_px / 6
-    gaussian_curve = gaussian(window_size_px, std=sigma)
-    gaussian_curve /= gaussian_curve.sum()
-    return np.convolve(
-        np.pad(gis_thickness_px, int(gaussian_curve.size / 2), mode="constant"),
-        gaussian_curve,
-        mode="valid",
-    )
-
-
 def filter_gis_thickness(
     gis_thickness_px: NDArray[np.integer | np.float64 | np.float32],
     xlims_px: tuple[int, int],
@@ -179,65 +154,6 @@ def masks_to_labels(
         [_.value for _ in masks.keys()],
         default=default_value,
     )
-
-
-def get_gis_thickness_old(
-    prediction: NDArray[np.integer[typing.Any]],
-    lamella_mask_bbox: tuple[float, float, float, float],
-    image_shape: typing.Optional[tuple[int, int]],
-) -> NDArray[np.float32]:
-    """Get an array of GIS thickness values across the width specified by image_shape (or by the masks not given)
-
-    Note: undefined pixels will be treated as if they are vacuum/crack."""
-    # Only include mask that is lamella and below
-    prediction_xlims = bbox_to_xlims(lamella_mask_bbox, (0, prediction.shape[0] - 1))
-    prediction_ylims = bbox_to_ylims(lamella_mask_bbox, (0, prediction.shape[1] - 1))
-
-    slicer = (
-        slice(prediction_ylims[0], None),
-        slice(prediction_xlims[0], prediction_xlims[1] + 1),
-    )
-    prediction_slice = prediction[slicer]
-
-    mask_lamella = prediction_slice == SEMSegmentationLabels.LAMELLA.value
-    mask_gis = prediction_slice == SEMSegmentationLabels.GIS.value
-    mask_background = prediction_slice == SEMSegmentationLabels.BACKGROUND.value
-    mask_bad = np.isin(
-        prediction_slice,
-        (
-            SEMSegmentationLabels.CRACK.value,
-            SEMSegmentationLabels.VACUUM.value,
-        ),
-    )
-
-    mask_gis_background = mask_gis + mask_background
-
-    mask_good = mask_gis + mask_lamella
-
-    good_bottom = get_mask_edge(mask_good, axis=0, side="max")
-
-    # Set everything above the good bottom to False for mask_bad
-    for y, x in good_bottom:
-        mask_bad[: y + 1, x] = False
-
-    # Ignore GIS/background below the top of the lower crack/vacuum area
-    for y, x in get_mask_edge(mask_bad, axis=0, side="min"):
-        mask_gis_background[y:, x] = False
-
-    # Ignore GIS/background above the bottom of the lamella
-    for y, x in get_mask_edge(mask_lamella, axis=0, side="max"):
-        mask_gis_background[: y + 1, x] = False
-
-    new_mask_gis: NDArray[typing.Union[np.bool_, np.float64]]
-    new_mask_gis = np.zeros(prediction.shape, dtype=np.bool_)
-    new_mask_gis[slicer] = mask_gis_background
-
-    if image_shape is not None:
-        new_mask_gis = resize_image(
-            new_mask_gis,
-            new_shape=(image_shape[0], image_shape[1]),
-        )
-    return np.sum(new_mask_gis, axis=0, dtype=np.float32)  # type: ignore
 
 
 def get_gis_thickness(
