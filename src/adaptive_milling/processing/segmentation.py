@@ -12,6 +12,7 @@
 # either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import annotations
+import enum
 import logging
 import typing
 from math import ceil, floor
@@ -25,13 +26,8 @@ from adaptive_milling.processing.image import (
     keep_only_largest_object,
     get_mask_edge,
     get_mask_edges,
-    bbox_to_xlims,
-    bbox_to_ylims,
     get_bounding_box_from_edges,
     get_centre_from_bounding_box,
-)
-from adaptive_milling.processing.sem_segmentation import (
-    SegmentationLabels as SemSegmentationLabels,
 )
 
 if typing.TYPE_CHECKING:
@@ -41,13 +37,21 @@ if typing.TYPE_CHECKING:
 _logger = logging.getLogger(__name__)
 
 
+class SEMSegmentationLabels(enum.IntEnum):
+    BACKGROUND = 0
+    GIS = 1
+    LAMELLA = 2
+    CRACK = 3
+    VACUUM = 4
+
+
 def clean_lamella(prediction: NDArray[np.integer]) -> NDArray[np.bool_]:
-    mask_lamella = prediction == SemSegmentationLabels.LAMELLA.value
+    mask_lamella = prediction == SEMSegmentationLabels.LAMELLA.value
     mask_gis_crack = np.isin(
         prediction,
         (
-            SemSegmentationLabels.GIS.value,
-            SemSegmentationLabels.CRACK.value,
+            SEMSegmentationLabels.GIS.value,
+            SEMSegmentationLabels.CRACK.value,
         ),
     )
 
@@ -57,8 +61,8 @@ def clean_lamella(prediction: NDArray[np.integer]) -> NDArray[np.bool_]:
 
 def prediction_to_masks(
     prediction: NDArray[np.integer[typing.Any]],
-) -> dict[SemSegmentationLabels, NDArray[np.bool_]]:
-    return {label: prediction == label.value for label in SemSegmentationLabels}
+) -> dict[SEMSegmentationLabels, NDArray[np.bool_]]:
+    return {label: prediction == label.value for label in SEMSegmentationLabels}
 
 
 def clean_prediction(
@@ -76,28 +80,28 @@ def clean_prediction(
     # (e.g. layers of gis and crack would mess up the GIS reading) but this
     # seems unlikely.
     mask_largest_foreground = keep_only_largest_object(
-        masks[SemSegmentationLabels.LAMELLA]
-        + masks[SemSegmentationLabels.GIS]
-        + masks[SemSegmentationLabels.CRACK]
+        masks[SEMSegmentationLabels.LAMELLA]
+        + masks[SEMSegmentationLabels.GIS]
+        + masks[SEMSegmentationLabels.CRACK]
     )
 
-    non_foreground_crack = masks[SemSegmentationLabels.CRACK] & ~mask_largest_foreground
-    non_foreground_gis = masks[SemSegmentationLabels.GIS] & ~mask_largest_foreground
+    non_foreground_crack = masks[SEMSegmentationLabels.CRACK] & ~mask_largest_foreground
+    non_foreground_gis = masks[SEMSegmentationLabels.GIS] & ~mask_largest_foreground
     return masks_to_labels(
         masks={
-            SemSegmentationLabels.LAMELLA: mask_largest_foreground
-            & masks[SemSegmentationLabels.LAMELLA],
-            SemSegmentationLabels.GIS: mask_largest_foreground
-            & masks[SemSegmentationLabels.GIS],
-            SemSegmentationLabels.CRACK: mask_largest_foreground
-            & masks[SemSegmentationLabels.CRACK],
-            SemSegmentationLabels.VACUUM: masks[SemSegmentationLabels.VACUUM]
+            SEMSegmentationLabels.LAMELLA: mask_largest_foreground
+            & masks[SEMSegmentationLabels.LAMELLA],
+            SEMSegmentationLabels.GIS: mask_largest_foreground
+            & masks[SEMSegmentationLabels.GIS],
+            SEMSegmentationLabels.CRACK: mask_largest_foreground
+            & masks[SEMSegmentationLabels.CRACK],
+            SEMSegmentationLabels.VACUUM: masks[SEMSegmentationLabels.VACUUM]
             + non_foreground_crack,
-            SemSegmentationLabels.BACKGROUND: masks[SemSegmentationLabels.BACKGROUND]
+            SEMSegmentationLabels.BACKGROUND: masks[SEMSegmentationLabels.BACKGROUND]
             + non_foreground_gis,
         },
         # Use an unused value so anything that isn't filled in is visible
-        default_value=len(SemSegmentationLabels),
+        default_value=len(SEMSegmentationLabels),
     ).astype(np.uint8)
 
 
@@ -111,28 +115,6 @@ def get_lamella_centre(
         get_mask_edges(mask=array), edge_finding=edge_finding, percentile=percentile
     )
     return get_centre_from_bounding_box(bbox, subpixel_accuracy=subpixel_accuracy)
-
-
-def filter_gis_thickness_OLD(
-    gis_thickness_px: NDArray[np.integer | np.float64 | np.float32],
-    window_size_m: float,
-    pixel_size_m: float,
-) -> NDArray[np.float64 | np.float32]:
-    # TODO: Change window_size_m to beam FWHM
-    # FWHM is 2 * sqrt(2 * np.log(2)) * sigma, which is approx 2.355 * sigma
-    # The number of points in the gaussian curve should be approx 6 * std for convolution
-    window_size_px = int(window_size_m / pixel_size_m)
-    if window_size_px % 2 == 0:
-        # An even window size means we won't get central point of the curve
-        window_size_px += 1
-    sigma = window_size_px / 6
-    gaussian_curve = gaussian(window_size_px, std=sigma)
-    gaussian_curve /= gaussian_curve.sum()
-    return np.convolve(
-        np.pad(gis_thickness_px, int(gaussian_curve.size / 2), mode="constant"),
-        gaussian_curve,
-        mode="valid",
-    )
 
 
 def filter_gis_thickness(
@@ -164,76 +146,13 @@ def check_minimum_area(
 
 
 def masks_to_labels(
-    masks: dict[SemSegmentationLabels, NDArray[np.bool_]],
+    masks: dict[SEMSegmentationLabels, NDArray[np.bool_]],
     default_value: int | float = np.nan,
 ) -> NDArray[np.float64]:
     return np.select(
         list(masks.values()),
         [_.value for _ in masks.keys()],
         default=default_value,
-    )
-
-
-def get_gis_thickness_old(
-    prediction: NDArray[np.integer[typing.Any]],
-    lamella_mask_bbox: tuple[float, float, float, float],
-    image_shape: typing.Optional[tuple[int, int]],
-) -> NDArray[np.float32]:
-    """Get an array of GIS thickness values across the width specified by image_shape (or by the masks not given)
-
-    Note: undefined pixels will be treated as if they are vacuum/crack."""
-    # Only include mask that is lamella and below
-    prediction_xlims = bbox_to_xlims(lamella_mask_bbox, (0, prediction.shape[0] - 1))
-    prediction_ylims = bbox_to_ylims(lamella_mask_bbox, (0, prediction.shape[1] - 1))
-
-    slicer = (
-        slice(prediction_ylims[0], None),
-        slice(prediction_xlims[0], prediction_xlims[1] + 1),
-    )
-    prediction_slice = prediction[slicer]
-
-    mask_lamella = prediction_slice == SemSegmentationLabels.LAMELLA.value
-    mask_gis = prediction_slice == SemSegmentationLabels.GIS.value
-    mask_background = prediction_slice == SemSegmentationLabels.BACKGROUND.value
-    mask_bad = np.isin(
-        prediction_slice,
-        (
-            SemSegmentationLabels.CRACK.value,
-            SemSegmentationLabels.VACUUM.value,
-        ),
-    )
-
-    mask_gis_background = mask_gis + mask_background
-
-    mask_good = mask_gis + mask_lamella
-
-    good_bottom = get_mask_edge(mask_good, axis=0, side="max")
-
-    # Set everything above the good bottom to False for mask_bad
-    for y, x in good_bottom:
-        mask_bad[: y + 1, x] = False
-
-    # Ignore GIS/background below the top of the lower crack/vacuum area
-    for y, x in get_mask_edge(mask_bad, axis=0, side="min"):
-        mask_gis_background[y:, x] = False
-
-    # Ignore GIS/background above the bottom of the lamella
-    for y, x in get_mask_edge(mask_lamella, axis=0, side="max"):
-        mask_gis_background[: y + 1, x] = False
-
-    new_mask_gis: NDArray[typing.Union[np.bool_, np.float64]]
-    new_mask_gis = np.zeros(prediction.shape, dtype=np.bool_)
-    new_mask_gis[slicer] = mask_gis_background
-
-    if image_shape is not None:
-        new_mask_gis = resize_image(
-            new_mask_gis,
-            new_shape=(image_shape[0], image_shape[1]),
-        )
-    return np.sum(
-        new_mask_gis,
-        axis=0,
-        dtype=np.float32,
     )
 
 
@@ -263,14 +182,14 @@ def get_gis_thickness(
     )
     prediction_slice = prediction[slicer]
 
-    mask_lamella = prediction_slice == SemSegmentationLabels.LAMELLA.value
-    mask_gis = prediction_slice == SemSegmentationLabels.GIS.value
-    mask_background = prediction_slice == SemSegmentationLabels.BACKGROUND.value
+    mask_lamella = prediction_slice == SEMSegmentationLabels.LAMELLA.value
+    mask_gis = prediction_slice == SEMSegmentationLabels.GIS.value
+    mask_background = prediction_slice == SEMSegmentationLabels.BACKGROUND.value
     mask_bad = np.isin(
         prediction_slice,
         (
-            SemSegmentationLabels.CRACK.value,
-            SemSegmentationLabels.VACUUM.value,
+            SEMSegmentationLabels.CRACK.value,
+            SEMSegmentationLabels.VACUUM.value,
         ),
     )
 
@@ -318,7 +237,7 @@ def get_gis_thickness(
         dtype=np.float32,
     )
 
-    return sliced_gis_thickness, xlims_out
+    return sliced_gis_thickness, xlims_out  # type: ignore
 
 
 def crop_xlims_convolve(
@@ -408,7 +327,7 @@ def get_lamella_gis_boundary_peturbations(
     prediction: NDArray[np.integer[typing.Any]],
     sigma: float,
 ) -> NDArray[np.float64]:
-    lamella_mask = prediction == SemSegmentationLabels.LAMELLA.value
+    lamella_mask = prediction == SEMSegmentationLabels.LAMELLA.value
     lower_edge_coords = get_mask_edge(lamella_mask, axis=0, side="max").astype(
         np.float64
     )

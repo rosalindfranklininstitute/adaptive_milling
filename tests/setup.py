@@ -8,9 +8,7 @@ from datetime import datetime
 
 import numpy as np
 
-from adaptive_milling.processing.sem_segmentation import (
-    SegmentationLabels as SemLabels,
-)
+from adaptive_milling.processing.segmentation import SEMSegmentationLabels as SemLabels
 
 if typing.TYPE_CHECKING:
     from numpy.typing import NDArray
