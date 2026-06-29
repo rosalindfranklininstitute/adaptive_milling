@@ -132,6 +132,7 @@ def test_get_gis_thickness_edge_issues(scaling: float) -> None:
         lamella_bbox,
         background_lamella_overlap,
         vacuum_bottom_pixels,
+        crack_touches_lamella=False,
     )
 
     gis_thickness, xlims_out = seg_proc.get_gis_thickness(

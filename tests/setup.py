@@ -73,6 +73,7 @@ def create_mock_prediction_gis_thickness(
     add_crack: bool = True,
     top_background_size: int = 3,
     top_vacuum_size: int = 3,
+    crack_touches_lamella: bool = True,
 ) -> tuple[NDArray[np.uint8], NDArray[np.uint8], NDArray[np.uint8]]:
     segmented_gis_thickness: NDArray[np.uint8] = np.asarray(
         (
@@ -144,7 +145,8 @@ def create_mock_prediction_gis_thickness(
 
     if add_crack:
         # Add a crack to GIS layer
-        remaining_gis_thickness = 1
+        # Must be touching lamella to be considered a crack by post-processing
+        remaining_gis_thickness = bool(not crack_touches_lamella)
         crack_coords = (
             lamella_bbox[2] + 1 + remaining_gis_thickness,
             lamella_bbox[3] - lamella_bbox[1] + 1,

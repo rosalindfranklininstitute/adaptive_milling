@@ -85,16 +85,26 @@ def clean_prediction(
         + masks[SEMSegmentationLabels.CRACK]
     )
 
-    non_foreground_crack = masks[SEMSegmentationLabels.CRACK] & ~mask_largest_foreground
-    non_foreground_gis = masks[SEMSegmentationLabels.GIS] & ~mask_largest_foreground
+    mask_foreground_lamella = (
+        mask_largest_foreground & masks[SEMSegmentationLabels.LAMELLA]
+    )
+    mask_foreground_gis = mask_largest_foreground & masks[SEMSegmentationLabels.GIS]
+    mask_foreground_crack = (
+        keep_only_largest_object(
+            mask_largest_foreground
+            & (mask_foreground_lamella + masks[SEMSegmentationLabels.CRACK])
+        )
+        & masks[SEMSegmentationLabels.CRACK]
+    )
+
+    non_foreground_gis = masks[SEMSegmentationLabels.GIS] & ~mask_foreground_gis
+    non_foreground_crack = masks[SEMSegmentationLabels.CRACK] & ~mask_foreground_crack
+
     return masks_to_labels(
         masks={
-            SEMSegmentationLabels.LAMELLA: mask_largest_foreground
-            & masks[SEMSegmentationLabels.LAMELLA],
-            SEMSegmentationLabels.GIS: mask_largest_foreground
-            & masks[SEMSegmentationLabels.GIS],
-            SEMSegmentationLabels.CRACK: mask_largest_foreground
-            & masks[SEMSegmentationLabels.CRACK],
+            SEMSegmentationLabels.LAMELLA: mask_foreground_lamella,
+            SEMSegmentationLabels.GIS: mask_foreground_gis,
+            SEMSegmentationLabels.CRACK: mask_foreground_crack,
             SEMSegmentationLabels.VACUUM: masks[SEMSegmentationLabels.VACUUM]
             + non_foreground_crack,
             SEMSegmentationLabels.BACKGROUND: masks[SEMSegmentationLabels.BACKGROUND]
