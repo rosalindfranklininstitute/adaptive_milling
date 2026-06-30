@@ -73,7 +73,6 @@ def create_mock_prediction_gis_thickness(
     add_crack: bool = True,
     top_background_size: int = 3,
     top_vacuum_size: int = 3,
-    crack_touches_lamella: bool = True,
 ) -> tuple[NDArray[np.uint8], NDArray[np.uint8], NDArray[np.uint8]]:
     segmented_gis_thickness: NDArray[np.uint8] = np.asarray(
         (
@@ -145,8 +144,7 @@ def create_mock_prediction_gis_thickness(
 
     if add_crack:
         # Add a crack to GIS layer
-        # Must be touching lamella to be considered a crack by post-processing
-        remaining_gis_thickness = bool(not crack_touches_lamella)
+        remaining_gis_thickness = 1
         crack_coords = (
             lamella_bbox[2] + 1 + remaining_gis_thickness,
             lamella_bbox[3] - lamella_bbox[1] + 1,
@@ -158,6 +156,12 @@ def create_mock_prediction_gis_thickness(
             crack_coords[1],
         ] = SemLabels.CRACK.value
         expected_gis_thickness[crack_coords[1]] = remaining_gis_thickness
+        # Must be touching lamella to be considered a crack by post-processing (diagonal is fine)
+        prediction[
+            crack_coords[0] - remaining_gis_thickness : crack_coords[0],
+            crack_coords[1] + 1,
+        ] = SemLabels.CRACK.value
+        expected_gis_thickness[crack_coords[1] + 1] -= remaining_gis_thickness
 
     return prediction, segmented_gis_thickness, expected_gis_thickness
 
