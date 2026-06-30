@@ -24,6 +24,7 @@ from scipy.ndimage import median_filter, gaussian_filter1d
 from adaptive_milling.processing.image import (
     resize_image,
     keep_only_largest_object,
+    filter_connected,
     get_mask_edge,
     get_mask_edges,
     get_bounding_box_from_edges,
@@ -76,9 +77,6 @@ def clean_prediction(
     # Generate bool masks
     masks = prediction_to_masks(prediction=prediction)
 
-    # Doing these all together could be an issue if the model fails too hard
-    # (e.g. layers of gis and crack would mess up the GIS reading) but this
-    # seems unlikely.
     mask_largest_foreground = keep_only_largest_object(
         masks[SEMSegmentationLabels.LAMELLA]
         + masks[SEMSegmentationLabels.GIS]
@@ -90,10 +88,8 @@ def clean_prediction(
     )
     mask_foreground_gis = mask_largest_foreground & masks[SEMSegmentationLabels.GIS]
     mask_foreground_crack = (
-        keep_only_largest_object(
-            mask_largest_foreground
-            & (mask_foreground_lamella + masks[SEMSegmentationLabels.CRACK])
-        )
+        # Only include the cracks that are connected to some lamella
+        filter_connected(mask_foreground_lamella, masks[SEMSegmentationLabels.CRACK])
         & masks[SEMSegmentationLabels.CRACK]
     )
 
