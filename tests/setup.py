@@ -156,6 +156,12 @@ def create_mock_prediction_gis_thickness(
             crack_coords[1],
         ] = SemLabels.CRACK.value
         expected_gis_thickness[crack_coords[1]] = remaining_gis_thickness
+        # Must be touching lamella to be considered a crack by post-processing (diagonal is fine)
+        prediction[
+            crack_coords[0] - remaining_gis_thickness : crack_coords[0],
+            crack_coords[1] + 1,
+        ] = SemLabels.CRACK.value
+        expected_gis_thickness[crack_coords[1] + 1] -= remaining_gis_thickness
 
     return prediction, segmented_gis_thickness, expected_gis_thickness
 
