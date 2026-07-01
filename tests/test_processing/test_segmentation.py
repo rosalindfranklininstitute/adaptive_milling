@@ -186,6 +186,23 @@ def test_keep_only_largest_object(dtype: type, connectivity: int) -> None:
     assert_array_equal(output, expected_output)
 
 
+def test_filter_connected() -> None:
+    m1 = np.zeros((4, 6), dtype=np.bool_)
+    m1[0::2, 0::3] = True
+    m1[2, 5] = True
+    m2 = np.zeros_like(m1)
+    m2[0, 1] = True
+    m2[0, 5] = True
+    m2[3, 0] = True
+    m2[3, 4] = True
+
+    m_connected = m1 + m2
+    # Remove unconnected pixels
+    m_connected[0, 3] = False
+    m_connected[0, 5] = False
+    assert_array_equal(image_proc.filter_connected(m1, m2), m_connected)
+
+
 def test_clean_prediction() -> None:
     background_lamella_overlap = 20
     image_shape: tuple[int, int] = (200, 250)

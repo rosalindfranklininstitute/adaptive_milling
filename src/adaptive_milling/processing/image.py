@@ -42,6 +42,22 @@ def keep_only_largest_object(
     return labels == prop.label
 
 
+def filter_connected(
+    mask1: NDArray[np.bool_],
+    mask2: NDArray[np.bool_],
+    connectivity: int = 2,
+) -> NDArray[np.bool_]:
+    labels = measure.label(mask1 + mask2, connectivity=connectivity)
+
+    connected_labels = np.zeros_like(labels, dtype=np.bool_)
+    for prop in measure.regionprops(labels):
+        region_label = labels == prop.label
+        if np.any(mask1 & region_label) and np.any(mask2 & region_label):
+            # If region contains both labels, add it to the connected_labels mask
+            connected_labels += region_label
+    return connected_labels
+
+
 def resize_image(
     image: NDArray[typing.Any], new_shape: typing.Tuple[int, int]
 ) -> NDArray[np.float64]:
