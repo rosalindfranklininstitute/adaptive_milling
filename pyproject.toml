@@ -14,9 +14,9 @@ dynamic = [
   "readme",
 ]
 authors = [
+  { name = "Thomas Fish", email = "thomas.fish@rfi.ac.uk" },
   { name = "Elaine Ho", email = "elaine.ho@rfi.ac.uk" },
   { name = "Luis Perdigao", email = "luis.perdigao@rfi.ac.uk" },
-  { name = "Thomas Fish", email = "thomas.fish@rfi.ac.uk" },
   { name = "Thomas Glen", email = "thomas.glen@rfi.ac.uk" },
   { name = "Casper Berger", email = "casper.berger@rfi.ac.uk" },
 ]
