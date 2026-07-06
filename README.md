@@ -2,43 +2,68 @@
 
 Adaptive milling plugins for [fibsemOS](https://github.com/fibsem-os/fibsem-os). This package currently contains:
 
-* AdaptivePolishing milling strategy, which uses machine learning to determine when polishing is complete.
-* AsymmetricFiducial milling pattern, which adds some asymmetry to the default Fiducial pattern to hopefully improve alignment.
+- **AdaptivePolishing**: a milling strategy that uses machine learning to determine when polishing is complete.
+- **AsymmetricFiducial**: a milling pattern that adds some asymmetry to the default Fiducial pattern.
 
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![CI](https://github.com/rosalindfranklininstitute/adaptive_milling/actions/workflows/python-test.yml/badge.svg)](https://github.com/rosalindfranklininstitute/adaptive_milling/actions/workflows/python-test.yml)
 
 ## Installation
 
-You can install the package by running the following commands (by specifying `ui`, AutoLamella will also be installed):
+First clone this repository to your local machine:
 
-```
-pip install -e .[ui]
-```
-
-or
-
-```
-uv sync --extra ui
+```Shell
+git clone https://github.com/rosalindfranklininstitute/adaptive_milling.git
+cd adaptive_milling
 ```
 
-If you are installing using `uv`, then you can specify the PyTorch platform by adding `--extra` followed by the appropriate extra name (version must be equal to or below the system CUDA version, which can be checked with the command `nvidia-smi`):
+### [uv](https://docs.astral.sh/uv/getting-started/installation/) (recommended)
 
-| Version   | Extra |
-| --------- | ----- |
-| CPU       | cpu   |
-| CUDA 11.3 | cu113 |
-| CUDA 11.8 | cu118 |
-| CUDA 12.6 | cu126 |
-| CUDA 12.8 | cu128 |
+```Shell
+# Create a virtual environment (Python 3.11 to match AutoScript's environment)
+uv venv --python 3.11
+
+# Activate the virtual environment (Windows)
+.venv\Scripts\activate
+
+# Install including AutoLamella from fibsemOS with the appropriate PyTorch backend for your machine
+uv pip install . --extra ui --torch-backend auto
+```
+
+To activate the virtual environment on Linux systems: `source .venv/bin/activate`
+
+### [miniforge](https://conda-forge.org/download/)
+
+```Shell
+# Create a virtual environment (Python 3.11 to match AutoScript's environment)
+conda create -p ./.venv python=3.11
+
+# Activate the virtual environment
+conda activate ./.venv
+
+# Install PyTorch (select appropriate compute platform, see table below)
+python -m pip install pytorch --index-url <Index URL>
+
+# Install including AutoLamella from fibsemOS
+python -m pip install -e .[ui]
+```
+
+If using CUDA, the version must be below or equal to the the system CUDA version, which can be checked with the command `nvidia-smi`.
+
+| Compute Platform | Index URL                              |
+| ---------------- | -------------------------------------- |
+| CPU              | https://download.pytorch.org/whl/cpu   |
+| CUDA 11.3        | https://download.pytorch.org/whl/cu113 |
+| CUDA 11.8        | https://download.pytorch.org/whl/cu118 |
+| CUDA 12.6        | https://download.pytorch.org/whl/cu126 |
+| CUDA 12.8        | https://download.pytorch.org/whl/cu128 |
 
 ## Testing
 
-You can run the package tests by running the following commands:
+You can run the package tests using pytest:
 
-```
-pip install .[test]
-pytest
+```Shell
+uv run pytest
 ```
 
 ## Issues
@@ -47,10 +72,10 @@ Please use the [GitHub issue tracker](https://github.com/rosalindfranklininstitu
 
 ## Contributions
 
-If you would like to help contribute to profet, please read our [contribution](CONTRIBUTING.md) guide and [code of conduct](CODE_OF_CONDUCT.md).
+If you would like to help contribute to project, please read our [contribution](CONTRIBUTING.md) guide and [code of conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
 Copyright Rosalind Franklin Institute, 2024.
 
-Distributed under the terms of the Apache-2.0 license, adaptive polish is free and open source software.
+Distributed under the terms of the Apache-2.0 license, Adaptive Milling is free and open source software.
