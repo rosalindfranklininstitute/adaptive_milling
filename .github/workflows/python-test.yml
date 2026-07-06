@@ -36,4 +36,4 @@ jobs:
         with:
           src: "./src"
       - name: Install & test
-        run: uv run --locked  --extra cpu --extra test pytest
+        run: uv run --locked  --extra cpu pytest
