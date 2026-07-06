@@ -69,18 +69,6 @@ exclude = [
 ]
 
 [project.optional-dependencies]
-test = [
-  "pytest",
-  "pytest-cov",
-  "jinja2",
-  "Pillow",
-  "adaptive_milling[ui]",
-]
-dev = [
-  "ruff",
-  "mypy",
-  "microsoft-python-type-stubs@git+https://github.com/microsoft/python-type-stubs.git",
-]
 scripts = [
   "jupyter",
   "ipywidgets",
@@ -95,7 +83,7 @@ reporting = [
   "fibsem[reporting] >= 0.5.0",
 ]
 all = [
-  "adaptive_milling[test,dev,scripts,ui,reporting]",
+  "adaptive_milling[scripts,ui,reporting]",
 ]
 
 # Extras that are linked with the PyTorch index for CPU or CUDA version (if using uv)
@@ -201,4 +189,22 @@ include = [
   "src/**/*.py",
   "src/**/*.ipynb",
   "tests/**/*.py",
+]
+
+[dependency-groups]
+test = [
+  "pytest",
+  "pytest-cov",
+  "jinja2",
+  "Pillow",
+  "adaptive_milling[ui]",
+]
+typing = [
+  "mypy",
+  "microsoft-python-type-stubs@git+https://github.com/microsoft/python-type-stubs.git",
+]
+dev = [
+  "ruff",
+  { include-group = "test" },
+  { include-group = "typing" },
 ]
