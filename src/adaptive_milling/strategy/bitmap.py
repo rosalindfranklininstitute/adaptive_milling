@@ -156,6 +156,7 @@ class BitmapAdaptivePolishMillingStrategy(
             depth=pattern.depth,
             upper_trench_height=pattern.upper_trench_height,
             lower_trench_height=pattern.lower_trench_height,
+            passes=pattern.passes,
             time=pattern.time,
             array=bitmap_array,
         )
