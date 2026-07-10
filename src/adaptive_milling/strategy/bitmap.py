@@ -159,6 +159,7 @@ class BitmapAdaptivePolishMillingStrategy(
             passes=pattern.passes,
             time=pattern.time,
             array=bitmap_array,
+            interpolation="bicubic",
         )
 
     def _convert_rectangle_pattern(
@@ -194,6 +195,7 @@ class BitmapAdaptivePolishMillingStrategy(
             passes=pattern.passes,
             scan_direction=pattern.scan_direction,
             array=bitmap_array,
+            interpolation="bicubic",
         )
 
     @staticmethod
