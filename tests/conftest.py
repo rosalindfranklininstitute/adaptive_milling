@@ -17,34 +17,7 @@ _MODELS_DIR: Path = (
 
 # Note: Gen 1 models below v4 apply padding before normalisation, so will not be accurate
 _MODEL_PATHS: dict[str, list[Path]] = {
-    "0": [
-        _MODELS_DIR / "Gen0" / "2024-02-24_0013_gis_lamela_crack_pytorch_AUnet.ptchkp"
-    ],
-    "1.0p": [
-        _MODELS_DIR
-        / "Gen1"
-        / "gen01_performance_768_v3"
-        / "gen01_performance_768_v3.pth"
-    ],
-    "1.0q": [
-        _MODELS_DIR / "Gen1" / "gen01_quality_1536_v3" / "gen01_quality_1536_v3.pth"
-    ],
-    "1.1q": [
-        _MODELS_DIR / "Gen1" / "gen01_quality_1536_v4" / "gen01_quality_1536_v4.pth"
-    ],
-    "1.2q": [
-        _MODELS_DIR
-        / "Gen1"
-        / "gen01_quality_1536_v5_grayscale"
-        / "cryo_sem_epoch_56.pth"
-    ],
-    "1.3fpn": [
-        _MODELS_DIR
-        / "Gen1"
-        / "gen01_quality_1536_v7_FPN"
-        / "gen01_quality_1536_v7_FPN.pth"
-    ],
-    "1.4fpn": [
+    "1.0": [
         _MODELS_DIR / "Gen1" / "gen01_V8_FPN_RGB" / "cryo_sem_epoch_49.pth",
         _MODELS_DIR / "Gen1" / "gen01_quality_1536_v9_FPN" / "cryo_sem_epoch_73.pth",
     ],

@@ -6,19 +6,7 @@ from typing import TYPE_CHECKING
 import torch
 
 from adaptive_milling.models.abstract import AbstractAdaptivePolishingModel
-from adaptive_milling.models.gen0 import Gen0Model
-from adaptive_milling.models.gen1 import (
-    Gen1GreyscalePerformanceModel,
-    Gen1GreyscaleQualityModel,
-    Gen1ImprovedPerformanceModel,
-    Gen1ImprovedPreprocessingFPNModel,
-    Gen1ImprovedPreprocessingPerformanceModel,
-    Gen1ImprovedPreprocessingQualityModel,
-    Gen1ImprovedQualityModel,
-    Gen1PerformanceModel,
-    Gen1QualityModel,
-    Gen1RGBImprovedPreprocessingFPNModel,
-)
+from adaptive_milling.models.gen1 import Gen1Model
 
 if TYPE_CHECKING:
     from os import PathLike
@@ -31,18 +19,7 @@ _logger = logging.getLogger(__name__)
 
 # Using str keys allows for semantic versioning
 MODEL_GENERATIONS_DICT: dict[str, type[AbstractAdaptivePolishingModel]] = {
-    "0": Gen0Model,
-    "1.0p": Gen1PerformanceModel,  # v<=3
-    "1.0q": Gen1QualityModel,  # v<=3
-    "1.1p": Gen1ImprovedPerformanceModel,  # v4
-    "1.1q": Gen1ImprovedQualityModel,  # v4
-    "1.2p": Gen1GreyscalePerformanceModel,  # v5
-    "1.2q": Gen1GreyscaleQualityModel,  # v5
-    # Updated preprocessing:
-    "1.3p": Gen1ImprovedPreprocessingPerformanceModel,
-    "1.3q": Gen1ImprovedPreprocessingQualityModel,
-    "1.3fpn": Gen1ImprovedPreprocessingFPNModel,
-    "1.4fpn": Gen1RGBImprovedPreprocessingFPNModel,
+    "1.0": Gen1Model,
 }
 
 
