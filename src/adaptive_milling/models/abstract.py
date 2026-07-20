@@ -60,9 +60,8 @@ class AbstractAdaptivePolishingModel(ABC):
             "AbstractAdaptivePolishingModel.preprocess must be overridden"
         )
 
-    @staticmethod
     @abstractmethod
-    def load(model_path: str | PathLike[str]) -> torch.nn.Module:
+    def load(self, model_path: str | PathLike[str]) -> torch.nn.Module:
         raise NotImplementedError(
             "AbstractAdaptivePolishingModel.load must be overridden"
         )
