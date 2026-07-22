@@ -422,7 +422,7 @@ def test_max_milling_cycles_not_exceeded(
                     microscope=microscope,
                     stage=milling_stages[i],
                     asynch=False,
-                    parent_ui=None,
+                    stop_event=None,
                 )
                 for i in range(max_milling_cycles)
             ]
@@ -538,7 +538,7 @@ def test_results_saved(
                     microscope=microscope,
                     stage=mock_update_milling_stage.return_value,
                     asynch=False,
-                    parent_ui=None,
+                    stop_event=None,
                 )
                 for _ in range(max_milling_cycles)
             ]
