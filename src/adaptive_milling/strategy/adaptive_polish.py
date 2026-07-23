@@ -12,6 +12,7 @@ import tifffile
 
 # fibsem
 from fibsem import acquire, utils as fs_utils
+from fibsem.cancellation import OperationCancelledError
 from fibsem.milling import MillingStrategy
 from fibsem.milling import (
     setup_milling,
@@ -49,6 +50,7 @@ from adaptive_milling._dataclasses import (
 if typing.TYPE_CHECKING:
     from os import PathLike
     from collections.abc import Generator
+    from threading import Event
     from numpy.typing import NDArray
     from fibsem.milling import FibsemMillingStage
     from fibsem.microscope import FibsemMicroscope
@@ -92,6 +94,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         stage: FibsemMillingStage,
         asynch: bool = False,  # what does this do
         parent_ui: FibsemMillingWidget2 | None = None,  # what does this do
+        stop_event: Event | None = None,
     ) -> None:
         """Run adaptive polishing
 
@@ -100,16 +103,23 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             stage (FibsemMillingStage): See `fibsem.milling.base.FibsemMillingStage`
             asynch (bool, optional): Run asynchronously? Defaults to False.
             parent_ui (FibsemMillingWidget2, optional): Defaults to None.
+            stop_event (Event, optional): Defaults to None.
         """
         logging.info("Running %s for %s", self.fullname, stage.name)
         run_info = StrategyRunInformation(
             strategy_name=self.name,
             stage_name=stage.name,
         )
+
+        if stop_event is None and parent_ui is not None:
+            stop_event = getattr(parent_ui, "_milling_stop_event", None)
+
         with run_info.timestamps.strategy:
             with run_info.timestamps.setup:
                 # setup milling
-                setup_milling(microscope=microscope, milling_stage=stage)
+                setup_milling(
+                    microscope=microscope, milling_stage=stage, stop_event=stop_event
+                )
 
                 fib_imaging_settings, sem_imaging_settings = self._get_imaging_settings(
                     stage
@@ -225,7 +235,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                                 # Don't mill on the final cycle, just run checks
                                 mill=milling_cycle < self.config.max_milling_cycles,
                                 asynch=asynch,
-                                parent_ui=parent_ui,
+                                stop_event=stop_event,
                             )
                     _logger.info(
                         "%s complete (ended due to maximum milling cycles)", self.name
@@ -239,6 +249,10 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                     # segmentation issues)
                     run_info.set_end_reason(e.reason)
                     _logger.warning("Stopping %s early due to: %s", self.name, str(e))
+                    if e.reason is StopReasons.USER:
+                        raise OperationCancelledError(
+                            "Operation cancelled by user"
+                        ) from e
                 except Exception as e:
                     run_info.set_end_reason(f"{e.__class__.__name__}({e})")
                     _logger.error(
@@ -274,7 +288,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         expected_lamella_centre_m: Point | None,
         mill: bool = True,
         asynch: bool = False,
-        parent_ui: FibsemMillingWidget2 | None = None,
+        stop_event: Event | None = None,
     ) -> None:
         # Acquire images
         _logger.info(
@@ -318,7 +332,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                         microscope=microscope,
                         stage=stage,
                         asynch=asynch,
-                        parent_ui=parent_ui,
+                        stop_event=stop_event,
                     )
                     if cycle_info.lamella_statistics is not None:
                         cycle_info.lamella_statistics.estimated_milling_time_s = (
@@ -643,15 +657,14 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         microscope: FibsemMicroscope,
         stage: FibsemMillingStage,
         asynch: bool = False,
-        parent_ui: FibsemMillingWidget2 | None = None,
+        stop_event: Event | None = None,
     ) -> float | None:
         # Process UI stop after checks to ensure reporting isn't skipped
-        if parent_ui is not None and hasattr(parent_ui, "_milling_stop_event"):
-            if parent_ui._milling_stop_event.is_set():
-                raise StopEarlyError(
-                    "Stop milling requested via the UI",
-                    reason=StopReasons.USER,
-                )
+        if stop_event is not None and stop_event.is_set():
+            raise StopEarlyError(
+                "Stop milling requested via the UI",
+                reason=StopReasons.USER,
+            )
 
         # ensure milling settings are still correctly set
         microscope.setup_milling(mill_settings=stage.milling)

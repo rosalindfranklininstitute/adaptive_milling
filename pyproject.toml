@@ -42,7 +42,7 @@ dependencies = [
   "imagecodecs",
   "albumentations",
   "segmentation-models-pytorch >= 0.4.0",
-  "fibsem >= 0.5.0",
+  "fibsem >= 0.5.1",
   "torch >= 2.7.0",
   "torchvision >= 0.22.0",
   "matplotlib_scalebar >= 0.8.1",
@@ -80,10 +80,10 @@ scripts = [
 ]
 ui = [
   "pyqt5-qt5 == 5.15.2 ; platform_system == 'Windows'",
-  "fibsem[ui] >= 0.5.0",
+  "fibsem[ui] >= 0.5.1",
 ]
 reporting = [
-  "fibsem[reporting] >= 0.5.0",
+  "fibsem[reporting] >= 0.5.1",
 ]
 all = [
   "adaptive_milling[scripts,ui,reporting]",
