@@ -44,6 +44,7 @@ dependencies = [
   "torch >= 2.7.0",
   "torchvision >= 0.22.0",
   "matplotlib_scalebar >= 0.8.1",
+  "Pillow",
 ]
 
 [project.urls]
