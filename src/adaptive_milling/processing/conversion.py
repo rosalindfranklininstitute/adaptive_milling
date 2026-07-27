@@ -14,7 +14,7 @@ if typing.TYPE_CHECKING:
 
 
 def bounding_box_to_centre_points(
-    bbox: typing.Tuple[float, float, float, float],
+    bbox: tuple[float, float, float, float],
     image: NDArray[typing.Any],
     pixel_size_m: float,
 ) -> tuple[Point, Point]:

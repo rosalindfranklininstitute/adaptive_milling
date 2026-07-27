@@ -166,7 +166,7 @@ def get_gis_thickness(
     prediction: NDArray[np.integer[typing.Any]],
     xlims: tuple[int | None, int | None] = (None, None),
     ylims: tuple[int | None, int | None] = (None, None),
-    image_shape: typing.Optional[tuple[int, int]] = None,
+    image_shape: tuple[int, int] | None = None,
     clean_edges: bool = True,
 ) -> tuple[NDArray[np.float32], tuple[int, int]]:
     """Get an array of GIS thickness values across the width specified by image_shape (or by the masks not given)
@@ -215,7 +215,7 @@ def get_gis_thickness(
     for y, x in get_mask_edge(mask_lamella, axis=0, side="max"):
         mask_gis_background[: y + 1, x] = False
 
-    new_mask_gis: NDArray[typing.Union[np.bool_, np.float64]]
+    new_mask_gis: NDArray[np.bool_ | np.float64]
     new_mask_gis = np.full(
         prediction.shape, fill_value=np.nan if clean_edges else 0, dtype=np.float64
     )

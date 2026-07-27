@@ -168,9 +168,9 @@ def create_mock_prediction_gis_thickness(
 
 @dataclass(repr=False)
 class SimpleRectangleLamellaMask:
-    shape: InitVar[typing.Union[NDArray[np.integer], typing.Tuple[int, int]]]
+    shape: InitVar[[NDArray[np.integer] | tuple[int, int]]]
     box_proportion: InitVar[int] = 20
-    centre_px: InitVar[typing.Optional[typing.Tuple[int, int]]] = None
+    centre_px: InitVar[tuple[int, int] | None] = None
     array: NDArray[np.bool_] = field(init=False)
     centre: NDArray[np.int_] = field(init=False)
     bounding_box: NDArray[np.int_] = field(init=False)

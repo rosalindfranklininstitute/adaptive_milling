@@ -29,7 +29,7 @@ def keep_only_largest_object(
     `fill_value`, background is 0.
 
     Args:
-        mask (NDArray[typing.Union[np.integer[typing.Any], np.bool_]]): Segmentation mask
+        mask (NDArray[np.integer[typing.Any] | np.bool_]): Segmentation mask
         connectivity (int): connectivity when finding objects (1 is edges only, 2 includes corners)
 
     Returns:
@@ -59,7 +59,7 @@ def filter_connected(
 
 
 def resize_image(
-    image: NDArray[typing.Any], new_shape: typing.Tuple[int, int]
+    image: NDArray[typing.Any], new_shape: tuple[int, int]
 ) -> NDArray[np.float64]:
     if not isinstance(image.dtype, np.floating):
         # Needs to be floating type if we want interpolation
@@ -126,7 +126,7 @@ def get_mask_edge(
 
 def get_mask_edges(
     mask: NDArray[np.bool_],
-) -> typing.List[typing.List[NDArray[np.uint16]]]:
+) -> list[list[NDArray[np.uint16]]]:
     return [
         [
             get_mask_edge(mask, axis=0, side="min"),
@@ -253,7 +253,7 @@ def get_bounding_box_scaled_to_image(
     edge_finding: typing.Literal[
         "median", "mean", "min", "max", "percentile"
     ] = "median",
-    percentile: typing.Optional[float] = None,
+    percentile: float | None = None,
 ) -> tuple[tuple[float, float, float, float], tuple[float, float, float, float]]:
     # This does assume square pixels
     prediction_to_image_scale_multiplier: float
