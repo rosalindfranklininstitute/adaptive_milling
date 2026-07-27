@@ -73,9 +73,9 @@ def ensure_subdirectories(directory: Path, *subdirectory_names: str) -> list[Pat
 
     directories = [directory / _ for _ in subdirectory_names]
 
-    for directory in directories:
+    for d in directories:
         # Ensure folders exist
-        directory.mkdir(exist_ok=True)
+        d.mkdir(exist_ok=True)
     return directories
 
 
