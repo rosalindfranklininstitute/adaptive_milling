@@ -29,7 +29,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         metadata={
             "label": "Model generation",
             "tooltip": "The generation of model to use (defaults to latest).",
-            "type": str,
+            "type": list[str],
             "items": list(MODEL_GENERATIONS_DICT.keys()),
         },
     )
