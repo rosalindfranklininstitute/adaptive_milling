@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import logging
 from typing import TYPE_CHECKING, Protocol
 
@@ -11,8 +12,9 @@ from torchvision.transforms import v2
 from adaptive_milling.models.abstract import AbstractAdaptivePolishingModel
 
 if TYPE_CHECKING:
-    from typing import Union, Literal, Any
     from os import PathLike
+    from typing import Any, Literal, Union
+
     from numpy.typing import NDArray
 
     DeviceLikeType = Union[str, torch.device, int]

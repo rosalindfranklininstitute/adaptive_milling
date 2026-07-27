@@ -12,23 +12,24 @@
 # either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import annotations
+
 import enum
 import logging
 import typing
 from math import ceil, floor
 
 import numpy as np
+from scipy.ndimage import gaussian_filter1d, median_filter
 from scipy.signal.windows import gaussian
-from scipy.ndimage import median_filter, gaussian_filter1d
 
 from adaptive_milling.processing.image import (
-    resize_image,
-    keep_only_largest_object,
     filter_connected,
-    get_mask_edge,
-    get_mask_edges,
     get_bounding_box_from_edges,
     get_centre_from_bounding_box,
+    get_mask_edge,
+    get_mask_edges,
+    keep_only_largest_object,
+    resize_image,
 )
 
 if typing.TYPE_CHECKING:

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import typing
 from functools import partial
 from math import ceil, floor
@@ -9,8 +10,9 @@ from skimage import measure, transform
 from adaptive_milling.exceptions import CentringException
 
 if typing.TYPE_CHECKING:
-    from numpy.typing import NDArray
     from collections.abc import Callable, Sequence
+
+    from numpy.typing import NDArray
 
 
 def count_objects(

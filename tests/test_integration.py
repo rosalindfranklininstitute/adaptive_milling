@@ -1,16 +1,16 @@
 from __future__ import annotations
-import pytest
-from unittest.mock import patch, MagicMock
 
 import functools
 import itertools
 import typing
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
+import pytest
 from fibsem import utils
-from fibsem.structures import FibsemImage, BeamType
-from fibsem.milling.tasks import FibsemMillingTaskConfig, run_milling_task
 from fibsem.applications.autolamella.structures import AutoLamellaTaskProtocol
+from fibsem.milling.tasks import FibsemMillingTaskConfig, run_milling_task
+from fibsem.structures import BeamType, FibsemImage
 
 from adaptive_milling.config import (
     AdaptivePolishMillingConfig,
@@ -22,6 +22,7 @@ from . import setup
 if typing.TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
+
     from fibsem.structures import ImageSettings
 
 _AP_MILLING_CONFIG_SETTINGS: dict[str, typing.Any] = {

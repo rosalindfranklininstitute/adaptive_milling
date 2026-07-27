@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import logging
 import math
 import time
@@ -9,57 +10,58 @@ from pathlib import Path
 
 import numpy as np
 import tifffile
-
-# fibsem
-from fibsem import acquire, utils as fs_utils
+from fibsem import acquire
+from fibsem import utils as fs_utils
 from fibsem.cancellation import OperationCancelledError
-from fibsem.milling import MillingStrategy
 from fibsem.milling import (
+    MillingStrategy,
     setup_milling,
 )
 from fibsem.structures import BeamType
 
-# Adaptive polish
 import adaptive_milling.utils as ap_utils
-from adaptive_milling.exceptions import (
-    StopEarlyError,
-    StopMillingException,
-    SegmentationException,
-    CentringException,
-)
-from adaptive_milling.enums import StopReasons
-from adaptive_milling.models import load_model
-from adaptive_milling.processing import image as image_proc, segmentation as seg_proc
-from adaptive_milling.processing.conversion import bounding_box_to_centre_points
-from adaptive_milling.plot import (
-    create_centring_plot,
-    create_milling_cycle_plot,
-    create_summary_gis_plot,
+from adaptive_milling._dataclasses import (
+    CycleInformation,
+    LamellaInformation,
+    LamellaStatistics,
+    StrategyRunInformation,
 )
 from adaptive_milling.config import (
     AdaptivePolishMillingConfig,
     TAdaptivePolishMillingConfig,
 )
-from adaptive_milling._dataclasses import (
-    LamellaInformation,
-    LamellaStatistics,
-    StrategyRunInformation,
-    CycleInformation,
+from adaptive_milling.enums import StopReasons
+from adaptive_milling.exceptions import (
+    CentringException,
+    SegmentationException,
+    StopEarlyError,
+    StopMillingException,
 )
+from adaptive_milling.models import load_model
+from adaptive_milling.plot import (
+    create_centring_plot,
+    create_milling_cycle_plot,
+    create_summary_gis_plot,
+)
+from adaptive_milling.processing import image as image_proc
+from adaptive_milling.processing import segmentation as seg_proc
+from adaptive_milling.processing.conversion import bounding_box_to_centre_points
 
 if typing.TYPE_CHECKING:
-    from os import PathLike
     from collections.abc import Generator
+    from os import PathLike
     from threading import Event
-    from numpy.typing import NDArray
-    from fibsem.milling import FibsemMillingStage
+
     from fibsem.microscope import FibsemMicroscope
+    from fibsem.milling import FibsemMillingStage
     from fibsem.structures import (
         FibsemImage,
         ImageSettings,
         Point,
     )
     from fibsem.ui.widgets.milling_widget import FibsemMillingWidget2
+    from numpy.typing import NDArray
+
     from adaptive_milling.models.abstract import AbstractAdaptivePolishingModel
 
 

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import time
 from dataclasses import asdict, dataclass, field
 from types import TracebackType
@@ -11,8 +12,9 @@ from adaptive_milling.enums import StopReasons
 
 if TYPE_CHECKING:
     from typing import Any
-    from numpy.typing import NDArray
+
     from fibsem.structures import FibsemImage
+    from numpy.typing import NDArray
 
 
 @dataclass

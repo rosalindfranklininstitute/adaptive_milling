@@ -1,7 +1,9 @@
 from __future__ import annotations
-import pytest
+
 import typing
 from contextlib import contextmanager
+
+import pytest
 
 
 class ExceptionForMocking(Exception):

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import logging
 from typing import TYPE_CHECKING
 
@@ -7,21 +8,21 @@ import torch
 from adaptive_milling.models.abstract import AbstractAdaptivePolishingModel
 from adaptive_milling.models.gen0 import Gen0Model
 from adaptive_milling.models.gen1 import (
-    Gen1PerformanceModel,
-    Gen1QualityModel,
-    Gen1ImprovedPerformanceModel,
-    Gen1ImprovedQualityModel,
     Gen1GreyscalePerformanceModel,
     Gen1GreyscaleQualityModel,
+    Gen1ImprovedPerformanceModel,
+    Gen1ImprovedPreprocessingFPNModel,
     Gen1ImprovedPreprocessingPerformanceModel,
     Gen1ImprovedPreprocessingQualityModel,
-    Gen1ImprovedPreprocessingFPNModel,
+    Gen1ImprovedQualityModel,
+    Gen1PerformanceModel,
+    Gen1QualityModel,
     Gen1RGBImprovedPreprocessingFPNModel,
 )
 
 if TYPE_CHECKING:
-    from typing import Union
     from os import PathLike
+    from typing import Union
 
     DeviceLikeType = Union[str, torch.device, int]
 

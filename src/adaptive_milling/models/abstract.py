@@ -1,15 +1,17 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
-import torch
 import albumentations as alb
 import numpy as np
+import torch
 
 if TYPE_CHECKING:
-    from typing import Union, Any
     from os import PathLike
+    from typing import Any, Union
+
     from numpy.typing import NDArray
 
     DeviceLikeType = Union[str, torch.device, int]

@@ -1,8 +1,8 @@
 from __future__ import annotations
+
 import typing
 
 import numpy as np
-
 from fibsem import conversions
 from fibsem.structures import Point
 

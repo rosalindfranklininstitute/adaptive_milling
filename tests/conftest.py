@@ -1,9 +1,10 @@
 from __future__ import annotations
-from importlib import resources
-from pathlib import Path
-import pytest
 
 import typing
+from importlib import resources
+from pathlib import Path
+
+import pytest
 
 _MODELS_DIR: Path = (
     Path.home()

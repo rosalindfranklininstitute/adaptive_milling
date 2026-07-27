@@ -1,7 +1,8 @@
 from __future__ import annotations
+
 import json
 from pathlib import Path
-from typing import Protocol, TypeVar, Self, overload, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Protocol, Self, TypeVar, overload
 
 if TYPE_CHECKING:
     from os import PathLike

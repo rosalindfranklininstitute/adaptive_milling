@@ -1,12 +1,13 @@
 from __future__ import annotations
+
 import typing
-import yaml
-from dataclasses import dataclass, InitVar, field
-from pathlib import Path
-from jinja2 import Environment, FileSystemLoader
+from dataclasses import InitVar, dataclass, field
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
+import yaml
+from jinja2 import Environment, FileSystemLoader
 
 from adaptive_milling.processing.segmentation import SEMSegmentationLabels as SemLabels
 

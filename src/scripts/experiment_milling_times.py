@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-import statistics
 import logging
+import statistics
 import typing
 from pathlib import Path
 

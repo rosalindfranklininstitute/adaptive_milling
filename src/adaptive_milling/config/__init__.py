@@ -1,4 +1,5 @@
 import typing
+
 from adaptive_milling.config.adaptive_polish import AdaptivePolishMillingConfig
 from adaptive_milling.config.bitmap import BitmapAdaptivePolishMillingConfig
 

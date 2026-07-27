@@ -1,28 +1,29 @@
 from __future__ import annotations
+
 import logging
 import typing
 from pathlib import Path
 
-import numpy as np
-from matplotlib.patches import Rectangle
-from matplotlib.colors import ListedColormap
 import matplotlib.pyplot as plt
-from matplotlib_scalebar.scalebar import ScaleBar
-
+import numpy as np
 from fibsem import constants
-from fibsem.structures import Point, FibsemImage
 from fibsem.milling import FibsemMillingStage
 from fibsem.milling.patterning.plotting import draw_milling_patterns
+from fibsem.structures import FibsemImage, Point
+from matplotlib.colors import ListedColormap
+from matplotlib.patches import Rectangle
+from matplotlib_scalebar.scalebar import ScaleBar
 
 from adaptive_milling.processing.segmentation import SEMSegmentationLabels
 
-
 if typing.TYPE_CHECKING:
-    from os import PathLike
     from collections.abc import Sequence
-    from numpy.typing import NDArray, ArrayLike
-    from matplotlib.axes import Axes
+    from os import PathLike
+
     from fibsem.structures import FibsemImage
+    from matplotlib.axes import Axes
+    from numpy.typing import ArrayLike, NDArray
+
     from adaptive_milling._dataclasses import StrategyRunInformation
 
 _logger = logging.getLogger(__name__)

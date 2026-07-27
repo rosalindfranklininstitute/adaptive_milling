@@ -1,11 +1,12 @@
 from __future__ import annotations
+
 import argparse
 import logging
 import typing
 from pathlib import Path
 
-import tifffile
 import numpy as np
+import tifffile
 
 from adaptive_milling.exceptions import SegmentationException
 

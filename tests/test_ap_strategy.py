@@ -1,26 +1,26 @@
 from __future__ import annotations
-import pytest
-from unittest.mock import patch, MagicMock, PropertyMock, call, ANY
-from numpy.testing import assert_array_equal
 
 import json
 import typing
 from copy import deepcopy
 from pathlib import Path
+from unittest.mock import ANY, MagicMock, PropertyMock, call, patch
 from uuid import uuid4
 
 import numpy as np
+import pytest
+from fibsem import acquire
+from fibsem import utils as fibsem_utils
+from fibsem.applications.autolamella.structures import AutoLamellaTaskProtocol
+from fibsem.structures import BeamType, FibsemImage, Point
+from numpy.testing import assert_array_equal
 from PIL import Image
 
-from fibsem import utils as fibsem_utils, acquire
-from fibsem.structures import BeamType, Point, FibsemImage
-from fibsem.applications.autolamella.structures import AutoLamellaTaskProtocol
-
-from adaptive_milling.strategy import adaptive_polish as ap_strategy
 from adaptive_milling._dataclasses import CycleInformation
-from adaptive_milling.processing.segmentation import SEMSegmentationLabels as SemLabels
-from adaptive_milling.exceptions import SegmentationException
 from adaptive_milling.enums import StopReasons
+from adaptive_milling.exceptions import SegmentationException
+from adaptive_milling.processing.segmentation import SEMSegmentationLabels as SemLabels
+from adaptive_milling.strategy import adaptive_polish as ap_strategy
 
 from . import setup, utils
 
