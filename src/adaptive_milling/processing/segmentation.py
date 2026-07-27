@@ -153,7 +153,7 @@ def check_minimum_area(
 
 def masks_to_labels(
     masks: dict[SEMSegmentationLabels, NDArray[np.bool_]],
-    default_value: int | float = np.nan,
+    default_value: float = np.nan,
 ) -> NDArray[np.float64]:
     return np.select(
         list(masks.values()),
