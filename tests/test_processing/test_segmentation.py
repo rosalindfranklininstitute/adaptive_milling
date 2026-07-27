@@ -1,16 +1,17 @@
 from __future__ import annotations
+
+import itertools
+import typing
+from unittest.mock import ANY, MagicMock, patch
+
+import numpy as np
 import pytest
-from unittest.mock import MagicMock, patch, ANY
+from fibsem.detection.detection import AdaptiveLamellaCentre
 from numpy.testing import assert_array_equal
 
-import typing
-import itertools
-import numpy as np
-
-from adaptive_milling.processing import segmentation as seg_proc
 from adaptive_milling.processing import image as image_proc
+from adaptive_milling.processing import segmentation as seg_proc
 
-from fibsem.detection.detection import AdaptiveLamellaCentre
 from ..setup import SimpleRectangleLamellaMask, create_mock_prediction_gis_thickness
 
 if typing.TYPE_CHECKING:

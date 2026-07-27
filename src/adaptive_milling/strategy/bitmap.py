@@ -1,39 +1,41 @@
 from __future__ import annotations
+
 import logging
 from typing import TYPE_CHECKING
 
 import numpy as np
-
 from fibsem.milling.patterning import (
-    TrenchPattern,
+    BitmapPattern,
     RectanglePattern,
     TrenchBitmapPattern,
-    BitmapPattern,
+    TrenchPattern,
 )
 
-from adaptive_milling.strategy import AdaptivePolishMillingStrategy
 from adaptive_milling.config import BitmapAdaptivePolishMillingConfig
+from adaptive_milling.enums import StopReasons
+from adaptive_milling.exceptions import StopMillingException
+from adaptive_milling.plot import create_milling_cycle_plot
 from adaptive_milling.processing.bitmap import (
-    filter_bitmap_signal,
     create_bitmap_array,
+    filter_bitmap_signal,
     get_angle_dwell_multiplier,
 )
+from adaptive_milling.processing.image import get_mask_edge, resize_interp_1d
 from adaptive_milling.processing.segmentation import (
+    SEMSegmentationLabels,
     crop_xlims_centre,
     crop_xlims_convolve_filtered,
     get_lamella_gis_boundary_peturbations,
-    SEMSegmentationLabels,
 )
-from adaptive_milling.processing.image import resize_interp_1d, get_mask_edge
-from adaptive_milling.plot import create_milling_cycle_plot
-from adaptive_milling.exceptions import StopMillingException
-from adaptive_milling.enums import StopReasons
+from adaptive_milling.strategy import AdaptivePolishMillingStrategy
 
 if TYPE_CHECKING:
-    from typing import Any
     from pathlib import Path
-    from numpy.typing import NDArray
+    from typing import Any
+
     from fibsem.milling import FibsemMillingStage
+    from numpy.typing import NDArray
+
     from adaptive_milling._dataclasses import (
         LamellaInformation,
         LamellaStatistics,
@@ -203,8 +205,8 @@ class BitmapAdaptivePolishMillingStrategy(
         fib_pixel_size_m: tuple[float, float],
     ) -> tuple[int, int]:
         return (
-            int(round(dimensions[0] / fib_pixel_size_m[0])),
-            int(round(dimensions[1] / fib_pixel_size_m[1])),
+            round(dimensions[0] / fib_pixel_size_m[0]),
+            round(dimensions[1] / fib_pixel_size_m[1]),
         )
 
     def _create_milling_cycle_plot(
@@ -277,7 +279,7 @@ class BitmapAdaptivePolishMillingStrategy(
         elif stats.xlims_image_px is None:
             raise ValueError('"xlims_image_px" is not defined')
 
-        lamella_width_px = int(round(pattern_width_m / stats.image_pixel_size_m[0]))
+        lamella_width_px = round(pattern_width_m / stats.image_pixel_size_m[0])
 
         gis_thickness_filtered_um = np.asarray(stats.gis_thickness_filtered_um)
 

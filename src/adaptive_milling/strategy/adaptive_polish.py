@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import logging
 import math
 import time
@@ -9,57 +10,58 @@ from pathlib import Path
 
 import numpy as np
 import tifffile
-
-# fibsem
-from fibsem import acquire, utils as fs_utils
+from fibsem import acquire
+from fibsem import utils as fs_utils
 from fibsem.cancellation import OperationCancelledError
-from fibsem.milling import MillingStrategy
 from fibsem.milling import (
+    MillingStrategy,
     setup_milling,
 )
 from fibsem.structures import BeamType
 
-# Adaptive polish
 import adaptive_milling.utils as ap_utils
-from adaptive_milling.exceptions import (
-    StopEarlyError,
-    StopMillingException,
-    SegmentationException,
-    CentringException,
-)
-from adaptive_milling.enums import StopReasons
-from adaptive_milling.models import load_model
-from adaptive_milling.processing import image as image_proc, segmentation as seg_proc
-from adaptive_milling.processing.conversion import bounding_box_to_centre_points
-from adaptive_milling.plot import (
-    create_centring_plot,
-    create_milling_cycle_plot,
-    create_summary_gis_plot,
+from adaptive_milling._dataclasses import (
+    CycleInformation,
+    LamellaInformation,
+    LamellaStatistics,
+    StrategyRunInformation,
 )
 from adaptive_milling.config import (
     AdaptivePolishMillingConfig,
     TAdaptivePolishMillingConfig,
 )
-from adaptive_milling._dataclasses import (
-    LamellaInformation,
-    LamellaStatistics,
-    StrategyRunInformation,
-    CycleInformation,
+from adaptive_milling.enums import StopReasons
+from adaptive_milling.exceptions import (
+    CentringException,
+    SegmentationException,
+    StopEarlyError,
+    StopMillingException,
 )
+from adaptive_milling.models import load_model
+from adaptive_milling.plot import (
+    create_centring_plot,
+    create_milling_cycle_plot,
+    create_summary_gis_plot,
+)
+from adaptive_milling.processing import image as image_proc
+from adaptive_milling.processing import segmentation as seg_proc
+from adaptive_milling.processing.conversion import bounding_box_to_centre_points
 
 if typing.TYPE_CHECKING:
-    from os import PathLike
     from collections.abc import Generator
+    from os import PathLike
     from threading import Event
-    from numpy.typing import NDArray
-    from fibsem.milling import FibsemMillingStage
+
     from fibsem.microscope import FibsemMicroscope
+    from fibsem.milling import FibsemMillingStage
     from fibsem.structures import (
         FibsemImage,
         ImageSettings,
         Point,
     )
     from fibsem.ui.widgets.milling_widget import FibsemMillingWidget2
+    from numpy.typing import NDArray
+
     from adaptive_milling.models.abstract import AbstractAdaptivePolishingModel
 
 
@@ -105,7 +107,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             parent_ui (FibsemMillingWidget2, optional): Defaults to None.
             stop_event (Event, optional): Defaults to None.
         """
-        logging.info("Running %s for %s", self.fullname, stage.name)
+        _logger.info("Running %s for %s", self.fullname, stage.name)
         run_info = StrategyRunInformation(
             strategy_name=self.name,
             stage_name=stage.name,
@@ -141,7 +143,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                     output_directory / f"adaptive_polish_{fs_utils.current_timestamp()}"
                 )
                 if lamella_ap_directory.is_dir():
-                    logging.warning(
+                    _logger.warning(
                         "Lamella directory %s already exists, some data may be overwritten",
                         lamella_ap_directory,
                     )
@@ -187,20 +189,15 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                                 plot_path=lamella_ap_directory / "centring.png",
                             )
                         except SegmentationException:
-                            _logger.error(
-                                "Exception occurred during segmentation for SEM beam alignment",
-                                exc_info=True,
+                            _logger.exception(
+                                "Exception occurred during segmentation for SEM beam alignment"
                             )
                         except CentringException:
-                            _logger.error(
-                                "Error occurred calculating the lamella centre",
-                                exc_info=True,
+                            _logger.exception(
+                                "Error occurred calculating the lamella centre"
                             )
                         except Exception:
-                            _logger.error(
-                                "Unexpected error occurred aligning SEM.",
-                                exc_info=True,
-                            )
+                            _logger.exception("Unexpected error occurred aligning SEM.")
                         finally:
                             if lamella_centre_m is None:
                                 _logger.info(
@@ -255,10 +252,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                         ) from e
                 except Exception as e:
                     run_info.set_end_reason(f"{e.__class__.__name__}({e})")
-                    _logger.error(
-                        "Stopping %s due to unexpected exception",
-                        self.name,
-                        exc_info=True,
+                    _logger.exception(
+                        "Stopping %s due to unexpected exception", self.name
                     )
                     raise
                 finally:
@@ -274,7 +269,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                             save_directory=lamella_ap_directory,
                         )
                     except Exception:
-                        _logger.error("Failed to create summary plot(s)", exc_info=True)
+                        _logger.exception("Failed to create summary plot(s)")
 
     def _run_milling_cycle(
         self,
@@ -346,9 +341,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                         lamella_info=lamella_info,
                     )
                 except Exception:
-                    _logger.error(
-                        "Exception occurred saving the predictions", exc_info=True
-                    )
+                    _logger.exception("Exception occurred saving the predictions")
 
             try:
                 self._create_milling_cycle_plot(
@@ -357,9 +350,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                     stage=stage,
                 )
             except Exception:
-                _logger.error(
-                    "Exception occurred creating the milling cycle plot", exc_info=True
-                )
+                _logger.exception("Exception occurred creating the milling cycle plot")
 
     def _create_milling_cycle_plot(
         self,
@@ -499,87 +490,82 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         )
         cycle_info.lamella_statistics = statistics
 
+        lamella_area_um2 = ap_utils.pixels_to_size(
+            np.sum(statistics.lamella_thickness_prediction_px),
+            pixel_size=(statistics.prediction_pixel_size_m[0] * 1e6)
+            * (statistics.prediction_pixel_size_m[1] * 1e6),
+        )
+        if self._get_lamella_too_small(lamella_area_um2=lamella_area_um2):
+            raise StopEarlyError(
+                f"Lamella found was only {lamella_area_um2:.4e} μm², below the threshold of {self.config.minimum_lamella_area * 1e12:.4e} μm²",
+                reason=StopReasons.LAMELLA_AREA,
+            )
+
         try:
-            lamella_area_um2 = ap_utils.pixels_to_size(
-                np.sum(statistics.lamella_thickness_prediction_px),
-                pixel_size=(statistics.prediction_pixel_size_m[0] * 1e6)
-                * (statistics.prediction_pixel_size_m[1] * 1e6),
-            )
-            if self._get_lamella_too_small(lamella_area_um2=lamella_area_um2):
-                raise StopEarlyError(
-                    f"Lamella found was only {lamella_area_um2:.4e} μm², below the threshold of {self.config.minimum_lamella_area * 1e12:.4e} μm²",
-                    reason=StopReasons.LAMELLA_AREA,
-                )
-
-            try:
-                # Get lamella position
-                lamella_image_bbox, lamella_prediction_bbox = (
-                    image_proc.get_bounding_box_scaled_to_image(
-                        image=sem_image.data,
-                        mask=mask_lamella_clean,
-                        edge_finding="percentile",
-                        percentile=90,
-                    )
-                )
-                statistics.lamella_bounding_box_prediction_px = lamella_prediction_bbox
-                statistics.lamella_bounding_box_image_px = lamella_image_bbox
-            except CentringException as e:
-                _logger.warning(
-                    "Failed to get lamella centre, drift check will be skipped: %s",
-                    str(e),
-                )
-
-            # Apply lamella_pad_x padding to each side in X
-            x_pad = int(
-                round(
-                    (lamella_prediction_bbox[3] - lamella_prediction_bbox[1])
-                    * lamella_pad_x
+            # Get lamella position
+            lamella_image_bbox, lamella_prediction_bbox = (
+                image_proc.get_bounding_box_scaled_to_image(
+                    image=sem_image.data,
+                    mask=mask_lamella_clean,
+                    edge_finding="percentile",
+                    percentile=90,
                 )
             )
-
-            # Measure GIS
-            # Note the returned values are scaled to the image, not the prediction
-            ylims_px = image_proc.bbox_to_ylims(
-                lamella_prediction_bbox,
-                y_bounds=(0, clean_prediction.shape[0] - 1),
-                pad=0,
-            )
-            statistics.xlims_prediction_px = image_proc.bbox_to_xlims(
-                lamella_prediction_bbox,
-                x_bounds=(0, clean_prediction.shape[1] - 1),
-                pad=x_pad,
-            )
-            gis_thickness_image_px, xlims_image_px = seg_proc.get_gis_thickness(
-                clean_prediction,
-                xlims=statistics.xlims_prediction_px,
-                ylims=(ylims_px[0], None),
-                image_shape=(sem_image.data.shape[0], sem_image.data.shape[1]),
+            statistics.lamella_bounding_box_prediction_px = lamella_prediction_bbox
+            statistics.lamella_bounding_box_image_px = lamella_image_bbox
+        except CentringException as e:
+            _logger.warning(
+                "Failed to get lamella centre, drift check will be skipped: %s",
+                str(e),
             )
 
-            statistics.xlims_image_px = xlims_image_px
-            statistics.gis_thickness_image_px = gis_thickness_image_px.tolist()
+        # Apply lamella_pad_x padding to each side in X
+        x_pad = round(
+            (lamella_prediction_bbox[3] - lamella_prediction_bbox[1]) * lamella_pad_x
+        )
 
-            gis_thickness_filtered_image_px = seg_proc.filter_gis_thickness(
-                gis_thickness_px=gis_thickness_image_px,
-                xlims_px=xlims_image_px,
-                sigma=self.config.gis_filter_sigma,
-            )
+        # Measure GIS
+        # Note the returned values are scaled to the image, not the prediction
+        ylims_px = image_proc.bbox_to_ylims(
+            lamella_prediction_bbox,
+            y_bounds=(0, clean_prediction.shape[0] - 1),
+            pad=0,
+        )
+        statistics.xlims_prediction_px = image_proc.bbox_to_xlims(
+            lamella_prediction_bbox,
+            x_bounds=(0, clean_prediction.shape[1] - 1),
+            pad=x_pad,
+        )
+        gis_thickness_image_px, xlims_image_px = seg_proc.get_gis_thickness(
+            clean_prediction,
+            xlims=statistics.xlims_prediction_px,
+            ylims=(ylims_px[0], None),
+            image_shape=(sem_image.data.shape[0], sem_image.data.shape[1]),
+        )
 
-            statistics.gis_thickness_filtered_image_px = (
-                gis_thickness_filtered_image_px.tolist()
-            )
-            # Calculate GIS min, median, etc.
-            statistics.calculate_statistics()
+        statistics.xlims_image_px = xlims_image_px
+        statistics.gis_thickness_image_px = gis_thickness_image_px.tolist()
 
-        finally:
-            return LamellaInformation(
-                identifier=cycle_info.identifier,
-                sem_image=sem_image,
-                fib_image=fib_image,
-                prediction=prediction,
-                clean_prediction=clean_prediction,
-                statistics=statistics,
-            )
+        gis_thickness_filtered_image_px = seg_proc.filter_gis_thickness(
+            gis_thickness_px=gis_thickness_image_px,
+            xlims_px=xlims_image_px,
+            sigma=self.config.gis_filter_sigma,
+        )
+
+        statistics.gis_thickness_filtered_image_px = (
+            gis_thickness_filtered_image_px.tolist()
+        )
+        # Calculate GIS min, median, etc.
+        statistics.calculate_statistics()
+
+        return LamellaInformation(
+            identifier=cycle_info.identifier,
+            sem_image=sem_image,
+            fib_image=fib_image,
+            prediction=prediction,
+            clean_prediction=clean_prediction,
+            statistics=statistics,
+        )
 
     def _check_lamella(
         self,
@@ -675,13 +661,13 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         try:
             # Log patterns created
             for pattern_str in _format_microscope_patterns(microscope=microscope):
-                logging.debug("Pattern created: %s", pattern_str)
+                _logger.debug("Pattern created: %s", pattern_str)
         except Exception:
-            logging.debug("Failed to log pattern information", exc_info=True)
+            _logger.debug("Failed to log pattern information", exc_info=True)
 
         try:
             estimated_time = microscope.estimate_milling_time()
-            logging.info(
+            _logger.info(
                 f"Estimated time for {stage.name}: {estimated_time:.2f} seconds"
             )
             if hasattr(microscope, "milling_progress_signal"):
@@ -706,10 +692,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             _logger.info("Completed milling cycle %i", milling_cycle)
             return estimated_time
         except Exception:
-            _logger.error(
+            _logger.exception(
                 "An error occurred during milling cycle %i",
                 milling_cycle,
-                exc_info=True,
             )
             return None
         finally:
@@ -855,6 +840,11 @@ def _format_microscope_patterns(microscope: FibsemMicroscope) -> list[str]:
                     value = f'"{value}"'
                 attr_list.append(f"{attr_name}={value}")
             except Exception:
-                pass
+                _logger.warning(
+                    "Failed to format attribute '%s' of '%s' for logging",
+                    attr_name,
+                    pattern_name,
+                    exc_info=True,
+                )
         pattern_string_list.append(f"{pattern_name}({', '.join(attr_list)})")
     return pattern_string_list

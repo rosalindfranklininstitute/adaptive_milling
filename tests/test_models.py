@@ -1,16 +1,16 @@
 from __future__ import annotations
-import pytest
 
 import itertools
 import typing
 from pathlib import Path
 
-import cv2
-import torch
 import albumentations as alb
 import albumentations.pytorch
-import tifffile
+import cv2
 import numpy as np
+import pytest
+import tifffile
+import torch
 
 from adaptive_milling.models import load_model
 from adaptive_milling.models.gen1 import Gen1Model

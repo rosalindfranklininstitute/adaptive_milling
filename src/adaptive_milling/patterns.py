@@ -1,15 +1,16 @@
 from __future__ import annotations
+
 import math
 import typing
 from dataclasses import dataclass, field
 
 from fibsem.milling.patterning import BasePattern
-from fibsem.structures import FibsemRectangleSettings, CrossSectionPattern
 from fibsem.milling.properties import (
-    DEFAULT_DISTANCE_METADATA,
     DEFAULT_ANGLE_METADATA,
     DEFAULT_CROSS_SECTION_METADATA,
+    DEFAULT_DISTANCE_METADATA,
 )
+from fibsem.structures import CrossSectionPattern, FibsemRectangleSettings
 
 
 @dataclass

@@ -1,19 +1,18 @@
 from __future__ import annotations
-import pytest
-from unittest.mock import patch, MagicMock
-from numpy.testing import assert_array_equal, assert_array_almost_equal
 
 import typing
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import numpy as np
-
+import pytest
 from fibsem.applications.autolamella.structures import AutoLamellaTaskProtocol
+from numpy.testing import assert_array_almost_equal, assert_array_equal
 
-from adaptive_milling.strategy import bitmap as bitmap_strategy
 from adaptive_milling._dataclasses import (
     LamellaStatistics,
 )
+from adaptive_milling.strategy import bitmap as bitmap_strategy
 
 from . import setup
 

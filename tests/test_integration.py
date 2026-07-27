@@ -1,16 +1,16 @@
 from __future__ import annotations
-import pytest
-from unittest.mock import patch, MagicMock
 
 import functools
 import itertools
 import typing
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
+import pytest
 from fibsem import utils
-from fibsem.structures import FibsemImage, BeamType
-from fibsem.milling.tasks import FibsemMillingTaskConfig, run_milling_task
 from fibsem.applications.autolamella.structures import AutoLamellaTaskProtocol
+from fibsem.milling.tasks import FibsemMillingTaskConfig, run_milling_task
+from fibsem.structures import BeamType, FibsemImage
 
 from adaptive_milling.config import (
     AdaptivePolishMillingConfig,
@@ -22,6 +22,7 @@ from . import setup
 if typing.TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
+
     from fibsem.structures import ImageSettings
 
 _AP_MILLING_CONFIG_SETTINGS: dict[str, typing.Any] = {
@@ -36,6 +37,10 @@ _AP_MILLING_CONFIG_SETTINGS: dict[str, typing.Any] = {
 
 
 TIMESTAMP = "timestamp"
+
+
+class TestException(Exception):
+    """Test Exception"""
 
 
 @pytest.fixture
@@ -100,7 +105,7 @@ def raise_error_after_num_calls(
         nonlocal _calls
         if _calls >= calls_before_exception:
             _calls = 0  # Reset for other loops
-            raise Exception("Raising error to exit test")
+            raise TestException("Raising error to exit test")
         _calls += 1
         return fn(*args, **kwargs)
 
@@ -216,7 +221,7 @@ def test_runs(
     plot_paths = set(plots_dir.glob("*.png"))
     assert len(plot_paths), "No plots have been created"
     expected_plot_file_names = (f"{_}plot.png" for _ in expected_fn_stems)
-    expected_plot_paths = set((plots_dir / _ for _ in expected_plot_file_names))
+    expected_plot_paths = {plots_dir / _ for _ in expected_plot_file_names}
     assert plot_paths == expected_plot_paths, (
         "Expected plot file paths do not match found plot paths"
     )
@@ -235,7 +240,7 @@ def test_runs(
         expected_plot_file_names = (
             f"{_}{image_type.upper()}.tif" for _ in expected_fn_stems
         )
-        expected_plot_paths = set((image_path / _ for _ in expected_plot_file_names))
+        expected_plot_paths = {image_path / _ for _ in expected_plot_file_names}
         assert image_paths == expected_plot_paths, (
             f"Expected {image_type} image paths do not match found .tif paths"
         )

@@ -12,23 +12,24 @@
 # either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import annotations
+
 import enum
 import logging
 import typing
 from math import ceil, floor
 
 import numpy as np
+from scipy.ndimage import gaussian_filter1d, median_filter
 from scipy.signal.windows import gaussian
-from scipy.ndimage import median_filter, gaussian_filter1d
 
 from adaptive_milling.processing.image import (
-    resize_image,
-    keep_only_largest_object,
     filter_connected,
-    get_mask_edge,
-    get_mask_edges,
     get_bounding_box_from_edges,
     get_centre_from_bounding_box,
+    get_mask_edge,
+    get_mask_edges,
+    keep_only_largest_object,
+    resize_image,
 )
 
 if typing.TYPE_CHECKING:
@@ -153,11 +154,11 @@ def check_minimum_area(
 
 def masks_to_labels(
     masks: dict[SEMSegmentationLabels, NDArray[np.bool_]],
-    default_value: int | float = np.nan,
+    default_value: float = np.nan,
 ) -> NDArray[np.float64]:
     return np.select(
         list(masks.values()),
-        [_.value for _ in masks.keys()],
+        [_.value for _ in masks],
         default=default_value,
     )
 
@@ -166,7 +167,7 @@ def get_gis_thickness(
     prediction: NDArray[np.integer[typing.Any]],
     xlims: tuple[int | None, int | None] = (None, None),
     ylims: tuple[int | None, int | None] = (None, None),
-    image_shape: typing.Optional[tuple[int, int]] = None,
+    image_shape: tuple[int, int] | None = None,
     clean_edges: bool = True,
 ) -> tuple[NDArray[np.float32], tuple[int, int]]:
     """Get an array of GIS thickness values across the width specified by image_shape (or by the masks not given)
@@ -215,7 +216,7 @@ def get_gis_thickness(
     for y, x in get_mask_edge(mask_lamella, axis=0, side="max"):
         mask_gis_background[: y + 1, x] = False
 
-    new_mask_gis: NDArray[typing.Union[np.bool_, np.float64]]
+    new_mask_gis: NDArray[np.bool_ | np.float64]
     new_mask_gis = np.full(
         prediction.shape, fill_value=np.nan if clean_edges else 0, dtype=np.float64
     )

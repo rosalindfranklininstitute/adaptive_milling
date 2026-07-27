@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import time
 from dataclasses import asdict, dataclass, field
 from types import TracebackType
@@ -11,8 +12,9 @@ from adaptive_milling.enums import StopReasons
 
 if TYPE_CHECKING:
     from typing import Any
-    from numpy.typing import NDArray
+
     from fibsem.structures import FibsemImage
+    from numpy.typing import NDArray
 
 
 @dataclass
@@ -73,7 +75,7 @@ class CycleInformation:
     lamella_statistics: LamellaStatistics | None = None
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "CycleInformation":
+    def from_dict(cls, d: dict[str, Any]) -> CycleInformation:
         timestamps = CycleTimestamps(**d.pop("timestamps"))
         lamella_stats = LamellaStatistics(**d.pop("lamella_statistics"))
         lamella_stats.calculate_statistics()
@@ -102,7 +104,7 @@ class StrategyRunInformation:
         self.strategy_end_reason = reason
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "StrategyRunInformation":
+    def from_dict(cls, d: dict[str, Any]) -> StrategyRunInformation:
         timestamps = StrategyTimestamps(**d.pop("timestamps"))
         cycle_information = [
             CycleInformation.from_dict(_) for _ in d.pop("cycle_information")

@@ -1,19 +1,21 @@
 from __future__ import annotations
+
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import albumentations as alb
 import numpy as np
+import segmentation_models_pytorch as smp
 import torch
 from albumentations.pytorch import ToTensorV2
-import segmentation_models_pytorch as smp
 
 from adaptive_milling.models.abstract import AbstractAdaptivePolishingModel
 
 if TYPE_CHECKING:
-    from typing import Union, Any
     from os import PathLike
+    from typing import Any, Union
+
     from numpy.typing import NDArray
 
     DeviceLikeType = Union[str, torch.device, int]

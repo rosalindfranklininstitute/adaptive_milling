@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import typing
 from functools import partial
 from math import ceil, floor
@@ -9,8 +10,9 @@ from skimage import measure, transform
 from adaptive_milling.exceptions import CentringException
 
 if typing.TYPE_CHECKING:
-    from numpy.typing import NDArray
     from collections.abc import Callable, Sequence
+
+    from numpy.typing import NDArray
 
 
 def count_objects(
@@ -29,7 +31,7 @@ def keep_only_largest_object(
     `fill_value`, background is 0.
 
     Args:
-        mask (NDArray[typing.Union[np.integer[typing.Any], np.bool_]]): Segmentation mask
+        mask (NDArray[np.integer[typing.Any] | np.bool_]): Segmentation mask
         connectivity (int): connectivity when finding objects (1 is edges only, 2 includes corners)
 
     Returns:
@@ -59,7 +61,7 @@ def filter_connected(
 
 
 def resize_image(
-    image: NDArray[typing.Any], new_shape: typing.Tuple[int, int]
+    image: NDArray[typing.Any], new_shape: tuple[int, int]
 ) -> NDArray[np.float64]:
     if not isinstance(image.dtype, np.floating):
         # Needs to be floating type if we want interpolation
@@ -126,7 +128,7 @@ def get_mask_edge(
 
 def get_mask_edges(
     mask: NDArray[np.bool_],
-) -> typing.List[typing.List[NDArray[np.uint16]]]:
+) -> list[list[NDArray[np.uint16]]]:
     return [
         [
             get_mask_edge(mask, axis=0, side="min"),
@@ -220,8 +222,8 @@ def get_centre_from_bounding_box(
     cx = (bbox[1] + bbox[3]) / 2
     cy = (bbox[0] + bbox[2]) / 2
     if not subpixel_accuracy:
-        cx = int(round(cx))
-        cy = int(round(cy))
+        cx = round(cx)
+        cy = round(cy)
     return (cy, cx)
 
 
@@ -231,8 +233,8 @@ def bbox_to_ylims(
     pad: int = 0,
 ) -> tuple[int, int]:
     return (
-        max(int(floor(bbox[0])) - pad, y_bounds[0]),
-        min(int(ceil(bbox[2])) + pad, y_bounds[1]),
+        max(floor(bbox[0]) - pad, y_bounds[0]),
+        min(ceil(bbox[2]) + pad, y_bounds[1]),
     )
 
 
@@ -242,8 +244,8 @@ def bbox_to_xlims(
     pad: int = 0,
 ) -> tuple[int, int]:
     return (
-        int(max(floor(bbox[1]) - pad, x_bounds[0])),
-        int(min(ceil(bbox[3]) + pad, x_bounds[1])),
+        max(floor(bbox[1]) - pad, x_bounds[0]),
+        min(ceil(bbox[3]) + pad, x_bounds[1]),
     )
 
 
@@ -253,7 +255,7 @@ def get_bounding_box_scaled_to_image(
     edge_finding: typing.Literal[
         "median", "mean", "min", "max", "percentile"
     ] = "median",
-    percentile: typing.Optional[float] = None,
+    percentile: float | None = None,
 ) -> tuple[tuple[float, float, float, float], tuple[float, float, float, float]]:
     # This does assume square pixels
     prediction_to_image_scale_multiplier: float

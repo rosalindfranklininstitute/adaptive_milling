@@ -1,12 +1,13 @@
 from __future__ import annotations
+
 import typing
-import yaml
-from dataclasses import dataclass, InitVar, field
+from dataclasses import InitVar, dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
-from jinja2 import Environment, FileSystemLoader
-from datetime import datetime
 
 import numpy as np
+import yaml
+from jinja2 import Environment, FileSystemLoader
 
 from adaptive_milling.processing.segmentation import SEMSegmentationLabels as SemLabels
 
@@ -52,7 +53,7 @@ def setup_test_experiment(
     experiment_template_path: Path, temporary_directory: Path, save_images: bool = False
 ) -> Path:
     """Sets up a demo autolamella experiment"""
-    now = datetime.now().strftime("%Y-%m-%d-%H-%M")
+    now = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d-%H-%M")
     environment = Environment(loader=FileSystemLoader(experiment_template_path.parent))
     template = environment.get_template(str(experiment_template_path.name))
     experiment = template.render(
@@ -168,9 +169,9 @@ def create_mock_prediction_gis_thickness(
 
 @dataclass(repr=False)
 class SimpleRectangleLamellaMask:
-    shape: InitVar[typing.Union[NDArray[np.integer], typing.Tuple[int, int]]]
+    shape: InitVar[[NDArray[np.integer] | tuple[int, int]]]
     box_proportion: InitVar[int] = 20
-    centre_px: InitVar[typing.Optional[typing.Tuple[int, int]]] = None
+    centre_px: InitVar[tuple[int, int] | None] = None
     array: NDArray[np.bool_] = field(init=False)
     centre: NDArray[np.int_] = field(init=False)
     bounding_box: NDArray[np.int_] = field(init=False)

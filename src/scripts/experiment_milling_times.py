@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-import statistics
 import logging
+import statistics
 import typing
 from pathlib import Path
 
@@ -21,16 +21,16 @@ def get_total_milling_time_from_gis_thickness_json(
     with file_path.open("r") as f:
         times = json.load(f).get("milling_time_s")
     if not isinstance(times, dict):
-        raise ValueError(f"Failed to get 'milling_time_s' from {file_path}")
+        raise TypeError(f"'milling_time_s' from {file_path} is not a dict")
 
-    last_key = sorted(list(times), key=lambda x: int(x), reverse=True)[0]
+    last_key = max(times)
 
     # Only get the last time, as it was recorded cumulatively
     last_time = times[last_key]
     try:
         # Recorded time is per-pattern shape, so total is doubled for trench patterns
         return float(last_time) * 2
-    except Exception:
+    except (ValueError, TypeError):
         raise ValueError(f"Failed to get total milling time from {file_path}")
 
 
@@ -75,8 +75,10 @@ def process_experiment(
                             get_total_milling_time_from_gis_thickness_json(json_path)
                         )
                         id_list.append(f"{ap_dir.parent.name}/{ap_dir.name}")
-                    except (FileNotFoundError, ValueError) as e:
-                        _logger.error(f"Error processing {experiment_directory}: {e}")
+                    except (FileNotFoundError, TypeError, ValueError) as e:
+                        _logger.error(
+                            "Error processing %s: %s", str(experiment_directory), str(e)
+                        )
 
     print(f"Checked {len(time_list)} lamella in {experiment_directory}:")
 
@@ -118,8 +120,6 @@ def run(
     if len(experiment_directories) > 1 and len(time_list) > 1:
         print("\nAll:")
         print_statistics(time_list=time_list)
-
-    return
 
 
 if __name__ == "__main__":

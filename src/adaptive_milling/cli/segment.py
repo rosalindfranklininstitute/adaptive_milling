@@ -1,11 +1,12 @@
 from __future__ import annotations
+
 import argparse
 import logging
 import typing
 from pathlib import Path
 
-import tifffile
 import numpy as np
+import tifffile
 
 from adaptive_milling.exceptions import SegmentationException
 
@@ -13,6 +14,9 @@ if typing.TYPE_CHECKING:
     from os import PathLike
 
     from adaptive_milling.models.abstract import AbstractAdaptivePolishingModel
+
+
+_logger = logging.getLogger(__name__)
 
 
 def _create_parser() -> argparse.ArgumentParser:
@@ -90,10 +94,10 @@ def _parse_arguments(parser: argparse.ArgumentParser) -> None:
         clean: bool = True,
     ) -> None:
         im = tifffile.imread(path)
-        logging.info("Predicting segmentation of image '%s'", path)
+        _logger.info("Predicting segmentation of image '%s'", path)
         prediction = model.predict(image=im).astype(np.uint8)
         if clean:
-            logging.info("Cleaning prediction of image '%s'", path)
+            _logger.info("Cleaning prediction of image '%s'", path)
             prediction = clean_prediction(prediction)
         with tifffile.TiffWriter(output_directory / path.name) as tiff:
             tiff.write(
@@ -123,7 +127,7 @@ def _parse_arguments(parser: argparse.ArgumentParser) -> None:
                             clean=clean,
                         )
                     except Exception:
-                        logging.error("Failed to segment image '%s'", p, exc_info=True)
+                        _logger.exception("Failed to segment image '%s'", p)
             elif path.is_file():
                 try:
                     _infer_image(
@@ -133,9 +137,9 @@ def _parse_arguments(parser: argparse.ArgumentParser) -> None:
                         clean=clean,
                     )
                 except Exception:
-                    logging.error("Failed to segment image '%s'", p, exc_info=True)
+                    _logger.exception("Failed to segment image '%s'", p)
             else:
-                logging.warning("No file or directory found at '%s'", p)
+                _logger.warning("No file or directory found at '%s'", p)
 
     model = _load_model(
         weights_path=namespace.weights_path,

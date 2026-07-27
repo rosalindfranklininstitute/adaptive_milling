@@ -1,7 +1,8 @@
 from __future__ import annotations
+
 import json
 from pathlib import Path
-from typing import Protocol, TypeVar, overload, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Protocol, TypeVar, overload
 
 if TYPE_CHECKING:
     from os import PathLike
@@ -10,9 +11,9 @@ _TMulDiv = TypeVar("_TMulDiv", bound="_SupportsMulDiv")
 
 
 class _SupportsMulDiv(Protocol):
-    def __mul__(self: "_TMulDiv", other) -> "_TMulDiv": ...
+    def __mul__(self: _SupportsMulDiv, other) -> _SupportsMulDiv: ...
 
-    def __truediv__(self: "_TMulDiv", other) -> "_TMulDiv": ...
+    def __truediv__(self: _SupportsMulDiv, other) -> _SupportsMulDiv: ...
 
 
 _TConvertable = TypeVar(
@@ -73,9 +74,9 @@ def ensure_subdirectories(directory: Path, *subdirectory_names: str) -> list[Pat
 
     directories = [directory / _ for _ in subdirectory_names]
 
-    for directory in directories:
+    for d in directories:
         # Ensure folders exist
-        directory.mkdir(exist_ok=True)
+        d.mkdir(exist_ok=True)
     return directories
 
 

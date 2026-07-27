@@ -11,11 +11,11 @@
 #   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
-import os
 import logging
+import os
 
 os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"
 
 # TODO: Stop using root logger in fibsem and autolamella
 # Stops matplotlib import spamming the logs
-logging.getLogger("matplotlib").setLevel(logging.WARNING)  # noqa: E402
+logging.getLogger("matplotlib").setLevel(logging.WARNING)

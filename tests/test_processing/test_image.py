@@ -1,15 +1,15 @@
 from __future__ import annotations
-import pytest
-from numpy.testing import assert_array_equal
 
 from typing import Literal
 
 import numpy as np
+import pytest
+from numpy.testing import assert_array_equal
 
 from adaptive_milling.processing.image import (
-    get_mask_bounding_box,
     get_bounding_box_from_edges,
     get_centre_from_bounding_box,
+    get_mask_bounding_box,
     get_mask_edges,
 )
 

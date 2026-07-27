@@ -1,6 +1,9 @@
-import pytest
+from __future__ import annotations
+
 import typing
 from contextlib import contextmanager
+
+import pytest
 
 
 class ExceptionForMocking(Exception):
@@ -8,7 +11,7 @@ class ExceptionForMocking(Exception):
 
 
 def assert_raises(
-    exception: typing.Union[type[BaseException], None],
+    exception: type[BaseException] | None,
 ):  # -> type[DummyClass] | RaisesContext:# -> type[DummyClass] | RaisesContext:# -> type[DummyClass] | RaisesContext:
     @contextmanager
     def dummy_context() -> typing.Generator[None, None, None]:

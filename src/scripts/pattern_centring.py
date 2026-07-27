@@ -5,22 +5,21 @@ import logging
 import typing
 from pathlib import Path
 
-import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-
-from fibsem.structures import FibsemImage
-from fibsem.milling import FibsemMillingStage, get_milling_stages
-from fibsem.utils import load_protocol
-
-from adaptive_milling.config import BitmapAdaptivePolishMillingConfig
-from adaptive_milling.strategy import BitmapAdaptivePolishMillingStrategy
-from adaptive_milling._dataclasses import CycleInformation, CycleTimestamps
+import numpy as np
 from adaptive_milling.processing.lamella import (
     crop_xlims_centre,
     crop_xlims_convolve,
     crop_xlims_convolve_filtered,
 )
+from fibsem.milling import FibsemMillingStage, get_milling_stages
+from fibsem.structures import FibsemImage
+from fibsem.utils import load_protocol
+
+from adaptive_milling._dataclasses import CycleInformation, CycleTimestamps
+from adaptive_milling.config import BitmapAdaptivePolishMillingConfig
+from adaptive_milling.strategy import BitmapAdaptivePolishMillingStrategy
 
 if typing.TYPE_CHECKING:
     from collections.abc import Generator
@@ -96,7 +95,7 @@ def get_xlims(
     lamella_width_px_float = (
         milling_stage.pattern.width / sem_image.metadata.pixel_size.x
     )
-    lamella_width_px = int(round(lamella_width_px_float))
+    lamella_width_px = round(lamella_width_px_float)
     if lamella_width_px % 2 != 0:
         lamella_width_px_odd = lamella_width_px
     else:

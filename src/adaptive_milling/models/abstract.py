@@ -1,15 +1,17 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
-import torch
 import albumentations as alb
 import numpy as np
+import torch
 
 if TYPE_CHECKING:
-    from typing import Union, Any
     from os import PathLike
+    from typing import Any, Union
+
     from numpy.typing import NDArray
 
     DeviceLikeType = Union[str, torch.device, int]
@@ -81,7 +83,7 @@ class AbstractAdaptivePolishingModel(ABC):
         if not isinstance(image, np.ndarray):
             try:
                 image = Path(image)
-            except Exception:
+            except TypeError:
                 raise ValueError(f"Failed to parse image '{image}'")
             if not image.is_file():
                 raise FileNotFoundError(image)

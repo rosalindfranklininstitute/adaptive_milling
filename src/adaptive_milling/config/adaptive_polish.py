@@ -1,13 +1,13 @@
 from __future__ import annotations
+
 import os
-import typing
 from dataclasses import dataclass, field
 
 from fibsem.milling.base import MillingStrategyConfig
 
 from adaptive_milling.models import (
-    get_latest_generation_key,
     MODEL_GENERATIONS_DICT,
+    get_latest_generation_key,
 )
 
 DEFAULT_MODEL_GENERATION = get_latest_generation_key()
@@ -163,7 +163,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
             raise FileNotFoundError(f"'{v}' is not a valid file path")
         return v
 
-    def get_model_generation(self) -> typing.Optional[str]:
+    def get_model_generation(self) -> str | None:
         model_generation = self.model_generation.strip()
         if not model_generation:
             # Interpret empty strings as None
