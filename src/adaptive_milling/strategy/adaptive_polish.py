@@ -105,7 +105,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             parent_ui (FibsemMillingWidget2, optional): Defaults to None.
             stop_event (Event, optional): Defaults to None.
         """
-        logging.info("Running %s for %s", self.fullname, stage.name)
+        _logger.info("Running %s for %s", self.fullname, stage.name)
         run_info = StrategyRunInformation(
             strategy_name=self.name,
             stage_name=stage.name,
@@ -141,7 +141,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                     output_directory / f"adaptive_polish_{fs_utils.current_timestamp()}"
                 )
                 if lamella_ap_directory.is_dir():
-                    logging.warning(
+                    _logger.warning(
                         "Lamella directory %s already exists, some data may be overwritten",
                         lamella_ap_directory,
                     )
@@ -662,13 +662,13 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         try:
             # Log patterns created
             for pattern_str in _format_microscope_patterns(microscope=microscope):
-                logging.debug("Pattern created: %s", pattern_str)
+                _logger.debug("Pattern created: %s", pattern_str)
         except Exception:
-            logging.debug("Failed to log pattern information", exc_info=True)
+            _logger.debug("Failed to log pattern information", exc_info=True)
 
         try:
             estimated_time = microscope.estimate_milling_time()
-            logging.info(
+            _logger.info(
                 f"Estimated time for {stage.name}: {estimated_time:.2f} seconds"
             )
             if hasattr(microscope, "milling_progress_signal"):
