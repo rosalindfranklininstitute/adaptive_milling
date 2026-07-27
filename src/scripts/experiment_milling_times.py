@@ -23,7 +23,7 @@ def get_total_milling_time_from_gis_thickness_json(
     if not isinstance(times, dict):
         raise ValueError(f"Failed to get 'milling_time_s' from {file_path}")
 
-    last_key = sorted(list(times), key=lambda x: int(x), reverse=True)[0]
+    last_key = max(times)
 
     # Only get the last time, as it was recorded cumulatively
     last_time = times[last_key]
