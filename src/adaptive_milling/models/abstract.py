@@ -83,7 +83,7 @@ class AbstractAdaptivePolishingModel(ABC):
         if not isinstance(image, np.ndarray):
             try:
                 image = Path(image)
-            except Exception:
+            except TypeError:
                 raise ValueError(f"Failed to parse image '{image}'")
             if not image.is_file():
                 raise FileNotFoundError(image)
