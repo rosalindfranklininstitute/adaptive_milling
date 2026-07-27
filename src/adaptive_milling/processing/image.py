@@ -231,8 +231,8 @@ def bbox_to_ylims(
     pad: int = 0,
 ) -> tuple[int, int]:
     return (
-        max(int(floor(bbox[0])) - pad, y_bounds[0]),
-        min(int(ceil(bbox[2])) + pad, y_bounds[1]),
+        max(floor(bbox[0]) - pad, y_bounds[0]),
+        min(ceil(bbox[2]) + pad, y_bounds[1]),
     )
 
 
@@ -242,8 +242,8 @@ def bbox_to_xlims(
     pad: int = 0,
 ) -> tuple[int, int]:
     return (
-        int(max(floor(bbox[1]) - pad, x_bounds[0])),
-        int(min(ceil(bbox[3]) + pad, x_bounds[1])),
+        max(floor(bbox[1]) - pad, x_bounds[0]),
+        min(ceil(bbox[3]) + pad, x_bounds[1]),
     )
 
 
