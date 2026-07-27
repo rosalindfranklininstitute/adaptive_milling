@@ -21,7 +21,7 @@ def get_total_milling_time_from_gis_thickness_json(
     with file_path.open("r") as f:
         times = json.load(f).get("milling_time_s")
     if not isinstance(times, dict):
-        raise ValueError(f"Failed to get 'milling_time_s' from {file_path}")
+        raise TypeError(f"'milling_time_s' from {file_path} is not a dict")
 
     last_key = max(times)
 
@@ -30,7 +30,7 @@ def get_total_milling_time_from_gis_thickness_json(
     try:
         # Recorded time is per-pattern shape, so total is doubled for trench patterns
         return float(last_time) * 2
-    except Exception:
+    except (ValueError, TypeError):
         raise ValueError(f"Failed to get total milling time from {file_path}")
 
 
@@ -75,7 +75,7 @@ def process_experiment(
                             get_total_milling_time_from_gis_thickness_json(json_path)
                         )
                         id_list.append(f"{ap_dir.parent.name}/{ap_dir.name}")
-                    except (FileNotFoundError, ValueError) as e:
+                    except (FileNotFoundError, TypeError, ValueError) as e:
                         _logger.error(
                             "Error processing %s: %s", str(experiment_directory), str(e)
                         )
@@ -121,7 +121,6 @@ def run(
         print("\nAll:")
         print_statistics(time_list=time_list)
 
-    return
 
 
 if __name__ == "__main__":

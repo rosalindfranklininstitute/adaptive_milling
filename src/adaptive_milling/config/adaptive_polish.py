@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-import typing
 from dataclasses import dataclass, field
 
 from fibsem.milling.base import MillingStrategyConfig
