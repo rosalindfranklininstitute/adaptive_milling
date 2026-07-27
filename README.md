@@ -61,6 +61,11 @@ If using CUDA, the version must be below or equal to the the system CUDA version
 | CUDA 12.6        | https://download.pytorch.org/whl/cu126 |
 | CUDA 12.8        | https://download.pytorch.org/whl/cu128 |
 
+## Usage
+
+### Protocols
+We recommend starting with [this protocol](src/example_configs/protocol-on-grid-ap.yaml) and customising to your requirements. You will need to set the `model_path` within the `AdaptivePolishing` config, either directly in the file or via the fibsemOS AutoLamella GUI.
+
 ## Testing
 
 You can run the package tests using pytest:
