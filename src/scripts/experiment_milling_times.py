@@ -76,7 +76,9 @@ def process_experiment(
                         )
                         id_list.append(f"{ap_dir.parent.name}/{ap_dir.name}")
                     except (FileNotFoundError, ValueError) as e:
-                        _logger.error(f"Error processing {experiment_directory}: {e}")
+                        _logger.error(
+                            "Error processing %s: %s", str(experiment_directory), str(e)
+                        )
 
     print(f"Checked {len(time_list)} lamella in {experiment_directory}:")
 
