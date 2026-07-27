@@ -683,7 +683,6 @@ def test_align_beam(
 
         def mock_beam_shift_fn(dx, dy, beam_type) -> None:
             microscope.electron_system.beam.shift = new_beam_shift
-            return
 
         mock_beam_shift.side_effect = mock_beam_shift_fn
 
