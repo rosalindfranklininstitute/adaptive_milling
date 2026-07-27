@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import typing
 from dataclasses import InitVar, dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
@@ -53,7 +53,7 @@ def setup_test_experiment(
     experiment_template_path: Path, temporary_directory: Path, save_images: bool = False
 ) -> Path:
     """Sets up a demo autolamella experiment"""
-    now = datetime.now().strftime("%Y-%m-%d-%H-%M")
+    now = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d-%H-%M")
     environment = Environment(loader=FileSystemLoader(experiment_template_path.parent))
     template = environment.get_template(str(experiment_template_path.name))
     experiment = template.render(
