@@ -336,6 +336,6 @@ def run(
 
 if __name__ == "__main__":
     model_path = ""
-    model_generation = "1.4fpn"
+    model_generation = "1.0"
     csv_path = ""
     run(csv_path=csv_path, model_path=model_path, model_generation=model_generation)

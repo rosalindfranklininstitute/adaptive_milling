@@ -4,9 +4,9 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol
 
-import albumentations as alb
 import numpy as np
 import torch
+from PIL import Image
 
 if TYPE_CHECKING:
     from os import PathLike
@@ -60,9 +60,8 @@ class AbstractAdaptivePolishingModel(ABC):
             "AbstractAdaptivePolishingModel.preprocess must be overridden"
         )
 
-    @staticmethod
     @abstractmethod
-    def load(model_path: str | PathLike[str]) -> torch.nn.Module:
+    def load(self, model_path: str | PathLike[str]) -> torch.nn.Module:
         raise NotImplementedError(
             "AbstractAdaptivePolishingModel.load must be overridden"
         )
@@ -111,7 +110,11 @@ class AbstractAdaptivePolishingModel(ABC):
 
             if full_size:
                 # Resize model to full original dims
-                return alb.Resize(image.shape[-2], image.shape[-1]).apply_to_mask(
-                    labels
+                return np.asarray(
+                    Image.fromarray(labels).resize(
+                        (image.shape[-1], image.shape[-2]),
+                        resample=Image.Resampling.NEAREST,
+                    ),
+                    dtype=labels.dtype,
                 )
             return labels

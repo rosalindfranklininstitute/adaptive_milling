@@ -286,7 +286,7 @@ tasks:
                         name: AdaptivePolishing
                         config:
                             model_path: null
-                            model_generation: 1.4fpn
+                            model_generation: 1.0
                             gis_stop_min: 0.2e-6
                             gis_stop_median: 0.25e-6
                             max_crack_area: 2.0e-12
@@ -327,7 +327,7 @@ tasks:
                         name: BitmapAdaptivePolishing
                         config:
                             model_path: null
-                            model_generation: 1.4fpn
+                            model_generation: 1.0
                             gis_stop_min: 0.2e-6
                             gis_stop_median: 0.25e-6
                             max_crack_area: 2.0e-12
