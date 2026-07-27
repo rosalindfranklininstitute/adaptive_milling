@@ -157,7 +157,7 @@ def masks_to_labels(
 ) -> NDArray[np.float64]:
     return np.select(
         list(masks.values()),
-        [_.value for _ in masks.keys()],
+        [_.value for _ in masks],
         default=default_value,
     )
 
