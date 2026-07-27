@@ -265,7 +265,7 @@ def create_milling_cycle_plot(
                 ax=axs[1, 1],
             )
         except Exception:
-            logging.error("Failed to draw milling patterns", exc_info=True)
+            logging.exception("Failed to draw milling patterns")
         axs[1, 1].axis("off")
 
     if gis_thickness_um is None:

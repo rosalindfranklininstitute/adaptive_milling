@@ -123,7 +123,7 @@ def _parse_arguments(parser: argparse.ArgumentParser) -> None:
                             clean=clean,
                         )
                     except Exception:
-                        logging.error("Failed to segment image '%s'", p, exc_info=True)
+                        logging.exception("Failed to segment image '%s'", p)
             elif path.is_file():
                 try:
                     _infer_image(
@@ -133,7 +133,7 @@ def _parse_arguments(parser: argparse.ArgumentParser) -> None:
                         clean=clean,
                     )
                 except Exception:
-                    logging.error("Failed to segment image '%s'", p, exc_info=True)
+                    logging.exception("Failed to segment image '%s'", p)
             else:
                 logging.warning("No file or directory found at '%s'", p)
 

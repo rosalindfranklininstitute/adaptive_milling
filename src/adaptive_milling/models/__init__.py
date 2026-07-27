@@ -75,7 +75,5 @@ def load_model(
     try:
         return model_class(model_path, device=device)
     except Exception:
-        _logger.error(
-            "Failed to load model with '%s'", model_class.__name__, exc_info=True
-        )
+        _logger.exception("Failed to load model with '%s'", model_class.__name__)
         raise

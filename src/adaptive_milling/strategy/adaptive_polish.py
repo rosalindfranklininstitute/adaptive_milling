@@ -187,20 +187,15 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                                 plot_path=lamella_ap_directory / "centring.png",
                             )
                         except SegmentationException:
-                            _logger.error(
-                                "Exception occurred during segmentation for SEM beam alignment",
-                                exc_info=True,
+                            _logger.exception(
+                                "Exception occurred during segmentation for SEM beam alignment"
                             )
                         except CentringException:
-                            _logger.error(
-                                "Error occurred calculating the lamella centre",
-                                exc_info=True,
+                            _logger.exception(
+                                "Error occurred calculating the lamella centre"
                             )
                         except Exception:
-                            _logger.error(
-                                "Unexpected error occurred aligning SEM.",
-                                exc_info=True,
-                            )
+                            _logger.exception("Unexpected error occurred aligning SEM.")
                         finally:
                             if lamella_centre_m is None:
                                 _logger.info(
@@ -255,10 +250,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                         ) from e
                 except Exception as e:
                     run_info.set_end_reason(f"{e.__class__.__name__}({e})")
-                    _logger.error(
-                        "Stopping %s due to unexpected exception",
-                        self.name,
-                        exc_info=True,
+                    _logger.exception(
+                        "Stopping %s due to unexpected exception", self.name
                     )
                     raise
                 finally:
@@ -274,7 +267,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                             save_directory=lamella_ap_directory,
                         )
                     except Exception:
-                        _logger.error("Failed to create summary plot(s)", exc_info=True)
+                        _logger.exception("Failed to create summary plot(s)")
 
     def _run_milling_cycle(
         self,
@@ -346,9 +339,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                         lamella_info=lamella_info,
                     )
                 except Exception:
-                    _logger.error(
-                        "Exception occurred saving the predictions", exc_info=True
-                    )
+                    _logger.exception("Exception occurred saving the predictions")
 
             try:
                 self._create_milling_cycle_plot(
@@ -357,9 +348,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                     stage=stage,
                 )
             except Exception:
-                _logger.error(
-                    "Exception occurred creating the milling cycle plot", exc_info=True
-                )
+                _logger.exception("Exception occurred creating the milling cycle plot")
 
     def _create_milling_cycle_plot(
         self,
@@ -704,10 +693,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             _logger.info("Completed milling cycle %i", milling_cycle)
             return estimated_time
         except Exception:
-            _logger.error(
+            _logger.exception(
                 "An error occurred during milling cycle %i",
                 milling_cycle,
-                exc_info=True,
             )
             return None
         finally:
