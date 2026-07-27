@@ -9,7 +9,7 @@ TAdaptivePolishMillingConfig = typing.TypeVar(
 
 
 __all__ = [
-    "TAdaptivePolishMillingConfig",
     "AdaptivePolishMillingConfig",
     "BitmapAdaptivePolishMillingConfig",
+    "TAdaptivePolishMillingConfig",
 ]
