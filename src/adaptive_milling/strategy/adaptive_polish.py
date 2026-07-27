@@ -840,6 +840,11 @@ def _format_microscope_patterns(microscope: FibsemMicroscope) -> list[str]:
                     value = f'"{value}"'
                 attr_list.append(f"{attr_name}={value}")
             except Exception:
-                pass
+                _logger.warning(
+                    "Failed to format attribute '%s' of '%s' for logging",
+                    attr_name,
+                    pattern_name,
+                    exc_info=True,
+                )
         pattern_string_list.append(f"{pattern_name}({', '.join(attr_list)})")
     return pattern_string_list
