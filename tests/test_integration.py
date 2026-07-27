@@ -38,6 +38,7 @@ _AP_MILLING_CONFIG_SETTINGS: dict[str, typing.Any] = {
 
 TIMESTAMP = "timestamp"
 
+
 class TestException(Exception):
     """Test Exception"""
 

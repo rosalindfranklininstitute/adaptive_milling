@@ -122,7 +122,6 @@ def run(
         print_statistics(time_list=time_list)
 
 
-
 if __name__ == "__main__":
     # List experiment directories here:
     experiment_directories: list[str | Path] = []
