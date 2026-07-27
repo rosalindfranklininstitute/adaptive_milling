@@ -18,4 +18,4 @@ os.environ["NO_ALBUMENTATIONS_UPDATE"] = "1"
 
 # TODO: Stop using root logger in fibsem and autolamella
 # Stops matplotlib import spamming the logs
-logging.getLogger("matplotlib").setLevel(logging.WARNING)  # noqa: E402
+logging.getLogger("matplotlib").setLevel(logging.WARNING)
