@@ -34,7 +34,7 @@ def create_dwell_and_blanking_arrays(
     else:
         factor = 1
 
-    x = np.linspace(0, n - 1, int(round((n - 1) * factor)) + 1)
+    x = np.linspace(0, n - 1, round((n - 1) * factor) + 1)
     input_signal = input_signal.copy()
     input_signal[np.isnan(input_signal)] = nan_value
     # Interpolate over to ensure pixel size

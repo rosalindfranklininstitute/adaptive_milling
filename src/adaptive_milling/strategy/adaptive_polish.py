@@ -530,11 +530,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                 )
 
             # Apply lamella_pad_x padding to each side in X
-            x_pad = int(
-                round(
-                    (lamella_prediction_bbox[3] - lamella_prediction_bbox[1])
-                    * lamella_pad_x
-                )
+            x_pad = round(
+                (lamella_prediction_bbox[3] - lamella_prediction_bbox[1])
+                * lamella_pad_x
             )
 
             # Measure GIS

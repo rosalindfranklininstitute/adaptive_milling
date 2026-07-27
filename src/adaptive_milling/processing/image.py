@@ -220,8 +220,8 @@ def get_centre_from_bounding_box(
     cx = (bbox[1] + bbox[3]) / 2
     cy = (bbox[0] + bbox[2]) / 2
     if not subpixel_accuracy:
-        cx = int(round(cx))
-        cy = int(round(cy))
+        cx = round(cx)
+        cy = round(cy)
     return (cy, cx)
 
 

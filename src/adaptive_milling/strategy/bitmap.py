@@ -203,8 +203,8 @@ class BitmapAdaptivePolishMillingStrategy(
         fib_pixel_size_m: tuple[float, float],
     ) -> tuple[int, int]:
         return (
-            int(round(dimensions[0] / fib_pixel_size_m[0])),
-            int(round(dimensions[1] / fib_pixel_size_m[1])),
+            round(dimensions[0] / fib_pixel_size_m[0]),
+            round(dimensions[1] / fib_pixel_size_m[1]),
         )
 
     def _create_milling_cycle_plot(
@@ -277,7 +277,7 @@ class BitmapAdaptivePolishMillingStrategy(
         elif stats.xlims_image_px is None:
             raise ValueError('"xlims_image_px" is not defined')
 
-        lamella_width_px = int(round(pattern_width_m / stats.image_pixel_size_m[0]))
+        lamella_width_px = round(pattern_width_m / stats.image_pixel_size_m[0])
 
         gis_thickness_filtered_um = np.asarray(stats.gis_thickness_filtered_um)
 

@@ -96,7 +96,7 @@ def get_xlims(
     lamella_width_px_float = (
         milling_stage.pattern.width / sem_image.metadata.pixel_size.x
     )
-    lamella_width_px = int(round(lamella_width_px_float))
+    lamella_width_px = round(lamella_width_px_float)
     if lamella_width_px % 2 != 0:
         lamella_width_px_odd = lamella_width_px
     else:
