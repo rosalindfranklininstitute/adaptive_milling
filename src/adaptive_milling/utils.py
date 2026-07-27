@@ -1,7 +1,7 @@
 from __future__ import annotations
 import json
 from pathlib import Path
-from typing import Protocol, TypeVar, overload, Any, TYPE_CHECKING
+from typing import Protocol, TypeVar, Self, overload, Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from os import PathLike
@@ -10,9 +10,9 @@ _TMulDiv = TypeVar("_TMulDiv", bound="_SupportsMulDiv")
 
 
 class _SupportsMulDiv(Protocol):
-    def __mul__(self: "_TMulDiv", other) -> "_TMulDiv": ...
+    def __mul__(self: Self, other) -> Self: ...
 
-    def __truediv__(self: "_TMulDiv", other) -> "_TMulDiv": ...
+    def __truediv__(self: Self, other) -> Self: ...
 
 
 _TConvertable = TypeVar(
