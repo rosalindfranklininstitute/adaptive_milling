@@ -490,85 +490,82 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         )
         cycle_info.lamella_statistics = statistics
 
+        lamella_area_um2 = ap_utils.pixels_to_size(
+            np.sum(statistics.lamella_thickness_prediction_px),
+            pixel_size=(statistics.prediction_pixel_size_m[0] * 1e6)
+            * (statistics.prediction_pixel_size_m[1] * 1e6),
+        )
+        if self._get_lamella_too_small(lamella_area_um2=lamella_area_um2):
+            raise StopEarlyError(
+                f"Lamella found was only {lamella_area_um2:.4e} μm², below the threshold of {self.config.minimum_lamella_area * 1e12:.4e} μm²",
+                reason=StopReasons.LAMELLA_AREA,
+            )
+
         try:
-            lamella_area_um2 = ap_utils.pixels_to_size(
-                np.sum(statistics.lamella_thickness_prediction_px),
-                pixel_size=(statistics.prediction_pixel_size_m[0] * 1e6)
-                * (statistics.prediction_pixel_size_m[1] * 1e6),
-            )
-            if self._get_lamella_too_small(lamella_area_um2=lamella_area_um2):
-                raise StopEarlyError(
-                    f"Lamella found was only {lamella_area_um2:.4e} μm², below the threshold of {self.config.minimum_lamella_area * 1e12:.4e} μm²",
-                    reason=StopReasons.LAMELLA_AREA,
+            # Get lamella position
+            lamella_image_bbox, lamella_prediction_bbox = (
+                image_proc.get_bounding_box_scaled_to_image(
+                    image=sem_image.data,
+                    mask=mask_lamella_clean,
+                    edge_finding="percentile",
+                    percentile=90,
                 )
-
-            try:
-                # Get lamella position
-                lamella_image_bbox, lamella_prediction_bbox = (
-                    image_proc.get_bounding_box_scaled_to_image(
-                        image=sem_image.data,
-                        mask=mask_lamella_clean,
-                        edge_finding="percentile",
-                        percentile=90,
-                    )
-                )
-                statistics.lamella_bounding_box_prediction_px = lamella_prediction_bbox
-                statistics.lamella_bounding_box_image_px = lamella_image_bbox
-            except CentringException as e:
-                _logger.warning(
-                    "Failed to get lamella centre, drift check will be skipped: %s",
-                    str(e),
-                )
-
-            # Apply lamella_pad_x padding to each side in X
-            x_pad = round(
-                (lamella_prediction_bbox[3] - lamella_prediction_bbox[1])
-                * lamella_pad_x
+            )
+            statistics.lamella_bounding_box_prediction_px = lamella_prediction_bbox
+            statistics.lamella_bounding_box_image_px = lamella_image_bbox
+        except CentringException as e:
+            _logger.warning(
+                "Failed to get lamella centre, drift check will be skipped: %s",
+                str(e),
             )
 
-            # Measure GIS
-            # Note the returned values are scaled to the image, not the prediction
-            ylims_px = image_proc.bbox_to_ylims(
-                lamella_prediction_bbox,
-                y_bounds=(0, clean_prediction.shape[0] - 1),
-                pad=0,
-            )
-            statistics.xlims_prediction_px = image_proc.bbox_to_xlims(
-                lamella_prediction_bbox,
-                x_bounds=(0, clean_prediction.shape[1] - 1),
-                pad=x_pad,
-            )
-            gis_thickness_image_px, xlims_image_px = seg_proc.get_gis_thickness(
-                clean_prediction,
-                xlims=statistics.xlims_prediction_px,
-                ylims=(ylims_px[0], None),
-                image_shape=(sem_image.data.shape[0], sem_image.data.shape[1]),
-            )
+        # Apply lamella_pad_x padding to each side in X
+        x_pad = round(
+            (lamella_prediction_bbox[3] - lamella_prediction_bbox[1]) * lamella_pad_x
+        )
 
-            statistics.xlims_image_px = xlims_image_px
-            statistics.gis_thickness_image_px = gis_thickness_image_px.tolist()
+        # Measure GIS
+        # Note the returned values are scaled to the image, not the prediction
+        ylims_px = image_proc.bbox_to_ylims(
+            lamella_prediction_bbox,
+            y_bounds=(0, clean_prediction.shape[0] - 1),
+            pad=0,
+        )
+        statistics.xlims_prediction_px = image_proc.bbox_to_xlims(
+            lamella_prediction_bbox,
+            x_bounds=(0, clean_prediction.shape[1] - 1),
+            pad=x_pad,
+        )
+        gis_thickness_image_px, xlims_image_px = seg_proc.get_gis_thickness(
+            clean_prediction,
+            xlims=statistics.xlims_prediction_px,
+            ylims=(ylims_px[0], None),
+            image_shape=(sem_image.data.shape[0], sem_image.data.shape[1]),
+        )
 
-            gis_thickness_filtered_image_px = seg_proc.filter_gis_thickness(
-                gis_thickness_px=gis_thickness_image_px,
-                xlims_px=xlims_image_px,
-                sigma=self.config.gis_filter_sigma,
-            )
+        statistics.xlims_image_px = xlims_image_px
+        statistics.gis_thickness_image_px = gis_thickness_image_px.tolist()
 
-            statistics.gis_thickness_filtered_image_px = (
-                gis_thickness_filtered_image_px.tolist()
-            )
-            # Calculate GIS min, median, etc.
-            statistics.calculate_statistics()
+        gis_thickness_filtered_image_px = seg_proc.filter_gis_thickness(
+            gis_thickness_px=gis_thickness_image_px,
+            xlims_px=xlims_image_px,
+            sigma=self.config.gis_filter_sigma,
+        )
 
-        finally:
-            return LamellaInformation(
-                identifier=cycle_info.identifier,
-                sem_image=sem_image,
-                fib_image=fib_image,
-                prediction=prediction,
-                clean_prediction=clean_prediction,
-                statistics=statistics,
-            )
+        statistics.gis_thickness_filtered_image_px = (
+            gis_thickness_filtered_image_px.tolist()
+        )
+        # Calculate GIS min, median, etc.
+        statistics.calculate_statistics()
+
+        return LamellaInformation(
+            identifier=cycle_info.identifier,
+            sem_image=sem_image,
+            fib_image=fib_image,
+            prediction=prediction,
+            clean_prediction=clean_prediction,
+            statistics=statistics,
+        )
 
     def _check_lamella(
         self,
