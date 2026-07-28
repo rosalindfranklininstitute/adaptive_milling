@@ -29,7 +29,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         metadata={
             "label": "Model generation",
             "tooltip": "The generation of model to use (defaults to latest).",
-            "type": list[str],
+            "type": str,
             "items": list(MODEL_GENERATIONS_DICT.keys()),
         },
     )
@@ -164,7 +164,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         return v
 
     def get_model_generation(self) -> str | None:
-        model_generation = self.model_generation.strip()
+        model_generation = str(self.model_generation).strip()
         if not model_generation:
             # Interpret empty strings as None
             return None
