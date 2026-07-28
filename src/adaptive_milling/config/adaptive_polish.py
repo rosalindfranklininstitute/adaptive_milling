@@ -156,6 +156,22 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
             "advanced": True,
         },
     )
+    imaging_hfw: float = field(
+        default=40e-6,
+        metadata={
+            "label": "Imaging Field of View",
+            "tooltip": "The horizontal field width used for imaging.",
+            "type": float,
+            "unit": "m",
+            "scale": 1e6,
+            "default": 150.0,
+            "minimum": 20.0,
+            "maximum": 950.0,
+            "step": 10.0,
+            "decimals": 2,
+            "advanced": True,
+        },
+    )
 
     @classmethod
     def ensure_model_path(cls, v: str) -> str:
