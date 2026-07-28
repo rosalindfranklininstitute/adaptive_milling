@@ -425,6 +425,10 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         sem_imaging_settings.beam_type = BeamType.ELECTRON
         _logger.debug("%s SEM settings: %s", self.name, str(sem_imaging_settings))
 
+        # Override imaging HFW
+        fib_imaging_settings.field_of_view = self.config.imaging_hfw
+        sem_imaging_settings.field_of_view = self.config.imaging_hfw
+
         return fib_imaging_settings, sem_imaging_settings
 
     def _load_model(self) -> None:
