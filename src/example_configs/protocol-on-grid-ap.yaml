@@ -10,10 +10,10 @@ tasks:
         milling:
             mill_rough:
                 name: Rough Milling
-                field_of_view: 4.0e-05
+                field_of_view: 6.0e-05
                 channel: ION
                 alignment:
-                    enabled: false
+                    enabled: true
                     interval_enabled: false
                     interval: 30
                     rect:
@@ -27,8 +27,8 @@ tasks:
                     imaging:
                         beam_type: ELECTRON
                         resolution:
-                        - 1536
-                        - 1024
+                        - 3072
+                        - 2048
                         dwell_time: 1.0e-06
                         hfw: 0.00015
                         autocontrast: false
@@ -36,143 +36,28 @@ tasks:
                         save: false
                         drift_correction: false
                 acquisition:
-                    acquire_sem: false
-                    acquire_fib: false
+                    acquire_sem: true
+                    acquire_fib: true
                     imaging:
                         beam_type: ELECTRON
                         resolution:
-                        - 1536
-                        - 1024
-                        dwell_time: 1.0e-06
-                        hfw: 0.00015
+                        - 3072
+                        - 2048
+                        dwell_time: 5.0e-08
+                        hfw: 6.0e-05
                         autocontrast: false
                         autogamma: false
-                        save: false
+                        save: true
+                        frame_integration: 16
                         drift_correction: false
                 stages:
-                -   name: Rough Cut
-                    milling:
-                        milling_current: 2.0e-09
-                        spot_size: 5.0e-08
-                        rate: 0.0001
-                        dwell_time: 1.0e-06
-                        hfw: 4.0e-05
-                        patterning_mode: Parallel
-                        application_file: Si
-                        preset: ''
-                        spacing: 1.0
-                        milling_voltage: 30000.0
-                        milling_channel: ION
-                    pattern:
-                        point:
-                            x: 0.0
-                            y: 0.0
-                        width: 1.1e-05
-                        depth: 2.2e-06
-                        spacing: 3.0e-06
-                        upper_trench_height: 7.5e-06
-                        lower_trench_height: 7.5e-06
-                        cross_section: Rectangle
-                        time: 0.0
-                        fillet: 0.0
-                        name: Trench
-                    strategy:
-                        name: Standard
-                        config: {}
-                -   name: Regular Cut 1
-                    milling:
-                        milling_current: 7.4e-10
-                        spot_size: 5.0e-08
-                        rate: 0.0001
-                        dwell_time: 1.0e-06
-                        hfw: 4.0e-05
-                        patterning_mode: Parallel
-                        application_file: Si
-                        preset: ''
-                        spacing: 1.0
-                        milling_voltage: 30000.0
-                        milling_channel: ION
-                    pattern:
-                        point:
-                            x: 0.0
-                            y: 0.0
-                        width: 1.1e-05
-                        depth: 1.3e-06
-                        spacing: 1.2e-06
-                        upper_trench_height: 1.35e-06
-                        lower_trench_height: 1.35e-06
-                        cross_section: Rectangle
-                        time: 0.0
-                        fillet: 0.0
-                        name: Trench
-                    strategy:
-                        name: Standard
-                        config: {}
-                -   name: Regular Cut 2
-                    milling:
-                        milling_current: 6.0e-11
-                        spot_size: 5.0e-08
-                        rate: 0.0001
-                        dwell_time: 1.0e-06
-                        hfw: 4.0e-05
-                        patterning_mode: Parallel
-                        application_file: Si
-                        preset: ''
-                        spacing: 1.0
-                        milling_voltage: 30000.0
-                        milling_channel: ION
-                    pattern:
-                        point:
-                            x: 0.0
-                            y: 0.0
-                        width: 1.05e-05
-                        depth: 1.3e-06
-                        spacing: 6.0e-07
-                        upper_trench_height: 4.0e-07
-                        lower_trench_height: 4.0e-07
-                        cross_section: Rectangle
-                        time: 0.0
-                        fillet: 0.0
-                        name: Trench
-                    strategy:
-                        name: Standard
-                        config: {}
-                -   name: Regular Cut 3
-                    milling:
-                        milling_current: 6.0e-11
-                        spot_size: 5.0e-08
-                        rate: 0.0001
-                        dwell_time: 1.0e-06
-                        hfw: 4.0e-05
-                        patterning_mode: Parallel
-                        application_file: Si
-                        preset: ''
-                        spacing: 1.0
-                        milling_voltage: 30000.0
-                        milling_channel: ION
-                    pattern:
-                        point:
-                            x: 0.0
-                            y: 0.0
-                        width: 1.0e-05
-                        depth: 5.0e-07
-                        spacing: 5.5e-07
-                        upper_trench_height: 3.5e-07
-                        lower_trench_height: 3.5e-07
-                        cross_section: Rectangle
-                        time: 0.0
-                        fillet: 0.0
-                        name: Trench
-                    strategy:
-                        name: Standard
-                        config: {}
                 -   name: Microexpansion
                     milling:
                         milling_current: 2.0e-09
                         spot_size: 5.0e-08
                         rate: 3.0e-11
                         dwell_time: 1.0e-06
-                        hfw: 0.0002
+                        hfw: 6.0e-05
                         patterning_mode: Serial
                         application_file: Si
                         preset: 30 keV; 2.5 nA
@@ -185,9 +70,68 @@ tasks:
                             y: 0.0
                         width: 5.0e-07
                         height: 1.8e-05
-                        depth: 1.0e-06
+                        depth: 2.0e-06
                         distance: 1.0e-05
                         name: MicroExpansion
+                    strategy:
+                        name: Standard
+                        config: {}
+                -   name: Rough 1
+                    milling:
+                        milling_current: 2.0e-09
+                        spot_size: 5.0e-08
+                        rate: 0.0001
+                        dwell_time: 1.0e-06
+                        hfw: 6.0e-05
+                        patterning_mode: Parallel
+                        application_file: Si
+                        preset: ''
+                        spacing: 1.0
+                        milling_voltage: 30000.0
+                        milling_channel: ION
+                    pattern:
+                        point:
+                            x: 0.0
+                            y: 0.0
+                        width: 1.1e-05
+                        depth: 2.2e-06
+                        spacing: 6.0e-06
+                        upper_trench_height: 6.0e-06
+                        lower_trench_height: 6.0e-06
+                        cross_section: Rectangle
+                        time: 0.0
+                        fillet: 0.0
+                        name: Trench
+                    strategy:
+                        name: Standard
+                        config: {}
+                -   name: Rough 2
+                    milling:
+                        milling_current: 7.4e-10
+                        spot_size: 5.0e-08
+                        rate: 0.0001
+                        dwell_time: 1.0e-06
+                        hfw: 6.0e-05
+                        patterning_mode: Parallel
+                        application_file: Si
+                        preset: ''
+                        spacing: 1.0
+                        milling_voltage: 30000.0
+                        milling_channel: ION
+                    pattern:
+                        point:
+                            x: 0.0
+                            y: 0.0
+                            name: null
+                        width: 1.1e-05
+                        depth: 1.8e-06
+                        spacing: 3.0e-06
+                        upper_trench_height: 3.0e-06
+                        lower_trench_height: 3.0e-06
+                        cross_section: Rectangle
+                        time: 0.0
+                        fillet: 0.0
+                        name: Trench
                     strategy:
                         name: Standard
                         config: {}
@@ -195,8 +139,8 @@ tasks:
             imaging:
                 beam_type: ELECTRON
                 resolution:
-                - 1536
-                - 1024
+                - 3072
+                - 2048
                 dwell_time: 1.0e-06
                 hfw: 0.00015
                 autocontrast: false
@@ -216,10 +160,10 @@ tasks:
         milling:
             mill_polishing:
                 name: Polishing
-                field_of_view: 4.0e-05
+                field_of_view: 6.0e-05
                 channel: ION
                 alignment:
-                    enabled: false
+                    enabled: true
                     interval_enabled: false
                     interval: 30
                     rect:
@@ -233,8 +177,8 @@ tasks:
                     imaging:
                         beam_type: ELECTRON
                         resolution:
-                        - 1536
-                        - 1024
+                        - 3072
+                        - 2048
                         dwell_time: 1.0e-06
                         hfw: 0.00015
                         autocontrast: false
@@ -242,21 +186,109 @@ tasks:
                         save: false
                         drift_correction: false
                 acquisition:
-                    acquire_sem: false
-                    acquire_fib: false
+                    acquire_sem: true
+                    acquire_fib: true
                     imaging:
                         beam_type: ELECTRON
                         resolution:
                         - 3072
                         - 2048
-                        dwell_time: 2.0e-06
-                        hfw: 4.0e-05
+                        dwell_time: 5.0e-08
+                        hfw: 6.0e-05
                         autocontrast: false
                         autogamma: false
-                        save: false
+                        save: true
+                        frame_integration: 16
                         drift_correction: false
                 stages:
-                -   name: Adaptive Polishing
+                -   name: Fine 1
+                    milling:
+                        milling_current: 2.0e-10
+                        spot_size: 5.0e-08
+                        rate: 0.0001
+                        dwell_time: 1.0e-06
+                        hfw: 4.0e-05
+                        patterning_mode: Parallel
+                        application_file: Si
+                        preset: ''
+                        spacing: 1.0
+                        milling_voltage: 30000.0
+                        milling_channel: ION
+                    pattern:
+                        point:
+                            x: 0.0
+                            y: 0.0
+                        width: 1.1e-05
+                        depth: 1.3e-06
+                        spacing: 1.3e-06
+                        upper_trench_height: 1.25e-06
+                        lower_trench_height: 1.25e-06
+                        cross_section: Rectangle
+                        time: 0.0
+                        fillet: 0.0
+                        name: Trench
+                    strategy:
+                        name: Standard
+                        config: {}
+                -   name: Fine 2
+                    milling:
+                        milling_current: 6.0e-11
+                        spot_size: 5.0e-08
+                        rate: 0.0001
+                        dwell_time: 1.0e-06
+                        hfw: 6.0e-05
+                        patterning_mode: Parallel
+                        application_file: Si
+                        preset: ''
+                        spacing: 1.0
+                        milling_voltage: 30000.0
+                        milling_channel: ION
+                    pattern:
+                        point:
+                            x: 0.0
+                            y: 0.0
+                        width: 1.0e-05
+                        depth: 6.0e-07
+                        spacing: 6.0e-07
+                        upper_trench_height: 5.0e-07
+                        lower_trench_height: 5.0e-07
+                        cross_section: Rectangle
+                        time: 0.0
+                        fillet: 0.0
+                        name: Trench
+                    strategy:
+                        name: Standard
+                        config: {}
+                -   name: Fine 3
+                    milling:
+                        milling_current: 2.0e-11
+                        spot_size: 5.0e-08
+                        rate: 0.0001
+                        dwell_time: 1.0e-06
+                        hfw: 6.0e-05
+                        patterning_mode: Parallel
+                        application_file: Si
+                        preset: ''
+                        spacing: 1.0
+                        milling_voltage: 30000.0
+                        milling_channel: ION
+                    pattern:
+                        point:
+                            x: 0.0
+                            y: 0.0
+                        width: 1.0e-05
+                        depth: 4.0e-07
+                        spacing: 4.0e-07
+                        upper_trench_height: 2.5e-07
+                        lower_trench_height: 2.5e-07
+                        cross_section: Rectangle
+                        time: 0.0
+                        fillet: 0.0
+                        name: Trench
+                    strategy:
+                        name: Standard
+                        config: {}
+                -   name: AdaptivePolishing
                     milling:
                         milling_current: 2.0e-11
                         spot_size: 5.0e-08
@@ -275,11 +307,11 @@ tasks:
                             y: 0.0
                         width: 1.0e-05
                         depth: 5.0e-08
-                        spacing: 2.25e-07
+                        spacing: 2.0e-07
                         upper_trench_height: 3.5e-07
                         lower_trench_height: 3.5e-07
                         cross_section: Rectangle
-                        time: 10
+                        time: 15
                         fillet: 0.0
                         name: Trench
                     strategy:
@@ -287,12 +319,12 @@ tasks:
                         config:
                             model_path: null
                             model_generation: 1.0
-                            gis_stop_min: 0.2e-6
-                            gis_stop_median: 0.25e-6
-                            max_crack_area: 2.0e-12
-                            max_milling_cycles: 30
+                            gis_stop_min: 0.25e-06
+                            gis_stop_median: 0.3e-06
+                            max_crack_area: 0.1e-12
+                            max_milling_cycles: 60
                             minimum_lamella_area: 30.0e-12
-                            maximum_drift: 70.0e-6
+                            maximum_drift: 70.0e-06
                             align_sem: true
                             save_predictions: true
                             gis_filter_sigma: 1.6666666666666667
@@ -301,8 +333,8 @@ tasks:
             imaging:
                 beam_type: ELECTRON
                 resolution:
-                - 1536
-                - 1024
+                - 3072
+                - 2048
                 dwell_time: 1.0e-06
                 hfw: 0.00015
                 autocontrast: false
@@ -322,7 +354,7 @@ tasks:
         milling:
             fiducial:
                 name: Fiducial
-                field_of_view: 8.0e-05
+                field_of_view: 6.0e-05
                 channel: ION
                 alignment:
                     enabled: false
@@ -339,8 +371,8 @@ tasks:
                     imaging:
                         beam_type: ELECTRON
                         resolution:
-                        - 1536
-                        - 1024
+                        - 3072
+                        - 2048
                         dwell_time: 1.0e-06
                         hfw: 0.00015
                         autocontrast: false
@@ -348,13 +380,13 @@ tasks:
                         save: false
                         drift_correction: false
                 acquisition:
-                    acquire_sem: false
-                    acquire_fib: false
+                    acquire_sem: true
+                    acquire_fib: true
                     imaging:
                         beam_type: ELECTRON
                         resolution:
-                        - 1536
-                        - 1024
+                        - 3072
+                        - 2048
                         dwell_time: 1.0e-06
                         hfw: 0.00015
                         autocontrast: false
@@ -364,11 +396,11 @@ tasks:
                 stages:
                 -   name: Fiducial
                     milling:
-                        milling_current: 2.0e-09
+                        milling_current: 6.0e-11
                         spot_size: 5.0e-08
                         rate: 3.0e-11
                         dwell_time: 1.0e-06
-                        hfw: 8.0e-05
+                        hfw: 6.0e-05
                         patterning_mode: Serial
                         application_file: Si
                         preset: 30 keV; 20 nA
@@ -379,13 +411,12 @@ tasks:
                         point:
                             x: 2.5e-05
                             y: 0.0
-                        width: 1.0e-06
-                        height: 1.0e-05
-                        depth: 1.0e-06
-                        rotation: 45
+                        width: 0.1e-6
+                        height: 10.0e-6
+                        depth: 0.5e-6
+                        rotation: 45.0
                         cross_section: Rectangle
-                        asymmetric: false
-                        name: Fiducial
+                        name: AsymmetricFiducial
                     strategy:
                         name: Standard
                         config: {}
@@ -393,8 +424,8 @@ tasks:
             imaging:
                 beam_type: ELECTRON
                 resolution:
-                - 1536
-                - 1024
+                - 3072
+                - 2048
                 dwell_time: 1.0e-06
                 hfw: 0.00015
                 autocontrast: false
@@ -410,7 +441,7 @@ tasks:
     Setup Lamella Position:
         task_type: SELECT_MILLING_POSITION
         parameters:
-            milling_angle: -23
+            milling_angle: 15
             auto_milling_alignment: false
             use_autofocus: true
         milling: {}
@@ -418,8 +449,8 @@ tasks:
             imaging:
                 beam_type: ELECTRON
                 resolution:
-                - 1536
-                - 1024
+                - 3072
+                - 2048
                 dwell_time: 1.0e-06
                 hfw: 0.00015
                 autocontrast: false
