@@ -10,41 +10,43 @@ Adaptive milling plugins for [fibsemOS](https://github.com/fibsem-os/fibsem-os).
 
 ## Installation
 
-These instructions will install the latest version from the main branch by default. A release version can be installed by specifying a tag, for example `git+https://github.com/rosalindfranklininstitute/adaptive_milling.git@vX.X.X` would install tag `vX.X.X`. It is recommended to install the [latest release](https://github.com/rosalindfranklininstitute/adaptive_milling/releases/latest).
+1. Download and extract the source code from the [latest release](https://github.com/rosalindfranklininstitute/adaptive_milling/releases/latest) to a suitable installation location on your computer.
+2. Open the extracted directory, which should contain a directory named 'src'.
+3. Open a terminal in this directory and follow the one of the sets of instructions below.
 
-### [uv](https://docs.astral.sh/uv/getting-started/installation/) (recommended)
+---
 
-First, open a terminal in the directory you want your new environment to be created. In this example the environment is called `adaptive_milling_env`, which can be changed as required.
+### Install using [uv](https://docs.astral.sh/uv/getting-started/installation/) (recommended)
 
 ```Shell
 # Create a virtual environment (Python 3.11 to match AutoScript's environment)
-uv venv --python 3.11 adaptive_milling_env
+uv venv --python 3.11
 
 # Activate the virtual environment (Windows)
-adaptive_milling_env\Scripts\activate
+.venv\Scripts\activate
 
 # Install including AutoLamella from fibsemOS with the appropriate PyTorch backend for your machine
-uv pip install git+https://github.com/rosalindfranklininstitute/adaptive_milling.git --extra ui --torch-backend auto
+uv pip install . --extra ui --torch-backend auto
 ```
 
-To activate the virtual environment on Linux systems: `source adaptive_milling_env/bin/activate`
+To activate the virtual environment on Linux systems: `source .venv/bin/activate`
 
-### [miniforge](https://conda-forge.org/download/)
+---
 
-In this example a Conda environment will be created called `adaptive_milling`, which can be changed a required.
+### Install using [miniforge](https://conda-forge.org/download/)
 
 ```Shell
 # Create a virtual environment (Python 3.11 to match AutoScript's environment)
-conda create -n adaptive_milling python=3.11
+conda create -p ./.venv python=3.11
 
 # Activate the virtual environment
-conda activate adaptive_milling
+conda activate ./.venv
 
 # Install PyTorch (select appropriate compute platform, see table below)
 python -m pip install pytorch --index-url <Index URL>
 
 # Install including AutoLamella from fibsemOS
-python -m pip install -e git+https://github.com/rosalindfranklininstitute/adaptive_milling.git[ui]
+python -m pip install -e .[ui]
 ```
 
 If using CUDA, the version must be below or equal to the the system CUDA version, which can be checked with the command `nvidia-smi`.
@@ -56,6 +58,8 @@ If using CUDA, the version must be below or equal to the the system CUDA version
 | CUDA 11.8        | https://download.pytorch.org/whl/cu118 |
 | CUDA 12.6        | https://download.pytorch.org/whl/cu126 |
 | CUDA 12.8        | https://download.pytorch.org/whl/cu128 |
+
+---
 
 ## Usage
 
