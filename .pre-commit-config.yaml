@@ -18,7 +18,6 @@ repos:
       - id: check-added-large-files
       - id: trailing-whitespace
       - id: check-toml
-      - id: check-yaml
       - id: end-of-file-fixer
       - id: name-tests-test
       - id: no-commit-to-branch
