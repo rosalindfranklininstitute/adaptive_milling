@@ -10,12 +10,7 @@ Adaptive milling plugins for [fibsemOS](https://github.com/fibsem-os/fibsem-os).
 
 ## Installation
 
-First clone this repository to your local machine:
-
-```Shell
-git clone https://github.com/rosalindfranklininstitute/adaptive_milling.git
-cd adaptive_milling
-```
+These instructions will install the latest release version by default, other releases can be selected by changing `@release` to a specify a tag, e.g. `@v1.2.3`.
 
 ### [uv](https://docs.astral.sh/uv/getting-started/installation/) (recommended)
 
@@ -27,7 +22,7 @@ uv venv --python 3.11
 .venv\Scripts\activate
 
 # Install including AutoLamella from fibsemOS with the appropriate PyTorch backend for your machine
-uv pip install . --extra ui --torch-backend auto
+uv pip install git+https://github.com/rosalindfranklininstitute/adaptive_milling.git@release --extra ui --torch-backend auto
 ```
 
 To activate the virtual environment on Linux systems: `source .venv/bin/activate`
@@ -45,7 +40,7 @@ conda activate ./.venv
 python -m pip install pytorch --index-url <Index URL>
 
 # Install including AutoLamella from fibsemOS
-python -m pip install -e .[ui]
+python -m pip install -e git+https://github.com/rosalindfranklininstitute/adaptive_milling.git@release[ui]
 ```
 
 If using CUDA, the version must be below or equal to the the system CUDA version, which can be checked with the command `nvidia-smi`.
