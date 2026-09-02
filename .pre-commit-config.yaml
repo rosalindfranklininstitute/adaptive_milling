@@ -20,6 +20,7 @@ repos:
       - id: check-toml
       - id: end-of-file-fixer
       - id: name-tests-test
+        exclude: "tests/(setup|utils).py"
       - id: no-commit-to-branch
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v2.3.1
