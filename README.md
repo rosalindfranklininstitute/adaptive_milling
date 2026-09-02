@@ -3,13 +3,10 @@
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 [![CI](https://github.com/rosalindfranklininstitute/adaptive_milling/actions/workflows/python-test.yml/badge.svg)](https://github.com/rosalindfranklininstitute/adaptive_milling/actions/workflows/python-test.yml)
 
-
 Adaptive milling plugins for [fibsemOS](https://github.com/fibsem-os/fibsem-os). This package currently contains:
 
 - **AdaptivePolishing**: a milling strategy that uses machine learning to determine when polishing is complete.
 - **AsymmetricFiducial**: a milling pattern that adds some asymmetry to the default Fiducial pattern.
-
-
 
 ## Installation
 
@@ -64,6 +61,7 @@ If using CUDA, the version must be below or equal to the the system CUDA version
 ## Usage
 
 ### Protocols
+
 We recommend starting with [this protocol](src/example_configs/protocol-on-grid-ap.yaml) and customising to your requirements. You will need to set the `model_path` within the `AdaptivePolishing` config, either directly in the file or via the fibsemOS AutoLamella GUI.
 
 ## Testing
