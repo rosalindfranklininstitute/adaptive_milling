@@ -63,6 +63,10 @@ If using CUDA, the version must be below or equal to the the system CUDA version
 
 ## Usage
 
+### Shortcut
+
+To create a desktop shortcut, please follow [these instructions](https://github.com/fibsem-os/fibsem-os/blob/main/INSTALLATION.md#create-a-desktop-shortcut) with the Python environment activated.
+
 ### Protocols
 
 We recommend starting with [this protocol](src/example_configs/protocol-on-grid-ap.yaml) and customising to your requirements. You will need to set the `model_path` within the `AdaptivePolishing` config, either directly in the file or via the fibsemOS AutoLamella GUI.
