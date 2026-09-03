@@ -12,10 +12,7 @@ from fibsem.applications.autolamella.structures import AutoLamellaTaskProtocol
 from fibsem.milling.tasks import FibsemMillingTaskConfig, run_milling_task
 from fibsem.structures import BeamType, FibsemImage
 
-from adaptive_milling.config import (
-    AdaptivePolishMillingConfig,
-    BitmapAdaptivePolishMillingConfig,
-)
+from adaptive_milling.config import AdaptivePolishMillingConfig
 
 from . import setup
 
@@ -51,10 +48,7 @@ def protocol_path(
     sem_segmentation_model: tuple[str, Path],
 ) -> Path:
     strategy_type = request.param
-    if strategy_type == "bitmap":
-        config_class = BitmapAdaptivePolishMillingConfig
-    else:
-        config_class = AdaptivePolishMillingConfig
+    config_class = AdaptivePolishMillingConfig
 
     ap_config = config_class(
         model_generation=sem_segmentation_model[0],
@@ -113,7 +107,7 @@ def raise_error_after_num_calls(
 
 
 @pytest.mark.usefixtures("skip_if_no_models")
-@pytest.mark.parametrize("protocol_path", ["normal", "bitmap"], indirect=True)
+@pytest.mark.parametrize("protocol_path", ["normal"], indirect=True)
 @patch(
     "adaptive_milling.strategy.adaptive_polish.fs_utils.current_timestamp",
     new=MagicMock(return_value=TIMESTAMP),
@@ -138,7 +132,7 @@ def test_runs(
 
     assert isinstance(
         protocol_strategy_config,
-        (AdaptivePolishMillingConfig, BitmapAdaptivePolishMillingConfig),
+        AdaptivePolishMillingConfig,
     ), f"Strategy config is the wrong type: {type(protocol_strategy_config)}"
 
     for k, v in _AP_MILLING_CONFIG_SETTINGS.items():

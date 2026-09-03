@@ -1,7 +1,6 @@
 import typing
 
 from adaptive_milling.config.adaptive_polish import AdaptivePolishMillingConfig
-from adaptive_milling.config.bitmap import BitmapAdaptivePolishMillingConfig
 
 TAdaptivePolishMillingConfig = typing.TypeVar(
     "TAdaptivePolishMillingConfig", bound=AdaptivePolishMillingConfig
@@ -10,6 +9,5 @@ TAdaptivePolishMillingConfig = typing.TypeVar(
 
 __all__ = [
     "AdaptivePolishMillingConfig",
-    "BitmapAdaptivePolishMillingConfig",
     "TAdaptivePolishMillingConfig",
 ]
