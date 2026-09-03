@@ -43,7 +43,7 @@ conda create -p ./.venv python=3.11
 conda activate ./.venv
 
 # Install PyTorch (select appropriate compute platform, see table below)
-python -m pip install pytorch --index-url <Index URL>
+python -m pip install torch torchvision --index-url <Index URL>
 
 # Install including AutoLamella from fibsemOS
 python -m pip install -e .[ui]
