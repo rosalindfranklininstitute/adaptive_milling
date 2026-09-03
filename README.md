@@ -10,14 +10,13 @@ Adaptive milling plugins for [fibsemOS](https://github.com/fibsem-os/fibsem-os).
 
 ## Installation
 
-First clone this repository to your local machine:
+1. Download and extract the source code from the [latest release](https://github.com/rosalindfranklininstitute/adaptive_milling/releases/latest) to a suitable installation location on your computer.
+2. Open the extracted directory, which should contain a directory named 'src'.
+3. Open a terminal in this directory and follow the one of the sets of instructions below.
 
-```Shell
-git clone https://github.com/rosalindfranklininstitute/adaptive_milling.git
-cd adaptive_milling
-```
+---
 
-### [uv](https://docs.astral.sh/uv/getting-started/installation/) (recommended)
+### Install using [uv](https://docs.astral.sh/uv/getting-started/installation/) (recommended)
 
 ```Shell
 # Create a virtual environment (Python 3.11 to match AutoScript's environment)
@@ -32,7 +31,9 @@ uv pip install . --extra ui --torch-backend auto
 
 To activate the virtual environment on Linux systems: `source .venv/bin/activate`
 
-### [miniforge](https://conda-forge.org/download/)
+---
+
+### Install using [miniforge](https://conda-forge.org/download/)
 
 ```Shell
 # Create a virtual environment (Python 3.11 to match AutoScript's environment)
@@ -42,7 +43,7 @@ conda create -p ./.venv python=3.11
 conda activate ./.venv
 
 # Install PyTorch (select appropriate compute platform, see table below)
-python -m pip install pytorch --index-url <Index URL>
+python -m pip install torch torchvision --index-url <Index URL>
 
 # Install including AutoLamella from fibsemOS
 python -m pip install -e .[ui]
@@ -58,7 +59,13 @@ If using CUDA, the version must be below or equal to the the system CUDA version
 | CUDA 12.6        | https://download.pytorch.org/whl/cu126 |
 | CUDA 12.8        | https://download.pytorch.org/whl/cu128 |
 
+---
+
 ## Usage
+
+### Shortcut
+
+To create a desktop shortcut, please follow [these instructions](https://github.com/fibsem-os/fibsem-os/blob/main/INSTALLATION.md#create-a-desktop-shortcut) with the Python environment activated.
 
 ### Protocols
 
