@@ -86,4 +86,4 @@ If you would like to help contribute to project, please read our [contribution](
 
 Copyright Rosalind Franklin Institute, 2024.
 
-Distributed under the terms of the Apache-2.0 license, Adaptive Milling is free and open source software.
+Distributed under the terms of the Apache-2.0 license with "Commons Clause" License Condition v1.0, see the [license](LICENSE) for further details.
