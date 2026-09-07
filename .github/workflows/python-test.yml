@@ -35,5 +35,15 @@ jobs:
         uses: astral-sh/ruff-action@v3
         with:
           src: "./src"
+      - name: Download archived models
+        uses: actions/download-artifact@v5
+        with:
+          name: test-models
+          path: ./tests/data/models
       - name: Install & test
         run: uv run --locked  --extra cpu pytest
+      - name: Archive downloaded models  # Avoid redownloading
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-models
+          path: ./tests/data/models/
