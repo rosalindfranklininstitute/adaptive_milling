@@ -745,7 +745,7 @@ def test_check_lamella(
         pass_checks_kwargs["max_crack_area"] = 0
     elif failure_reason == "lamella area":
         saves_results = False
-        check_exception = ap_strategy.StopEarlyError
+        info_exception = ap_strategy.StopEarlyError
         pass_checks_kwargs["minimum_lamella_area"] = 0.1
     elif failure_reason == "centring":
         saves_results = True
@@ -783,33 +783,34 @@ def test_check_lamella(
             fib_image=fib_image,
             lamella_pad_x=0,
         )
+    if not info_exception:
+        # lamella_info will be None, so no statistics to check.
+        with utils.assert_raises(check_exception):
+            strategy._check_lamella(
+                lamella_info=lamella_info,
+                plots_directory=lamella_ap_plots_folder,
+                expected_lamella_centre_m=Point(0, 0),
+            )
 
-    with utils.assert_raises(check_exception):
-        strategy._check_lamella(
-            lamella_info=lamella_info,
-            plots_directory=lamella_ap_plots_folder,
-            expected_lamella_centre_m=Point(0, 0),
-        )
-
-    for key, value in lamella_info.statistics.to_dict().items():
-        if key in (
-            "estimated_milling_time_s",
-            "pattern_xlims_px",
-            "pattern_dwell_multiplier",
-            "pattern_blanking",
-        ):
-            # Not set in this test, as that is done by _mill
-            assert value is None, f"{key} should be None"
-        elif not saves_results and key not in (
-            "image_pixel_size_m",
-            "prediction_pixel_size_m",
-            "crack_count",
-            "lamella_thickness_prediction_px",
-            "crack_thickness_prediction_px",
-        ):
-            assert value is None, f"{key} should be None"
-        else:
-            assert value is not None, f"{key} should not be None"
+        for key, value in lamella_info.statistics.to_dict().items():
+            if key in (
+                "estimated_milling_time_s",
+                "pattern_xlims_px",
+                "pattern_dwell_multiplier",
+                "pattern_blanking",
+            ):
+                # Not set in this test, as that is done by _mill
+                assert value is None, f"{key} should be None"
+            elif not saves_results and key not in (
+                "image_pixel_size_m",
+                "prediction_pixel_size_m",
+                "crack_count",
+                "lamella_thickness_prediction_px",
+                "crack_thickness_prediction_px",
+            ):
+                assert value is None, f"{key} should be None"
+            else:
+                assert value is not None, f"{key} should not be None"
 
 
 @pytest.mark.parametrize("file_exists", [True, False], ids=["file", "no file"])
