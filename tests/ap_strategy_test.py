@@ -706,7 +706,6 @@ def test_align_beam(
     assert new_lamella_centre_m == expected_new_lamella_centre_m
 
 
-@pytest.mark.usefixtures("skip_if_no_models")
 @pytest.mark.parametrize(
     "failure_reason",
     ["min_gis", "mean_gis", "crack", "lamella area", "centring", "none"],

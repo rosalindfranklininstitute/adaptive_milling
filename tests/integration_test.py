@@ -106,7 +106,6 @@ def raise_error_after_num_calls(
     return raise_error_after_wrapper
 
 
-@pytest.mark.usefixtures("skip_if_no_models")
 @pytest.mark.parametrize("protocol_path", ["normal"], indirect=True)
 @patch(
     "adaptive_milling.strategy.adaptive_polish.fs_utils.current_timestamp",
