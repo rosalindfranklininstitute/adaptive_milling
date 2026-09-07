@@ -23,7 +23,8 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
-
+    permissions:
+      actions: write
     steps:
       - uses: actions/checkout@v5
       - name: Install the latest version of uv with Python ${{ matrix.python-version }}
@@ -35,15 +36,21 @@ jobs:
         uses: astral-sh/ruff-action@v3
         with:
           src: "./src"
-      - name: Download archived models
-        uses: actions/download-artifact@v5
+      - name: Restore cached models
+        id: cached-models-restore
+        uses: actions/cache/restore@v6
         with:
-          name: test-models
           path: ./tests/data/models
+          key: test-models
+          restore-keys: |
+            test-models
       - name: Install & test
         run: uv run --locked  --extra cpu pytest
-      - name: Archive downloaded models  # Avoid redownloading
-        uses: actions/upload-artifact@v4
+      - name: Save models to cache
+        # Save regardless of tests passing
+        if: always()
+        id: cached-models-save
+        uses: actions/cache/save@v6
         with:
-          name: test-models
-          path: ./tests/data/models/
+          path: ./tests/data/models
+          key: ${{ steps.cached-models-restore.outputs.cache-primary-key }}
