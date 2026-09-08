@@ -70,7 +70,11 @@ To create a desktop shortcut, please follow [these instructions](https://github.
 
 ### Protocols
 
-We recommend starting with [this protocol](src/example_configs/protocol-on-grid-ap.yaml) and customising to your requirements. You will need to set the `model_path` within the `AdaptivePolishing` config, either directly in the file or via the fibsemOS AutoLamella GUI.
+We recommend starting with one of our example protocols and customising to your requirements. You will need to set the `model_path` within the `AdaptivePolishing` config, either directly in the file or via the fibsemOS AutoLamella GUI.
+
+#### Example protocols:
+- [Optimised for TFS Arctis](src/example_configs/protocol-on-grid-ap.yaml). This protocol has two stages of AdaptivePolishing.
+- [Based on settings used for our paper](src/example_configs/protocol-on-grid-ap.yaml). This is less well optimised and only uses one stage of AdaptivePolishing.
 
 ## Testing
 
