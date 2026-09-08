@@ -8,14 +8,12 @@ import tifffile
 from adaptive_milling.models import load_model
 
 
-@pytest.mark.usefixtures("skip_if_no_models")
 def test_segmentation_model_loads(sem_segmentation_model: tuple[str, Path]):
     generation, model_path = sem_segmentation_model
     """Test that the segmentation model produces a prediction"""
     load_model(model_path, generation=generation)
 
 
-@pytest.mark.usefixtures("skip_if_no_models")
 @pytest.mark.parametrize(["as_array"], [[True], [False]], ids=["array", "path"])
 def test_segmentation_model_runs(
     as_array: bool, sem_segmentation_model: tuple[str, Path], sem_image_dir: Path

@@ -23,7 +23,8 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
-
+    permissions:
+      actions: write
     steps:
       - uses: actions/checkout@v5
       - name: Install the latest version of uv with Python ${{ matrix.python-version }}
@@ -35,5 +36,29 @@ jobs:
         uses: astral-sh/ruff-action@v3
         with:
           src: "./src"
+      - name: Restore cached models
+        id: cached-models-restore
+        uses: actions/cache/restore@v6
+        with:
+          path: ./tests/data/models
+          key: test-models
+          restore-keys: |
+            test-models
       - name: Install & test
         run: uv run --locked  --extra cpu pytest
+      - name: Delete previous cache  # Only way to update cache
+        if: always() && matrix.python-version == '3.11' && steps.cached-models-restore.outputs.cache-hit
+        continue-on-error: true
+        run: |
+          gh extension install actions/gh-actions-cache
+          gh actions-cache delete "${{ steps.cached-models-restore.outputs.cache-primary-key }}" --confirm
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Save models to cache
+        # Save regardless of tests passing
+        if: always() && matrix.python-version == '3.11'
+        id: cached-models-save
+        uses: actions/cache/save@v6
+        with:
+          path: ./tests/data/models
+          key: ${{ steps.cached-models-restore.outputs.cache-primary-key }}
