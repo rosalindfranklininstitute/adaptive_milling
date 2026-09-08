@@ -46,6 +46,14 @@ jobs:
             test-models
       - name: Install & test
         run: uv run --locked  --extra cpu pytest
+      - name: Delete previous cache  # Only way to update cache
+        if: always() && matrix.python-version == '3.11' && steps.cached-models-restore.outputs.cache-hit
+        continue-on-error: true
+        run: |
+          gh extension install actions/gh-actions-cache
+          gh actions-cache delete "${{ steps.cached-models-restore.outputs.cache-primary-key }}" --confirm
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Save models to cache
         # Save regardless of tests passing
         if: always() && matrix.python-version == '3.11'
