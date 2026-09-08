@@ -48,7 +48,7 @@ jobs:
         run: uv run --locked  --extra cpu pytest
       - name: Save models to cache
         # Save regardless of tests passing
-        if: always()
+        if: always() && matrix.python-version == '3.11'
         id: cached-models-save
         uses: actions/cache/save@v6
         with:
