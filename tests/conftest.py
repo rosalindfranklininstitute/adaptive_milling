@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import typing
 from importlib import resources
 from pathlib import Path
@@ -16,12 +17,15 @@ _MODELS: dict[str, list[tuple[str, Path | None]]] = {
     ],
 }
 
+_logger = logging.getLogger(__name__)
+
 
 def _get_model_path(generation: str, url: str) -> Path:
     return _MODELS_DIR / generation / url.rsplit("/")[-1]
 
 
 def _download_from_url(url: str, local_path: Path) -> None:
+    _logger.info("Downloading model from %s", local_path)
     with requests.get(url, stream=True) as r:
         r.raise_for_status()
         with local_path.open("wb") as f:
