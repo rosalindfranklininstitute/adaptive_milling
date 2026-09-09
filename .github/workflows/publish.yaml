@@ -31,7 +31,7 @@ jobs:
 
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/adaptive_milling
+      url: https://test.pypi.org/p/adaptive-milling
 
     permissions:
       id-token: write  # IMPORTANT: mandatory for trusted publishing
@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/adaptive_milling
+      url: https://pypi.org/p/adaptive-milling
     permissions:
       id-token: write # IMPORTANT: this permission is mandatory for trusted publishing
     steps:
