@@ -10,9 +10,10 @@ Adaptive milling plugins for [fibsemOS](https://github.com/fibsem-os/fibsem-os).
 
 ## Installation
 
-1. Download and extract the source code from the [latest release](https://github.com/rosalindfranklininstitute/adaptive_milling/releases/latest) to a suitable installation location on your computer.
-2. Open the extracted directory, which should contain a directory named 'src'.
-3. Open a terminal in this directory and follow the one of the sets of instructions below.
+Adaptive Milling is [available from PyPI](https://pypi.org/p/adaptive-milling) and can be installed via the following steps:
+
+1. Decide where you want to create your Python virtual environment and open a terminal in that location.
+2. Follow the one of the sets of instructions below. We recommend using uv as it handles installing the appropriate torch backend automatically.
 
 ---
 
@@ -26,7 +27,7 @@ uv venv --python 3.11
 .venv\Scripts\activate
 
 # Install including AutoLamella from fibsemOS with the appropriate PyTorch backend for your machine
-uv pip install . --extra ui --torch-backend auto
+uv pip install adaptive-milling --extra ui --torch-backend auto
 ```
 
 To activate the virtual environment on Linux systems: `source .venv/bin/activate`
@@ -46,7 +47,7 @@ conda activate ./.venv
 python -m pip install torch torchvision --index-url <Index URL>
 
 # Install including AutoLamella from fibsemOS
-python -m pip install -e .[ui]
+python -m pip install -e adaptive-milling[ui]
 ```
 
 If using CUDA, the version must be below or equal to the the system CUDA version, which can be checked with the command `nvidia-smi`.

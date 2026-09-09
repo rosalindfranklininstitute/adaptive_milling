@@ -6,7 +6,7 @@ requires = [
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "adaptive_milling"
+name = "adaptive-milling"
 description = "Adaptive milling plugins for fibsemOS"
 license = { file = "LICENSE" }
 dynamic = [
@@ -84,7 +84,7 @@ reporting = [
   "fibsem[reporting] >= 0.5.1",
 ]
 all = [
-  "adaptive_milling[scripts,ui,reporting]",
+  "adaptive-milling[scripts,ui,reporting]",
 ]
 
 # Extras that are linked with the PyTorch index for CPU or CUDA version (if using uv)
@@ -198,7 +198,7 @@ test = [
   "jinja2",
   "Pillow",
   "requests",
-  "adaptive_milling[ui]",
+  "adaptive-milling[ui]",
 ]
 typing = [
   "mypy",
