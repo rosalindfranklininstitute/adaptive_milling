@@ -13,7 +13,12 @@ Adaptive milling plugins for [fibsemOS](https://github.com/fibsem-os/fibsem-os).
 Adaptive Milling is [available from PyPI](https://pypi.org/p/adaptive-milling) and can be installed via the following steps:
 
 1. Decide where you want to create your Python virtual environment and open a terminal in that location.
-2. Follow the one of the sets of instructions below. We recommend using uv as it handles installing the appropriate torch backend automatically.
+2. Follow the one of the sets of instructions below. We recommend using 'uv' as it handles installing the appropriate torch backend automatically.
+3. Create a desktop shortcut for AutoLamella (fibsemOS GUI):
+  - Run `fibsem-autolamella-ui` from the virtual environment created during step 3.
+  - Tools → Create Desktop Shortcut...
+
+In order to get AutoLamella set up for your system, please see the ['Getting started' documentation](https://www.fibsemos.org/docs/getting-started/) for fibsemOS.
 
 ---
 
@@ -62,19 +67,10 @@ If using CUDA, the version must be below or equal to the the system CUDA version
 
 ---
 
+
 ## Usage
 
-### Shortcut
-
-To create a desktop shortcut, please follow [these instructions](https://github.com/fibsem-os/fibsem-os/blob/main/INSTALLATION.md#create-a-desktop-shortcut) with the Python environment activated.
-
-### Protocols
-
-We recommend starting with one of our example protocols and customising to your requirements. You will need to set the `model_path` within the `AdaptivePolishing` config, either directly in the file or via the fibsemOS AutoLamella GUI.
-
-#### Example protocols:
-- [Protocol optimised for TFS Arctis with argon](src/example_configs/protocol_argon_ap_v1.yaml). This protocol has two stages of AdaptivePolishing, which we have found increases speed and reliability.
-- [Protocol based on settings in our paper](src/example_configs/protocol-on-grid-ap.yaml). This is less well optimised and only uses one stage of AdaptivePolishing.
+Please see the [user guide](USERGUIDE.md).
 
 ## Testing
 
