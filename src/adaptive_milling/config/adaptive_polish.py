@@ -34,10 +34,10 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         },
     )
     gis_stop_min: float = field(
-        default=0.2e-6,
+        default=0.25e-6,
         metadata={
             "label": "Minimum GIS thickness threshold",
-            "tooltip": "Stop polishing if the minimum GIS thickness drops below this threshold.",
+            "tooltip": "Stop polishing if the local GIS thickness drops below this threshold.",
             "type": float,
             "minimum": 0,
             "step": 0.01,
@@ -47,10 +47,10 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         },
     )
     gis_stop_median: float = field(
-        default=0.25e-6,
+        default=0.3e-6,
         metadata={
             "label": "Median GIS thickness threshold",
-            "tooltip": "Stop polishing if the median GIS thickness drops below this threshold.",
+            "tooltip": "Stop polishing if the median GIS thickness across the width of the lamella drops below this threshold.",
             "type": float,
             "minimum": 0,
             "step": 0.01,
@@ -60,10 +60,10 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         },
     )
     max_crack_area: float = field(
-        default=2e-12,
+        default=0.2e-12,
         metadata={
             "label": "Max. crack area",
-            "tooltip": "Stop polishing if the maximum total crack area is above this threshold.",
+            "tooltip": "Stop polishing if the total crack area is above this threshold.",
             "type": float,
             "minimum": 0,
             "step": 0.01,
@@ -74,7 +74,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         },
     )
     max_milling_cycles: int = field(
-        default=30,
+        default=60,
         metadata={
             "label": "Max. cycles",
             "tooltip": "Maximum adaptive polish cycles per lamella.",
@@ -87,7 +87,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         default=30.0e-12,  # 30μm²
         metadata={
             "label": "Min. lamella area",
-            "tooltip": "Stop polishing if the segmented lamella area is smaller than this size, which may indicate a segmentation issue.",
+            "tooltip": "Stop polishing if the segmented lamella area is smaller than this size, which may indicate a major segmentation or alignment issue.",
             "type": float,
             "minimum": 0,
             "step": 0.1,
@@ -102,7 +102,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         default=70e-6,
         metadata={
             "label": "Max. lamella drift",
-            "tooltip": "Stop polishing if the segmented lamella area has moved more than this between cycles, which would suggest that something is wrong.",
+            "tooltip": "Stop polishing if the segmented lamella area has moved more than this between cycles, which may indicate a major segmentation or alignment issue.",
             "type": float,
             "minimum": 0,
             "scale": 1e6,
@@ -115,7 +115,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         default=True,
         metadata={
             "label": "Align SEM",
-            "tooltip": "Centre the lamella in the SEM image before beginning.",
+            "tooltip": "Centre the lamella in the SEM image before polishing.",
             "type": bool,
             "advanced": True,
         },
@@ -124,7 +124,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         default=True,
         metadata={
             "label": "Save segmentations",
-            "tooltip": "Save the raw and clean SEM segmentations (useful for improving segmentation model).",
+            "tooltip": "Saves the raw and clean SEM segmentations (useful for improving segmentation model).",
             "type": bool,
             "advanced": True,
         },
@@ -133,7 +133,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         default=10 / 6,
         metadata={
             "label": "GIS filter sigma",
-            "tooltip": "Gaussian blur sigma used to smooth the GIS thickness measurements.",
+            "tooltip": "Sigma of the Gaussian used to smooth the GIS thickness measurements.",
             "type": float,
             "minimum": 0,
             "step": 0.1,
@@ -145,9 +145,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         default=0.0,
         metadata={
             "label": "X-padding fraction",
-            "tooltip": "The fraction of the lamella width that the X-limits will "
-            "be padded by. These limits are used to determine the region that GIS "
-            "thickness is measured.",
+            "tooltip": "The fraction of the lamella width that the X-limits will be padded by. These limits are used to determine the region that GIS thickness is measured.",
             "type": float,
             "minimum": 0,
             "maximum": 1,
@@ -160,7 +158,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         default=40e-6,
         metadata={
             "label": "Imaging Field of View",
-            "tooltip": "The horizontal field width used for imaging.",
+            "tooltip": "The horizontal field width used for SEM imaging.",
             "type": float,
             "unit": "m",
             "scale": 1e6,
