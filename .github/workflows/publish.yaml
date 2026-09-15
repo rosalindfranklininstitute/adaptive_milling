@@ -40,7 +40,7 @@ jobs:
     - name: Download all the dists
       uses: actions/download-artifact@v6
       with:
-        name: python-package-distributions
+        name: dist
         path: dist/
     - name: Publish distributions to TestPyPI
       uses: pypa/gh-action-pypi-publish@release/v1
