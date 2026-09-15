@@ -34,7 +34,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         },
     )
     gis_stop_min: float = field(
-        default=0.2e-6,
+        default=0.25e-6,
         metadata={
             "label": "Minimum GIS thickness threshold",
             "tooltip": "Stop polishing if the minimum GIS thickness drops below this threshold.",
@@ -47,7 +47,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         },
     )
     gis_stop_median: float = field(
-        default=0.25e-6,
+        default=0.3e-6,
         metadata={
             "label": "Median GIS thickness threshold",
             "tooltip": "Stop polishing if the median GIS thickness drops below this threshold.",
@@ -60,7 +60,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         },
     )
     max_crack_area: float = field(
-        default=2e-12,
+        default=0.2e-12,
         metadata={
             "label": "Max. crack area",
             "tooltip": "Stop polishing if the maximum total crack area is above this threshold.",
@@ -74,7 +74,7 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         },
     )
     max_milling_cycles: int = field(
-        default=30,
+        default=60,
         metadata={
             "label": "Max. cycles",
             "tooltip": "Maximum adaptive polish cycles per lamella.",
