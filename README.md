@@ -43,7 +43,7 @@ To activate the virtual environment on Linux systems: `source .venv/bin/activate
 
 ```Shell
 # Create a virtual environment (Python 3.11 to match AutoScript's environment)
-conda create -p ./.venv python=3.11
+conda create -p ./.venv python=3.11 pip
 
 # Activate the virtual environment
 conda activate ./.venv
