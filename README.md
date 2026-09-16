@@ -88,6 +88,8 @@ Please use the [GitHub issue tracker](https://github.com/rosalindfranklininstitu
 
 If you would like to help contribute to project, please read our [contribution](CONTRIBUTING.md) guide and [code of conduct](CODE_OF_CONDUCT.md).
 
+If you would like to contribute data towards training new segmentation models, please contact [casper.berger@rfi.ac.uk](mailto:casper.berger@rfi.ac.uk).
+
 ## License
 
 Copyright Rosalind Franklin Institute, 2024.
