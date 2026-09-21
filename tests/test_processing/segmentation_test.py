@@ -67,6 +67,7 @@ def test_get_gis_thickness(
         background_lamella_overlap,
         vacuum_bottom_pixels,
         add_crack=with_crack,
+        add_lamella_spot=False,  # Doesn't handle spot here as this is done during cleanup
     )
 
     gis_thickness, xlims_out = seg_proc.get_gis_thickness(
@@ -204,7 +205,12 @@ def test_filter_connected() -> None:
     assert_array_equal(image_proc.filter_connected(m1, m2), m_connected)
 
 
-def test_clean_prediction() -> None:
+@pytest.mark.parametrize(
+    "add_crack,add_lamella_spot",
+    [(False, False), (True, False), (False, True), (True, True)],
+    ids=["simple", "crack", "lamella spot", "both"],
+)
+def test_clean_prediction(add_crack: bool, add_lamella_spot: bool) -> None:
     background_lamella_overlap = 20
     image_shape: tuple[int, int] = (200, 250)
     lamella_bbox: tuple[int, int, int, int] = (10, 50, 70, 150)
@@ -214,7 +220,8 @@ def test_clean_prediction() -> None:
         lamella_bbox,
         background_lamella_overlap,
         vacuum_bottom_pixels,
-        add_crack=True,
+        add_crack=add_crack,
+        add_lamella_spot=add_lamella_spot,
     )
     max_gis_thickness = segmented_gis_thickness.max()
 
