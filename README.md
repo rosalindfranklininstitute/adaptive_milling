@@ -72,6 +72,12 @@ If using CUDA, the version must be below or equal to the the system CUDA version
 
 Please see the [user guide](USERGUIDE.md).
 
+## Segmentation models
+
+Models are available from zenodo: https://zenodo.org/records/21804785. We currently recommend using AM_SEM_All_V01.pth ([download link](https://zenodo.org/records/21804785/files/AM_SEM_All_V01.pth)).
+
+If you wish to train your own segmentation models that are compatible with Adaptive Milling, or refine existing ones with new data, please use the package [AM-model-training](https://github.com/rosalindfranklininstitute/AM-model-training), also [available on PyPI](https://pypi.org/p/AM-model-training/). We encourage you to contribute your models and training data back to the project so that others may share the benefit. To do this, please contact [casper.berger@rfi.ac.uk](mailto:casper.berger@rfi.ac.uk).
+
 ## Testing
 
 You can run the package tests using pytest:
