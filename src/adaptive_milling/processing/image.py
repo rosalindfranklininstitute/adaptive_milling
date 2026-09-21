@@ -60,6 +60,21 @@ def filter_connected(
     return connected_labels
 
 
+def get_spots_in(
+    mask: NDArray[np.bool_],
+    max_spot_area: int = 5,
+    connectivity: int = 2,
+) -> NDArray[np.bool_]:
+
+    labels = measure.label(mask, connectivity=connectivity)
+    spots = np.zeros_like(labels, dtype=np.bool_)
+    for prop in measure.regionprops(labels):
+        region_label = labels == prop.label
+        if prop.area <= max_spot_area:
+            spots += region_label
+    return spots
+
+
 def resize_image(
     image: NDArray[typing.Any], new_shape: tuple[int, int]
 ) -> NDArray[np.float64]:
