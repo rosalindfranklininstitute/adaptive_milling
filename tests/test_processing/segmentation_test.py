@@ -255,6 +255,10 @@ def test_clean_prediction(add_crack: bool, add_lamella_spot: bool) -> None:
 
     clean_prediction = seg_proc.clean_prediction(prediction=messy_prediction)
 
+    # Convert any lamella below of the lamella to vacuum
+    below_lamella = prediction[lamella_bbox[2] + 1 :, :]
+    below_lamella[below_lamella == SemLabels.LAMELLA.value] = SemLabels.VACUUM.value
+
     assert_array_equal(
         clean_prediction,
         prediction,
