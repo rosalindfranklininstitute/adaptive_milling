@@ -110,7 +110,8 @@ def clean_prediction(
             SEMSegmentationLabels.GIS: mask_foreground_gis,
             SEMSegmentationLabels.CRACK: mask_foreground_crack,
             SEMSegmentationLabels.VACUUM: masks[SEMSegmentationLabels.VACUUM]
-            + non_foreground_crack,
+            + non_foreground_crack
+            + lamella_spots,
             SEMSegmentationLabels.BACKGROUND: masks[SEMSegmentationLabels.BACKGROUND]
             + non_foreground_gis,
         },
