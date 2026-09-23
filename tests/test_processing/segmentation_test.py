@@ -254,7 +254,7 @@ def test_clean_prediction(add_crack: bool, add_lamella_spot: bool) -> None:
         messy_prediction[idx] = SemLabels.GIS.value
 
     clean_prediction = seg_proc.clean_prediction(
-        prediction=messy_prediction, lamella_spot_area=5
+        prediction=messy_prediction, lamella_spot_area=5 if add_lamella_spot else 0
     )
 
     # Convert any lamella below of the lamella to vacuum
