@@ -95,10 +95,8 @@ def clean_prediction(
             mask_foreground_lamella,
             max_spot_area=lamella_spot_area,  # remove lamella spots <= 5 pixels in size
         )
-    else:
-        lamella_spots = np.zeros_like(mask_foreground_lamella)
-
-    mask_foreground_lamella = mask_foreground_lamella & ~lamella_spots
+        mask_foreground_lamella = mask_foreground_lamella & ~lamella_spots
+        masks[SEMSegmentationLabels.VACUUM] += lamella_spots
 
     mask_foreground_gis = mask_largest_foreground & masks[SEMSegmentationLabels.GIS]
     mask_foreground_crack = (
@@ -116,8 +114,7 @@ def clean_prediction(
             SEMSegmentationLabels.GIS: mask_foreground_gis,
             SEMSegmentationLabels.CRACK: mask_foreground_crack,
             SEMSegmentationLabels.VACUUM: masks[SEMSegmentationLabels.VACUUM]
-            + non_foreground_crack
-            + lamella_spots,
+            + non_foreground_crack,
             SEMSegmentationLabels.BACKGROUND: masks[SEMSegmentationLabels.BACKGROUND]
             + non_foreground_gis,
         },
