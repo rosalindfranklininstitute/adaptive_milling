@@ -70,6 +70,7 @@ def prediction_to_masks(
 
 def clean_prediction(
     prediction: NDArray[np.integer[typing.Any]],
+    lamella_spot_area: int = 0,
 ) -> NDArray[np.uint8]:
     _logger.debug(
         "Cleaning prediction with shape: %s",
@@ -90,7 +91,7 @@ def clean_prediction(
     )
     lamella_spots = get_spots_in(
         mask_foreground_lamella,
-        max_spot_area=5,  # remove lamella spots <= 5 pixels in size
+        max_spot_area=lamella_spot_area,  # remove lamella spots <= 5 pixels in size
     )
     mask_foreground_lamella = mask_foreground_lamella & ~lamella_spots
 
