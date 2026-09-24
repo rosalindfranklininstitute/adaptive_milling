@@ -16,13 +16,13 @@ Adaptive Milling is [available from PyPI](https://pypi.org/p/adaptive-milling) a
 2. Follow the one of the sets of instructions below. We recommend using 'uv' as it handles installing the appropriate torch backend automatically.
 3. Create a desktop shortcut for AutoLamella (fibsemOS GUI). With the virtual environment activated, run the appropriate command for you operating system:
 
-   ```Shell
-   # Windows: creates AutoLamella.bat
+   ```cmd
+   :: Windows command prompt: creates AutoLamella.bat
    echo @echo off > AutoLamella.bat & where fibsem-autolamella-ui >> AutoLamella.bat
    ```
 
    ```bash
-   # Linux / macOS: creates AutoLamella.sh
+   # Linux / macOS terminal: creates AutoLamella.sh
    printf '#!/bin/bash\n%s' $(which fibsem-autolamella-ui) > AutoLamella.sh
    chmod +x AutoLamella.sh
    ```
