@@ -24,6 +24,7 @@
   - [Protocol editing](#protocol-editing)
   - [Adaptive Polishing settings](#adaptive-polishing-settings)
 - [4. Outputs and assessing Adaptive Milling performance](#4-outputs-and-assessing-adaptive-milling-performance)
+- [5. Segmenting SEM images with `am-segment`](#5-segmenting-sem-images-with-am-segment)
 
 ## 1. Introduction
 
@@ -170,3 +171,27 @@ There are also advanced options that we *strongly* recommend leaving as their de
   - Within AutoLamella, the project directory can be opened via File → Open Experiment Directory
 
 ![Image showing the an example plot containing the SEM, segmented SEM, cleaned segmented SEM and FIB images, alongside a plot of the GIS thickness across the lamella](images/userguide/adaptive_polishing_output_plot.png)
+
+
+## 5. Segmenting SEM images with `am-segment`
+
+This package also includes a command line interface to segment SEM images with the command `am-segment`. This can be used to create pseudo-labels and to test the quality of different models against SEM images from your microscope.
+
+```
+usage: am-segment [-h] -i IMAGE_OR_DIRECTORY -o OUTPUT_DIRECTORY -m WEIGHTS_PATH [--gen MODEL_GENERATION] [--raw] [--unscaled]
+
+options:
+  -h, --help            show this help message and exit
+  -i IMAGE_OR_DIRECTORY, --input IMAGE_OR_DIRECTORY
+                        Path to an image or directory containing images to be segmented. Multiple instances of this argument are accepted.
+  -o OUTPUT_DIRECTORY, --output OUTPUT_DIRECTORY
+                        Directory to save the segmented images in.
+  -m WEIGHTS_PATH, --model WEIGHTS_PATH
+                        Path to the model weights file (.pth).
+  --gen MODEL_GENERATION
+                        Model generation (for advanced users) (defaults to the lastest generation).
+  --raw                 Do not apply post-processing to clean up the segmentation.
+  --unscaled            Do not upscale the resulting segmentation to the full images size.
+```
+
+This outputs labels in the output directory with the same name as the input file and can be used with `fibsem_label` to create training labels.
