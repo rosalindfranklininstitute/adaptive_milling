@@ -61,6 +61,14 @@ def _create_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Do not apply post-processing to clean up the segmentation.",
     )
+    parser.add_argument(
+        "--unscaled",
+        dest="full_size",
+        default=True,
+        required=False,
+        action="store_false",
+        help="Do not upscale the resulting segmentation to the full images size.",
+    )
 
     return parser
 
@@ -92,10 +100,11 @@ def _parse_arguments(parser: argparse.ArgumentParser) -> None:
         output_directory: Path,
         model: AbstractAdaptivePolishingModel,
         clean: bool = True,
+        full_size: bool = True,
     ) -> None:
         im = tifffile.imread(path)
         _logger.info("Predicting segmentation of image '%s'", path)
-        prediction = model.predict(image=im).astype(np.uint8)
+        prediction = model.predict(image=im, full_size=full_size).astype(np.uint8)
         if clean:
             _logger.info("Cleaning prediction of image '%s'", path)
             prediction = clean_prediction(prediction)
@@ -112,6 +121,7 @@ def _parse_arguments(parser: argparse.ArgumentParser) -> None:
         output_directory: str | PathLike[str],
         model: AbstractAdaptivePolishingModel,
         clean: bool = True,
+        full_size: bool = True,
     ) -> None:
         output_directory = Path(output_directory)
 
@@ -135,6 +145,7 @@ def _parse_arguments(parser: argparse.ArgumentParser) -> None:
                         output_directory=output_directory,
                         model=model,
                         clean=clean,
+                        full_size=full_size,
                     )
                 except Exception:
                     _logger.exception("Failed to segment image '%s'", p)
@@ -151,6 +162,7 @@ def _parse_arguments(parser: argparse.ArgumentParser) -> None:
         output_directory=namespace.output_directory,
         model=model,
         clean=namespace.clean,
+        full_size=namespace.full_size,
     )
 
 
