@@ -36,7 +36,7 @@ _AP_MILLING_CONFIG_SETTINGS: dict[str, typing.Any] = {
 TIMESTAMP = "timestamp"
 
 
-class TestException(Exception):
+class ExceptionForTests(Exception):
     """Test Exception"""
 
 
@@ -99,7 +99,7 @@ def raise_error_after_num_calls(
         nonlocal _calls
         if _calls >= calls_before_exception:
             _calls = 0  # Reset for other loops
-            raise TestException("Raising error to exit test")
+            raise ExceptionForTests("Raising error to exit test")
         _calls += 1
         return fn(*args, **kwargs)
 
