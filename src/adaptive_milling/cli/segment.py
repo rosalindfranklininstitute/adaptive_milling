@@ -55,10 +55,10 @@ def _create_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--raw",
-        dest="raw",
-        default=True,
+        dest="clean",
+        default=False,
         required=False,
-        action="store_false",
+        action="store_true",
         help="Do not apply post-processing to clean up the segmentation.",
     )
 
@@ -150,7 +150,7 @@ def _parse_arguments(parser: argparse.ArgumentParser) -> None:
         *namespace.image_or_directory,
         output_directory=namespace.output_directory,
         model=model,
-        clean=not namespace.raw,
+        clean=namespace.clean,
     )
 
 
