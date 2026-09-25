@@ -17,7 +17,7 @@ Adaptive Milling is [available from PyPI](https://pypi.org/p/adaptive-milling) a
 3. Create a desktop shortcut for AutoLamella (fibsemOS GUI). With the virtual environment activated, run the appropriate command for you operating system:
 
    ```cmd
-   :: Windows command prompt: creates AutoLamella.bat
+   :: Windows Command Prompt (not PowerShell): creates AutoLamella.bat
    echo @echo off > AutoLamella.bat & where fibsem-autolamella-ui >> AutoLamella.bat
    ```
 
@@ -41,7 +41,7 @@ uv venv --python 3.11
 .venv\Scripts\activate
 
 # Install including AutoLamella from fibsemOS with the appropriate PyTorch backend for your machine
-uv pip install adaptive-milling --extra ui --torch-backend auto
+uv pip install adaptive-milling[ui] --torch-backend auto
 ```
 
 To activate the virtual environment on Linux systems: `source .venv/bin/activate`
@@ -61,7 +61,7 @@ conda activate ./.venv
 python -m pip install torch torchvision --index-url <Index URL>
 
 # Install including AutoLamella from fibsemOS
-python -m pip install -e adaptive-milling[ui]
+python -m pip install adaptive-milling[ui]
 ```
 
 If using CUDA, the version must be below or equal to the the system CUDA version, which can be checked with the command `nvidia-smi`.
