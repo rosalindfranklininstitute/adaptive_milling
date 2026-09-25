@@ -41,7 +41,7 @@ uv venv --python 3.11
 .venv\Scripts\activate
 
 # Install including AutoLamella from fibsemOS with the appropriate PyTorch backend for your machine
-uv pip install adaptive-milling --extra ui --torch-backend auto
+uv pip install adaptive-milling[ui] --torch-backend auto
 ```
 
 To activate the virtual environment on Linux systems: `source .venv/bin/activate`
