@@ -17,7 +17,7 @@ Adaptive Milling is [available from PyPI](https://pypi.org/p/adaptive-milling) a
 3. Create a desktop shortcut for AutoLamella (fibsemOS GUI). With the virtual environment activated, run the appropriate command for you operating system:
 
    ```cmd
-   :: Windows command prompt: creates AutoLamella.bat
+   :: Windows Command Prompt (not PowerShell): creates AutoLamella.bat
    echo @echo off > AutoLamella.bat & where fibsem-autolamella-ui >> AutoLamella.bat
    ```
 
