@@ -56,9 +56,9 @@ def _create_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--raw",
         dest="clean",
-        default=False,
+        default=True,
         required=False,
-        action="store_true",
+        action="store_false",
         help="Do not apply post-processing to clean up the segmentation.",
     )
     parser.add_argument(
