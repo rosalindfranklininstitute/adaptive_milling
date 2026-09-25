@@ -11,9 +11,44 @@ from adaptive_milling.processing.image import (
     get_centre_from_bounding_box,
     get_mask_bounding_box,
     get_mask_edges,
+    get_spots_in,
 )
 
 from ..setup import SimpleRectangleLamellaMask
+
+
+@pytest.mark.parametrize(
+    "indexes,spots_found",
+    [
+        ((slice(0, 1), 0), True),
+        ((slice(0, 5), 0), True),
+        ((slice(0, 2), slice(0, 2)), True),
+        ((slice(0, 3), slice(0, 2)), False),
+    ],
+)
+def test_remove_spots_in(
+    indexes: tuple[slice | int, slice | int], spots_found: bool
+) -> None:
+    max_spot_area = 5
+
+    array = np.zeros((10, 6), dtype=np.bool_)
+    array[indexes[0], indexes[1]] = True
+
+    non_spot_area = (
+        slice(5, 10),
+        slice(4, 6),
+    )
+    assert array[non_spot_area[0], non_spot_area[1]].size > max_spot_area
+    array[non_spot_area[0], non_spot_area[1]] = True  # non-spot area
+
+    if spots_found:
+        assert np.any(get_spots_in(array, max_spot_area=max_spot_area)), (
+            "No spots found when there should be"
+        )
+    else:
+        assert not np.any(get_spots_in(array, max_spot_area=max_spot_area)), (
+            "Spots found when there shouldn't be any"
+        )
 
 
 def test_get_mask_edges() -> None:

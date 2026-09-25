@@ -54,6 +54,15 @@ def _create_parser() -> argparse.ArgumentParser:
         help="Model generation (for advanced users) (defaults to the lastest generation).",
     )
     parser.add_argument(
+        "-s",
+        "--lamella-spot-size",
+        dest="lamella_spot_area",
+        type=int,
+        default=0,
+        required=False,
+        help="Connected areas of lamella containing this many pixels or fewer will be filtered out during post-processing (default: %(default)s).",
+    )
+    parser.add_argument(
         "--raw",
         dest="clean",
         default=True,
@@ -69,7 +78,6 @@ def _create_parser() -> argparse.ArgumentParser:
         action="store_false",
         help="Do not upscale the resulting segmentation to the full images size.",
     )
-
     return parser
 
 
@@ -101,13 +109,16 @@ def _parse_arguments(parser: argparse.ArgumentParser) -> None:
         model: AbstractAdaptivePolishingModel,
         clean: bool = True,
         full_size: bool = True,
+        lamella_spot_area: int = 0,
     ) -> None:
         im = tifffile.imread(path)
         _logger.info("Predicting segmentation of image '%s'", path)
         prediction = model.predict(image=im, full_size=full_size).astype(np.uint8)
         if clean:
             _logger.info("Cleaning prediction of image '%s'", path)
-            prediction = clean_prediction(prediction)
+            prediction = clean_prediction(
+                prediction, lamella_spot_area=lamella_spot_area
+            )
         with tifffile.TiffWriter(output_directory / path.name) as tiff:
             tiff.write(
                 prediction,
@@ -122,6 +133,7 @@ def _parse_arguments(parser: argparse.ArgumentParser) -> None:
         model: AbstractAdaptivePolishingModel,
         clean: bool = True,
         full_size: bool = True,
+        lamella_spot_area: int = 0,
     ) -> None:
         output_directory = Path(output_directory)
 
@@ -135,6 +147,7 @@ def _parse_arguments(parser: argparse.ArgumentParser) -> None:
                             output_directory=output_directory,
                             model=model,
                             clean=clean,
+                            lamella_spot_area=lamella_spot_area,
                         )
                     except Exception:
                         _logger.exception("Failed to segment image '%s'", p)
@@ -163,6 +176,7 @@ def _parse_arguments(parser: argparse.ArgumentParser) -> None:
         model=model,
         clean=namespace.clean,
         full_size=namespace.full_size,
+        lamella_spot_area=namespace.lamella_spot_area,
     )
 
 
