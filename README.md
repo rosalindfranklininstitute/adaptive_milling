@@ -61,7 +61,7 @@ conda activate ./.venv
 python -m pip install torch torchvision --index-url <Index URL>
 
 # Install including AutoLamella from fibsemOS
-python -m pip install -e adaptive-milling[ui]
+python -m pip install adaptive-milling[ui]
 ```
 
 If using CUDA, the version must be below or equal to the the system CUDA version, which can be checked with the command `nvidia-smi`.
