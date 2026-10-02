@@ -16,7 +16,7 @@ Adaptive Milling is [available from PyPI](https://pypi.org/p/adaptive-milling) a
 2. Follow the one of the sets of instructions below. We recommend using 'uv' as it handles installing the appropriate torch backend automatically.
 3. Create a desktop shortcut for AutoLamella (fibsemOS GUI):
    - With the virtual environment activated, run `fibsem-autolamella-ui` and once AutoLamella has loaded run 'Create Desktop Shortcut...' from the 'Tools' menu.
-   - If this option is not available, either update fibsemOS or use the following commands to create a shortcut manually:
+   - If this option is not available, either [update fibsemOS](#updating-an-installation) or use the following commands to create a shortcut manually:
 
      ```cmd
      :: Windows Command Prompt (not PowerShell): creates AutoLamella.bat
@@ -78,6 +78,10 @@ If using CUDA, the version must be below or equal to the the system CUDA version
 
 ---
 
+
+## Updating an installation
+
+To update an existing installation to use the latest supported versions of the required packages, activate the environment then rerun the pip installation command(s) with the additional argument `--upgrade` appended.
 
 ## Usage
 
