@@ -187,6 +187,8 @@ class LamellaStatistics:
     pattern_xlims_px: tuple[int, int] | None = None
     pattern_dwell_multiplier: list[float] | None = None
     pattern_blanking: list[bool] | None = None
+    pattern_depth_multiplier: float | None = None
+    pattern_time_multiplier: float | None = None
 
     def calculate_statistics(self) -> None:
         if self.gis_thickness_image_px is not None:

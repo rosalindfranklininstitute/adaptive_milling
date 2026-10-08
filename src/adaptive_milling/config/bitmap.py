@@ -34,11 +34,11 @@ class BitmapAdaptivePolishMillingConfig(AdaptivePolishMillingConfig):
             "unit": "m",
         },
     )
-    dwell_multiplier_mean_stop: float = field(
+    mill_fraction_mean_stop: float = field(
         default=0.03,
         metadata={
-            "label": "Mean dwell multiplier threshold",
-            "tooltip": "Stop polishing if the mean dwell time multiplier drops below this threshold.",
+            "label": "Mean mill fraction threshold",
+            "tooltip": "Stop polishing if the mean milling fraction drops below this threshold.",
             "type": float,
             "minimum": 0,
             "maximum": 1,
@@ -46,11 +46,11 @@ class BitmapAdaptivePolishMillingConfig(AdaptivePolishMillingConfig):
             "decimal": 0.01,
         },
     )
-    dwell_multiplier_max_stop: float = field(
+    mill_fraction_max_stop: float = field(
         default=0.05,
         metadata={
-            "label": "Max. dwell multiplier threshold",
-            "tooltip": "Stop polishing if the maximum dwell time multiplier drops below this threshold.",
+            "label": "Max. mill fraction threshold",
+            "tooltip": "Stop polishing if the maximum milling fraction drops below this threshold.",
             "type": float,
             "minimum": 0,
             "maximum": 1,

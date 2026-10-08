@@ -30,10 +30,12 @@ from adaptive_milling.processing.segmentation import (
 from adaptive_milling.strategy import AdaptivePolishMillingStrategy
 
 if TYPE_CHECKING:
+    from os import PathLike
     from pathlib import Path
     from typing import Any
 
     from fibsem.milling import FibsemMillingStage
+    from fibsem.structures import Point
     from numpy.typing import NDArray
 
     from adaptive_milling._dataclasses import (
@@ -107,6 +109,15 @@ class BitmapAdaptivePolishMillingStrategy(
                 f"Invalid pattern type {pattern.name}, only {TrenchPattern.name} and {RectanglePattern.name} are supported"
             )
 
+        if new_pattern.array is None:
+            raise StopEarlyError("Milling pattern has no array set")
+
+        stats.pattern_dwell_multiplier = new_pattern.array[0, :, 0].tolist()
+        stats.pattern_blanking = new_pattern.array[0, :, 1].astype(bool).tolist()
+        stats.pattern_depth_multiplier = pattern.depth / new_pattern.depth
+        if new_pattern.time > 0:
+            stats.pattern_time_multiplier = pattern.time / new_pattern.time
+
         stage.pattern = new_pattern
 
         _logger.info(
@@ -115,6 +126,51 @@ class BitmapAdaptivePolishMillingStrategy(
             stage.name,
         )
         return stage
+
+    def _check_lamella(
+        self,
+        lamella_info: LamellaInformation,
+        expected_lamella_centre_m: Point | None = None,
+        plots_directory: str | PathLike[str] | None = None,
+    ) -> None:
+        super()._check_lamella(
+            lamella_info=lamella_info,
+            expected_lamella_centre_m=expected_lamella_centre_m,
+            plots_directory=plots_directory,
+        )
+
+        stats = lamella_info.statistics
+
+        if stats.pattern_dwell_multiplier is None:
+            raise StopEarlyError("pattern_dwell_multiplier should not be None")
+
+        if stats.pattern_time_multiplier:
+            mill_fraction = [
+                _ * stats.pattern_time_multiplier
+                for _ in stats.pattern_dwell_multiplier
+            ]
+        elif stats.pattern_depth_multiplier:
+            mill_fraction = [
+                _ * stats.pattern_depth_multiplier
+                for _ in stats.pattern_dwell_multiplier
+            ]
+        else:
+            mill_fraction = stats.pattern_dwell_multiplier
+
+        if (
+            mill_fraction_max := max(mill_fraction)
+        ) < self.config.mill_fraction_max_stop:
+            raise StopMillingException(
+                f"The maximum mill fraction is {mill_fraction_max:.3f}, below the threshold of {self.config.mill_fraction_max_stop:.3f}",
+                reason=StopReasons.MAX_MILL_FRACTION,
+            )
+        elif (
+            mill_fraction_mean := np.mean(mill_fraction)
+        ) <= self.config.mill_fraction_mean_stop:
+            raise StopMillingException(
+                f"The mean mill fraction is {mill_fraction_mean:.3f}, below the threshold of {self.config.mill_fraction_mean_stop:.3f}",
+                reason=StopReasons.MEAN_MILL_FRACTION,
+            )
 
     def _check_milling_stage(self, stage: FibsemMillingStage) -> None:
         super()._check_milling_stage(stage=stage)
@@ -126,7 +182,6 @@ class BitmapAdaptivePolishMillingStrategy(
             raise AttributeError(
                 f"{stage.pattern.name} attribute 'array' has not been set"
             )
-        self._check_bitmap(stage.pattern.array)
 
     def _convert_trench_pattern(
         self,
@@ -248,6 +303,22 @@ class BitmapAdaptivePolishMillingStrategy(
         stage: FibsemMillingStage | None,
     ) -> None:
         stats = lamella_info.statistics
+
+        if stats.pattern_dwell_multiplier is None:
+            pattern_milling_fraction = None
+        elif stats.pattern_time_multiplier:
+            pattern_milling_fraction = [
+                _ * stats.pattern_time_multiplier
+                for _ in stats.pattern_dwell_multiplier
+            ]
+        elif stats.pattern_depth_multiplier:
+            pattern_milling_fraction = [
+                _ * stats.pattern_depth_multiplier
+                for _ in stats.pattern_dwell_multiplier
+            ]
+        else:
+            pattern_milling_fraction = stats.pattern_dwell_multiplier
+
         # Create plots
         create_milling_cycle_plot(
             save_path=plots_directory / f"{lamella_info.identifier}_plot.png",
@@ -267,10 +338,10 @@ class BitmapAdaptivePolishMillingStrategy(
             image_xlims=stats.xlims_image_px,
             max_crack_area_um2=self.config.max_crack_area * 1e12,
             img_name=lamella_info.identifier,
-            pattern_dwell_multiplier=stats.pattern_dwell_multiplier,
+            pattern_milling_fraction=pattern_milling_fraction,
             pattern_xlims=stats.pattern_xlims_px,
-            dwell_multiplier_mean_threshold=self.config.dwell_multiplier_mean_stop,
-            dwell_multiplier_max_threshold=self.config.dwell_multiplier_max_stop,
+            mill_fraction_mean_threshold=self.config.mill_fraction_mean_stop,
+            mill_fraction_max_threshold=self.config.mill_fraction_max_stop,
         )
 
     def _refine_xlims(
@@ -416,19 +487,3 @@ class BitmapAdaptivePolishMillingStrategy(
             minimum_value=self.config.gis_min * 1e6,
             maximum_value=self.config.gis_max * 1e6,
         )
-
-    def _check_bitmap(self, bitmap_array: NDArray[Any]) -> None:
-        if (
-            dwell_multiplier_max := bitmap_array[:, :, 0].max()
-        ) < self.config.dwell_multiplier_max_stop:
-            raise StopMillingException(
-                f"The maximum dwell time multiplier is {dwell_multiplier_max:.3f}, below the threshold of {self.config.dwell_multiplier_max_stop:.3f}",
-                reason=StopReasons.MAX_DWELL_MULTIPLIER,
-            )
-        elif (
-            dwell_multiplier_mean := bitmap_array[:, :, 0].mean()
-        ) <= self.config.dwell_multiplier_mean_stop:
-            raise StopMillingException(
-                f"The mean dwell time multiplier is {dwell_multiplier_mean:.3f}, below the threshold of {self.config.dwell_multiplier_mean_stop:.3f}",
-                reason=StopReasons.MEAN_DWELL_MULTIPLIER,
-            )
