@@ -161,10 +161,11 @@ class BitmapAdaptivePolishMillingStrategy(
 
         pattern_depth = pattern.depth / bitmap_max
 
-        if pattern.time != 0:
-            _logger.warning(
-                "Bitmap adaptive polishing won't work as expected because pattern time has been set"
-            )
+        if pattern.time > 0:
+            # There is some overhead per pass but pattern time should still scale roughly linearly.
+            pattern_time = pattern.time / bitmap_max
+        else:
+            pattern_time = 0
 
         return TrenchBitmapPattern(
             point=pattern.point,
@@ -173,7 +174,7 @@ class BitmapAdaptivePolishMillingStrategy(
             depth=pattern_depth,
             upper_trench_height=pattern.upper_trench_height,
             lower_trench_height=pattern.lower_trench_height,
-            time=pattern.time,
+            time=pattern_time,
             array=bitmap_array,
             interpolation="bilinear",
         )
@@ -211,10 +212,11 @@ class BitmapAdaptivePolishMillingStrategy(
 
         pattern_depth = pattern.depth / bitmap_max
 
-        if pattern.time != 0:
-            _logger.warning(
-                "Bitmap adaptive polishing won't work as expected because pattern time has been set"
-            )
+        if pattern.time > 0:
+            # There is some overhead per pass but pattern time should still scale roughly linearly.
+            pattern_time = pattern.time / bitmap_max
+        else:
+            pattern_time = 0
 
         return BitmapPattern(
             point=pattern.point,
@@ -222,7 +224,7 @@ class BitmapAdaptivePolishMillingStrategy(
             height=pattern.height,
             depth=pattern_depth,
             rotation=pattern.rotation,
-            time=pattern.time,
+            time=pattern_time,
             passes=pattern.passes,
             scan_direction=pattern.scan_direction,
             array=bitmap_array,
