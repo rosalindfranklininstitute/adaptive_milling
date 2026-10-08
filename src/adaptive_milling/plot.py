@@ -179,10 +179,10 @@ def create_milling_cycle_plot(
     image_xlims: tuple[int, int] | None = None,
     img_name: str | None = None,
     gis_ymax_um: float = 3,
-    pattern_dwell_multiplier: Sequence[float] | None = None,
+    pattern_milling_fraction: Sequence[float] | None = None,
     pattern_xlims: tuple[int, int] | None = None,
-    dwell_multiplier_max_threshold: float | None = None,
-    dwell_multiplier_mean_threshold: float | None = None,
+    mill_fraction_max_threshold: float | None = None,
+    mill_fraction_mean_threshold: float | None = None,
 ) -> None:
     _logger.debug("Creating milling cycle plot")
     fig, axs = plt.subplots(
@@ -359,40 +359,38 @@ def create_milling_cycle_plot(
 
         axs[1, 2].set_title(_gis_title, loc="left")
 
-        if pattern_dwell_multiplier is not None and pattern_xlims is not None:
+        if pattern_milling_fraction is not None and pattern_xlims is not None:
             dwell_time_colour = "tab:orange"
             dwell_time_axis = axs[1, 2].twinx()
             dwell_time_axis.plot(
                 np.arange(pattern_xlims[0], pattern_xlims[1] + 1),
-                pattern_dwell_multiplier,
+                pattern_milling_fraction,
                 "-",
                 c=dwell_time_colour,
             )
             dwell_time_axis.tick_params(axis="y", labelcolor=dwell_time_colour)
-            dwell_time_axis.set_ylabel(
-                r"Dwell time multiplier", color=dwell_time_colour
-            )
+            dwell_time_axis.set_ylabel(r"Milling fraction", color=dwell_time_colour)
             dwell_time_axis.set_ylim(0, 1)
 
-            if dwell_multiplier_max_threshold and dwell_multiplier_max_threshold > 0:
+            if mill_fraction_max_threshold and mill_fraction_max_threshold > 0:
                 dwell_time_axis.hlines(
-                    y=dwell_multiplier_max_threshold,
+                    y=mill_fraction_max_threshold,
                     xmin=0,
                     xmax=len(gis_thickness_um),
-                    label=f"Max stop ({dwell_multiplier_max_threshold:.3f})",
+                    label=f"Max stop ({mill_fraction_max_threshold:.3f})",
                     linestyles="dotted",
                     colors="tab:pink",
                 )
 
             if (
-                dwell_multiplier_mean_threshold is not None
-                and dwell_multiplier_mean_threshold > 0
+                mill_fraction_mean_threshold is not None
+                and mill_fraction_mean_threshold > 0
             ):
                 dwell_time_axis.hlines(
-                    y=dwell_multiplier_mean_threshold,
+                    y=mill_fraction_mean_threshold,
                     xmin=0,
                     xmax=len(gis_thickness_um),
-                    label=f"Mean stop ({dwell_multiplier_mean_threshold:.3f})",
+                    label=f"Mean stop ({mill_fraction_mean_threshold:.3f})",
                     linestyles="dotted",
                     colors="tab:purple",
                 )
@@ -406,11 +404,11 @@ def create_milling_cycle_plot(
             dwell_time_axis.legend(
                 *dwell_time_axis.get_legend_handles_labels(),
                 loc="upper right",
-                title="Dwell multiplier thresholds:",
+                title="Milling fraction thresholds:",
                 fontsize="small",
             )
             dwell_time_axis.set_title(
-                f"Dwell time multiplier\nMaximum {np.max(pattern_dwell_multiplier):.3f}\nMean {np.mean(pattern_dwell_multiplier):.3f}",
+                f"Milling fraction\nMaximum {np.max(pattern_milling_fraction):.3f}\nMean {np.mean(pattern_milling_fraction):.3f}",
                 loc="right",
             )
 
