@@ -13,7 +13,7 @@ from fibsem.milling.patterning import (
 
 from adaptive_milling.config import BitmapAdaptivePolishMillingConfig
 from adaptive_milling.enums import StopReasons
-from adaptive_milling.exceptions import StopMillingException
+from adaptive_milling.exceptions import StopEarlyError, StopMillingException
 from adaptive_milling.plot import create_milling_cycle_plot
 from adaptive_milling.processing.bitmap import (
     create_bitmap_array,
@@ -146,6 +146,21 @@ class BitmapAdaptivePolishMillingStrategy(
             gis_lower_edge_coordinates=gis_lower_edge_coordinates,
         )
 
+        # Get the maximum value of dwell time multiplier (between 0 and 1)
+        bitmap_max = np.max(bitmap_array[0])
+
+        if not np.isfinite(bitmap_max) or bitmap_max <= 0:
+            raise StopEarlyError(
+                f"Bitmap maximum must be a positive number but is actually '{bitmap_max}'"
+            )
+
+        # Normalise the dwell time multiplier and reduce the depth (and time, if applicable) down proportionally.
+        bitmap_array[0] /= bitmap_max
+        # Clip to avoid potential precision issues causing values above 1
+        np.clip(bitmap_array[0], 0, 1, out=bitmap_array[0])
+
+        pattern_depth = pattern.depth / bitmap_max
+
         if pattern.time != 0:
             _logger.warning(
                 "Bitmap adaptive polishing won't work as expected because pattern time has been set"
@@ -155,7 +170,7 @@ class BitmapAdaptivePolishMillingStrategy(
             point=pattern.point,
             width=pattern.width,
             spacing=pattern.spacing,
-            depth=pattern.depth,
+            depth=pattern_depth,
             upper_trench_height=pattern.upper_trench_height,
             lower_trench_height=pattern.lower_trench_height,
             time=pattern.time,
@@ -181,6 +196,21 @@ class BitmapAdaptivePolishMillingStrategy(
             gis_lower_edge_coordinates=gis_lower_edge_coordinates,
         )
 
+        # Get the maximum value of dwell time multiplier (between 0 and 1)
+        bitmap_max = np.max(bitmap_array[0])
+
+        if not np.isfinite(bitmap_max) or bitmap_max <= 0:
+            raise StopEarlyError(
+                f"Bitmap maximum must be a positive number but is actually '{bitmap_max}'"
+            )
+
+        # Normalise the dwell time multiplier and reduce the depth (and time, if applicable) down proportionally.
+        bitmap_array[0] /= bitmap_max
+        # Clip to avoid potential precision issues causing values above 1
+        np.clip(bitmap_array[0], 0, 1, out=bitmap_array[0])
+
+        pattern_depth = pattern.depth / bitmap_max
+
         if pattern.time != 0:
             _logger.warning(
                 "Bitmap adaptive polishing won't work as expected because pattern time has been set"
@@ -190,7 +220,7 @@ class BitmapAdaptivePolishMillingStrategy(
             point=pattern.point,
             width=pattern.width,
             height=pattern.height,
-            depth=pattern.depth,
+            depth=pattern_depth,
             rotation=pattern.rotation,
             time=pattern.time,
             passes=pattern.passes,
@@ -370,9 +400,6 @@ class BitmapAdaptivePolishMillingStrategy(
             max_dwell_threshold=self.config.gis_max * 1e6,
             as_image=False,
         )
-
-        stats.pattern_dwell_multiplier = bitmap_array[0, :, 0].tolist()
-        stats.pattern_blanking = bitmap_array[0, :, 1].astype(bool).tolist()
 
         return bitmap_array
 
