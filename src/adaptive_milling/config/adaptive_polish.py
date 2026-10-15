@@ -84,13 +84,13 @@ class AdaptivePolishMillingConfig(MillingStrategyConfig):
         },
     )
     lamella_spot_area: int = field(
-        default=0,
+        default=20,
         metadata={
             "label": "Lamella spot area",
             "tooltip": "Connected areas of lamella containing this many pixels or fewer will be filtered out.",
             "type": int,
             "unit": "pixels",
-            "default": 0,
+            "default": 20,
             "minimum": 0,
             "maximum": 100,
             "step": 1,
