@@ -183,6 +183,33 @@ class BitmapAdaptivePolishMillingStrategy(
                 f"{stage.pattern.name} attribute 'array' has not been set"
             )
 
+    @staticmethod
+    def _optimise_pattern_parameters(
+        bitmap_array: NDArray, pattern_depth: float, pattern_time: float
+    ) -> tuple[float, float]:
+        # Get the maximum value of dwell time multiplier (between 0 and 1)
+        bitmap_max = np.max(bitmap_array[0])
+
+        if not np.isfinite(bitmap_max) or bitmap_max <= 0:
+            raise StopEarlyError(
+                f"Bitmap maximum must be a positive number but is actually '{bitmap_max}'"
+            )
+
+        # Normalise the dwell time multiplier and reduce the depth (and time, if applicable) down proportionally.
+        bitmap_array[0] /= bitmap_max
+        # Clip to avoid potential precision issues causing values above 1
+        np.clip(bitmap_array[0], 0, 1, out=bitmap_array[0])
+
+        pattern_depth *= bitmap_max
+
+        if pattern_time > 0:
+            # There is some overhead per pass but pattern time should still scale roughly linearly.
+            pattern_time *= bitmap_max
+        else:
+            pattern_time = 0
+
+        return pattern_depth, pattern_time
+
     def _convert_trench_pattern(
         self,
         pattern: TrenchPattern,
@@ -201,26 +228,11 @@ class BitmapAdaptivePolishMillingStrategy(
             gis_lower_edge_coordinates=gis_lower_edge_coordinates,
         )
 
-        # Get the maximum value of dwell time multiplier (between 0 and 1)
-        bitmap_max = np.max(bitmap_array[0])
-
-        if not np.isfinite(bitmap_max) or bitmap_max <= 0:
-            raise StopEarlyError(
-                f"Bitmap maximum must be a positive number but is actually '{bitmap_max}'"
+        pattern_depth, pattern_time = (
+            BitmapAdaptivePolishMillingStrategy._optimise_pattern_parameters(
+                bitmap_array, pattern_depth=pattern.depth, pattern_time=pattern.time
             )
-
-        # Normalise the dwell time multiplier and reduce the depth (and time, if applicable) down proportionally.
-        bitmap_array[0] /= bitmap_max
-        # Clip to avoid potential precision issues causing values above 1
-        np.clip(bitmap_array[0], 0, 1, out=bitmap_array[0])
-
-        pattern_depth = pattern.depth / bitmap_max
-
-        if pattern.time > 0:
-            # There is some overhead per pass but pattern time should still scale roughly linearly.
-            pattern_time = pattern.time / bitmap_max
-        else:
-            pattern_time = 0
+        )
 
         return TrenchBitmapPattern(
             point=pattern.point,
@@ -252,26 +264,11 @@ class BitmapAdaptivePolishMillingStrategy(
             gis_lower_edge_coordinates=gis_lower_edge_coordinates,
         )
 
-        # Get the maximum value of dwell time multiplier (between 0 and 1)
-        bitmap_max = np.max(bitmap_array[0])
-
-        if not np.isfinite(bitmap_max) or bitmap_max <= 0:
-            raise StopEarlyError(
-                f"Bitmap maximum must be a positive number but is actually '{bitmap_max}'"
+        pattern_depth, pattern_time = (
+            BitmapAdaptivePolishMillingStrategy._optimise_pattern_parameters(
+                bitmap_array, pattern_depth=pattern.depth, pattern_time=pattern.time
             )
-
-        # Normalise the dwell time multiplier and reduce the depth (and time, if applicable) down proportionally.
-        bitmap_array[0] /= bitmap_max
-        # Clip to avoid potential precision issues causing values above 1
-        np.clip(bitmap_array[0], 0, 1, out=bitmap_array[0])
-
-        pattern_depth = pattern.depth / bitmap_max
-
-        if pattern.time > 0:
-            # There is some overhead per pass but pattern time should still scale roughly linearly.
-            pattern_time = pattern.time / bitmap_max
-        else:
-            pattern_time = 0
+        )
 
         return BitmapPattern(
             point=pattern.point,
