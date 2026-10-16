@@ -210,7 +210,7 @@ def filter_bitmap_signal(
             expanded_mask = ndi.binary_dilation(
                 min_mask,
                 iterations=erosion_px,
-            )
+            ).astype(np.bool_)
         else:
             expanded_mask = min_mask
     else:
