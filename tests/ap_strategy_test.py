@@ -600,6 +600,8 @@ def test_results_saved(
                     "pattern_xlims_px": None,
                     "pattern_dwell_multiplier": None,
                     "pattern_blanking": None,
+                    "pattern_depth_multiplier": None,
+                    "pattern_time_multiplier": None,
                 },
             }
             for i in range(max_checks)
@@ -797,6 +799,8 @@ def test_check_lamella(
                 "pattern_xlims_px",
                 "pattern_dwell_multiplier",
                 "pattern_blanking",
+                "pattern_depth_multiplier",
+                "pattern_time_multiplier",
             ):
                 # Not set in this test, as that is done by _mill
                 assert value is None, f"{key} should be None"
