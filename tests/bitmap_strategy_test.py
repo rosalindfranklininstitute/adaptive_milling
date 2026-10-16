@@ -214,3 +214,42 @@ def test_create_bitmap_array_simple_values(mask_cracks: bool) -> None:
     assert_array_almost_equal(
         bitmap_array, expected_bitmap_array, err_msg="bitmap arrays aren't as expected"
     )
+
+
+@pytest.mark.parametrize(
+    "pattern_time", [10.0, 0.0], ids=["pattern time", "pattern depth"]
+)
+def test_optimise_pattern_parameters(pattern_time: float) -> None:
+    pattern_depth = 20
+    bitmap_array = np.zeros(
+        (
+            1,  # This could be expanded if some falloff is wanted
+            6,
+            2,
+        ),
+        dtype=object,
+    )
+    bitmap_array[:, :, 0] = np.arange(0.0, 0.6, step=0.1, dtype=np.float64)
+
+    new_pattern_depth, new_pattern_time = (
+        bitmap_strategy.BitmapAdaptivePolishMillingStrategy._optimise_pattern_parameters(
+            bitmap_array, pattern_depth=pattern_depth, pattern_time=pattern_time
+        )
+    )
+    assert np.max(bitmap_array[0]) == 1, (
+        "Dwell time multiplier has not been properly scaled"
+    )
+    assert np.min(bitmap_array[0]) == 0, (
+        "Dwell time multiplier has not been properly scaled"
+    )
+
+    assert new_pattern_depth == pattern_depth / 2, (
+        "Pattern depth has not been properly scaled"
+    )
+
+    if pattern_time == 0:
+        assert new_pattern_time == 0, "Pattern time should be 0"
+    else:
+        assert new_pattern_time == pattern_time / 2, (
+            "Pattern time has not been properly scaled"
+        )
