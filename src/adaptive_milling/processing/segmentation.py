@@ -28,6 +28,7 @@ from adaptive_milling.processing.image import (
     get_centre_from_bounding_box,
     get_mask_edge,
     get_mask_edges,
+    get_spots_in,
     keep_only_largest_object,
     resize_image,
 )
@@ -69,6 +70,7 @@ def prediction_to_masks(
 
 def clean_prediction(
     prediction: NDArray[np.integer[typing.Any]],
+    lamella_spot_area: int = 0,
 ) -> NDArray[np.uint8]:
     _logger.debug(
         "Cleaning prediction with shape: %s",
@@ -87,6 +89,15 @@ def clean_prediction(
     mask_foreground_lamella = (
         mask_largest_foreground & masks[SEMSegmentationLabels.LAMELLA]
     )
+
+    if lamella_spot_area > 0:
+        lamella_spots = get_spots_in(
+            mask_foreground_lamella,
+            max_spot_area=lamella_spot_area,  # remove lamella spots <= 5 pixels in size
+        )
+        mask_foreground_lamella = mask_foreground_lamella & ~lamella_spots
+        masks[SEMSegmentationLabels.VACUUM] += lamella_spots
+
     mask_foreground_gis = mask_largest_foreground & masks[SEMSegmentationLabels.GIS]
     mask_foreground_crack = (
         # Only include the cracks that are connected to some lamella

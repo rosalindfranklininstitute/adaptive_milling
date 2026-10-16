@@ -304,6 +304,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                 sem_image=sem_image,
                 fib_image=fib_image,
                 lamella_pad_x=self.config.lamella_pad_x,
+                lamella_spot_area=self.config.lamella_spot_area,
             )
         try:
             with cycle_info.timestamps.update_stage:
@@ -451,6 +452,7 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         sem_image: FibsemImage,
         fib_image: FibsemImage,
         lamella_pad_x: float = 0.1,
+        lamella_spot_area: int = 0,
     ) -> LamellaInformation:
         if sem_image.metadata is None:
             raise ValueError("Unable to get pixel size from SEM image with no metadata")
@@ -458,7 +460,9 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         with cycle_info.timestamps.predict:
             prediction = self._segment_sem_image(sem_image.data)
 
-        clean_prediction = seg_proc.clean_prediction(prediction)
+        clean_prediction = seg_proc.clean_prediction(
+            prediction, lamella_spot_area=lamella_spot_area
+        )
 
         image_pixel_size_m = (
             sem_image.metadata.pixel_size.x,

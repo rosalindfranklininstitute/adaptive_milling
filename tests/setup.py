@@ -72,6 +72,7 @@ def create_mock_prediction_gis_thickness(
     background_lamella_overlap: int,
     vacuum_bottom_pixels: int,
     add_crack: bool = True,
+    add_lamella_spot: bool = True,
     top_background_size: int = 3,
     top_vacuum_size: int = 3,
 ) -> tuple[NDArray[np.uint8], NDArray[np.uint8], NDArray[np.uint8]]:
@@ -145,7 +146,7 @@ def create_mock_prediction_gis_thickness(
 
     if add_crack:
         # Add a crack to GIS layer
-        remaining_gis_thickness = 1
+        remaining_gis_thickness = 1  # Define amount that's shifted diagonally
         crack_coords = (
             lamella_bbox[2] + 1 + remaining_gis_thickness,
             lamella_bbox[3] - lamella_bbox[1] + 1,
@@ -163,6 +164,24 @@ def create_mock_prediction_gis_thickness(
             crack_coords[1] + 1,
         ] = SemLabels.CRACK.value
         expected_gis_thickness[crack_coords[1] + 1] -= remaining_gis_thickness
+
+    if add_lamella_spot:
+        spot_size = (2, 2)
+        lamella_spot_coords = (
+            lamella_bbox[2] + 2,
+            lamella_bbox[3] - spot_size[1],
+        )
+        prediction[
+            lamella_spot_coords[0] : lamella_spot_coords[0] + spot_size[0],
+            lamella_spot_coords[1] - spot_size[1] : lamella_spot_coords[1],
+        ] = SemLabels.LAMELLA.value
+        values = expected_gis_thickness[
+            lamella_spot_coords[1] - spot_size[1] : lamella_spot_coords[1]
+        ]
+        print(values)
+        expected_gis_thickness[
+            lamella_spot_coords[1] - spot_size[1] : lamella_spot_coords[1]
+        ] -= spot_size[0]
 
     return prediction, segmented_gis_thickness, expected_gis_thickness
 
