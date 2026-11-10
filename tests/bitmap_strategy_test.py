@@ -7,11 +7,11 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 from fibsem.applications.autolamella.structures import AutoLamellaTaskProtocol
+from fibsem.milling.patterning.patterns2 import RectanglePattern, TrenchPattern
+from fibsem.structures import Point
 from numpy.testing import assert_array_almost_equal, assert_array_equal
 
-from adaptive_milling._dataclasses import (
-    LamellaStatistics,
-)
+from adaptive_milling._dataclasses import LamellaInformation, LamellaStatistics
 from adaptive_milling.strategy import bitmap as bitmap_strategy
 
 from . import setup
@@ -253,3 +253,178 @@ def test_optimise_pattern_parameters(pattern_time: float) -> None:
         assert new_pattern_time == pattern_time / 2, (
             "Pattern time has not been properly scaled"
         )
+
+
+@pytest.mark.parametrize("pattern_time", [0, 100])
+def test_set_bitmap_pattern_statistics(pattern_time: float) -> None:
+    old_pattern = MagicMock()
+    old_pattern.depth = 100
+    old_pattern.time = pattern_time
+
+    dwell_multiplier_array = np.linspace(0, 1, num=100)
+    blanking_array = np.zeros_like(dwell_multiplier_array, dtype=np.int64)
+
+    bitmap_array = np.zeros(
+        (
+            1,  # This could be expanded if some falloff is wanted
+            dwell_multiplier_array.size,
+            2,
+        ),
+        dtype=object,
+    )
+
+    bitmap_array[:, :, 0] = dwell_multiplier_array[np.newaxis, :]
+    bitmap_array[:, :, 1] = blanking_array[np.newaxis, :]
+
+    new_pattern = MagicMock()
+    new_pattern.depth = 25
+    new_pattern.time = pattern_time / 2
+    new_pattern.array = bitmap_array
+
+    stats = LamellaStatistics(
+        image_pixel_size_m=(0, 0),
+        prediction_pixel_size_m=(0, 0),
+        crack_count=0,
+        lamella_thickness_prediction_px=[0],
+        crack_thickness_prediction_px=[0],
+    )
+
+    bitmap_strategy.BitmapAdaptivePolishMillingStrategy._set_bitmap_pattern_statistics(
+        stats=stats, new_pattern=new_pattern, old_pattern=old_pattern
+    )
+
+    assert_array_equal(stats.pattern_dwell_multiplier, dwell_multiplier_array.tolist())
+    assert_array_equal(stats.pattern_blanking, blanking_array.astype(bool).tolist())
+    assert stats.pattern_depth_multiplier == 0.25
+    if pattern_time:
+        assert stats.pattern_time_multiplier == 0.5
+    else:
+        assert stats.pattern_time_multiplier is None
+
+
+@pytest.mark.parametrize("input_pattern_type", [RectanglePattern, TrenchPattern])
+@pytest.mark.parametrize(
+    "incident_angle_sputter_ratio",
+    [1, 4.3],
+    ids=["no angle sputter ratio", "angle sputter ratio"],
+)
+@pytest.mark.parametrize(
+    "boundary_smoothing_sigma",
+    [0, 5],
+    ids=["no boundary smoothing", "boundary smoothing"],
+)
+@patch.object(bitmap_strategy, "get_mask_edge")
+@patch.object(bitmap_strategy, "get_lamella_gis_boundary_peturbations")
+@patch.object(
+    bitmap_strategy.BitmapAdaptivePolishMillingStrategy,
+    "_set_bitmap_pattern_statistics",
+)
+def test_update_milling_stage(
+    mock_set_bitmap_pattern_statistics,
+    mock_get_lamella_gis_boundary_peturbations,
+    mock_get_mask_edge,
+    input_pattern_type: type[RectanglePattern | TrenchPattern],
+    incident_angle_sputter_ratio: float,
+    boundary_smoothing_sigma: float,
+) -> None:
+
+    input_pattern = input_pattern_type(Point())
+    lamella_stats = LamellaStatistics(
+        image_pixel_size_m=(1, 1),
+        prediction_pixel_size_m=(1, 1),
+        crack_count=1,
+        lamella_thickness_prediction_px=[0] * 10,
+        crack_thickness_prediction_px=[0] * 10,
+    )
+    lamella_info = LamellaInformation(
+        identifier=f"test_{input_pattern_type}",
+        sem_image=MagicMock(),  # pyright: ignore[reportArgumentType]
+        fib_image=MagicMock(),  # pyright: ignore[reportArgumentType]
+        prediction=None,  # pyright: ignore[reportArgumentType]
+        clean_prediction=MagicMock(),  # pyright: ignore[reportArgumentType]
+        statistics=lamella_stats,
+    )
+
+    with patch("os.path.isfile") as mock_isfile:
+        mock_isfile.return_value = True
+        bitmap_config = bitmap_strategy.BitmapAdaptivePolishMillingConfig(
+            model_path="model_path",
+            bitmap_gaussian_sigma=0,
+            bitmap_erosion_px=0,
+            apply_boundary_smoothing=True,
+            mask_cracks=False,
+            gis_min=5e-6,
+            gis_max=10e-6,
+            incident_angle_sputter_ratio=incident_angle_sputter_ratio,
+            boundary_smoothing_sigma=boundary_smoothing_sigma,
+        )
+    strategy = bitmap_strategy.BitmapAdaptivePolishMillingStrategy(config=bitmap_config)
+
+    mock_stage = MagicMock()
+    mock_stage.pattern = input_pattern
+
+    new_pattern = MagicMock()
+
+    with (
+        patch.object(
+            strategy, "_convert_trench_pattern"
+        ) as mock_convert_trench_pattern,
+        patch.object(
+            strategy, "_convert_rectangle_pattern"
+        ) as mock_convert_rectangle_pattern,
+    ):
+        mock_convert_trench_pattern.return_value = new_pattern
+        mock_convert_rectangle_pattern.return_value = new_pattern
+
+        updated_stage = strategy._update_milling_stage(
+            stage=mock_stage, lamella_info=lamella_info
+        )
+
+        if boundary_smoothing_sigma > 0:
+            lamella_gis_boundary_peturbations = (
+                mock_get_lamella_gis_boundary_peturbations.return_value
+            )
+            mock_get_lamella_gis_boundary_peturbations.assert_called_once_with(
+                lamella_info.clean_prediction,
+                sigma=bitmap_config.boundary_smoothing_sigma,
+            )
+        else:
+            lamella_gis_boundary_peturbations = None
+            mock_get_lamella_gis_boundary_peturbations.assert_not_called()
+
+        if incident_angle_sputter_ratio > 1:
+            gis_lower_edge_coordinates = mock_get_mask_edge.return_value
+            mock_get_mask_edge.assert_called_once_with(
+                lamella_info.clean_prediction
+                == bitmap_strategy.SEMSegmentationLabels.GIS.value,
+                axis=0,
+                side="max",
+            )
+        else:
+            gis_lower_edge_coordinates = None
+            mock_get_mask_edge.assert_not_called()
+
+        if input_pattern_type is RectanglePattern:
+            mock_convert_rectangle_pattern.assert_called_once_with(
+                input_pattern,
+                stats=lamella_stats,
+                lamella_gis_boundary_peturbations=lamella_gis_boundary_peturbations,
+                gis_lower_edge_coordinates=gis_lower_edge_coordinates,
+            )
+            mock_convert_trench_pattern.assert_not_called()
+        elif input_pattern_type is TrenchPattern:
+            mock_convert_trench_pattern.assert_called_once_with(
+                input_pattern,
+                stats=lamella_stats,
+                lamella_gis_boundary_peturbations=lamella_gis_boundary_peturbations,
+                gis_lower_edge_coordinates=gis_lower_edge_coordinates,
+            )
+            mock_convert_rectangle_pattern.assert_not_called()
+        else:
+            raise TypeError("Unexpected input pattern type")
+
+        mock_set_bitmap_pattern_statistics.assert_called_once_with(
+            lamella_stats, new_pattern=new_pattern, old_pattern=input_pattern
+        )
+
+        assert updated_stage.pattern == new_pattern

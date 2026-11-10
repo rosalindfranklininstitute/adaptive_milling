@@ -55,6 +55,21 @@ class BitmapAdaptivePolishMillingStrategy(
         BitmapAdaptivePolishMillingConfig
     )
 
+    @staticmethod
+    def _set_bitmap_pattern_statistics(
+        stats: LamellaStatistics,
+        new_pattern: BitmapPattern | TrenchBitmapPattern,
+        old_pattern: TrenchPattern | RectanglePattern,
+    ) -> None:
+        if new_pattern.array is None:
+            raise StopEarlyError("Milling pattern has no array set")
+
+        stats.pattern_dwell_multiplier = new_pattern.array[0, :, 0].tolist()
+        stats.pattern_blanking = new_pattern.array[0, :, 1].astype(bool).tolist()
+        stats.pattern_depth_multiplier = new_pattern.depth / old_pattern.depth
+        if new_pattern.time > 0:
+            stats.pattern_time_multiplier = new_pattern.time / old_pattern.time
+
     def _update_milling_stage(
         self,
         stage: FibsemMillingStage,
@@ -109,14 +124,9 @@ class BitmapAdaptivePolishMillingStrategy(
                 f"Invalid pattern type {pattern.name}, only {TrenchPattern.name} and {RectanglePattern.name} are supported"
             )
 
-        if new_pattern.array is None:
-            raise StopEarlyError("Milling pattern has no array set")
-
-        stats.pattern_dwell_multiplier = new_pattern.array[0, :, 0].tolist()
-        stats.pattern_blanking = new_pattern.array[0, :, 1].astype(bool).tolist()
-        stats.pattern_depth_multiplier = pattern.depth / new_pattern.depth
-        if new_pattern.time > 0:
-            stats.pattern_time_multiplier = pattern.time / new_pattern.time
+        BitmapAdaptivePolishMillingStrategy._set_bitmap_pattern_statistics(
+            stats, new_pattern=new_pattern, old_pattern=pattern
+        )
 
         stage.pattern = new_pattern
 
