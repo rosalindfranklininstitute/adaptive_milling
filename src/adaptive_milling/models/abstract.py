@@ -10,11 +10,11 @@ from PIL import Image
 
 if TYPE_CHECKING:
     from os import PathLike
-    from typing import Any, Union
+    from typing import Any
 
     from numpy.typing import NDArray
 
-    DeviceLikeType = Union[str, torch.device, int]
+    DeviceLikeType = str | torch.device | int
 
     class ResizeProtocol(Protocol):
         def __call__(

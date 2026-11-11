@@ -10,7 +10,8 @@ import pytest
 from fibsem import utils
 from fibsem.applications.autolamella.structures import AutoLamellaTaskProtocol
 from fibsem.milling.tasks import FibsemMillingTaskConfig, run_milling_task
-from fibsem.structures import BeamType, FibsemImage
+from fibsem.structures.image import FibsemImage
+from fibsem.structures.settings import BeamType
 
 from adaptive_milling.config import AdaptivePolishMillingConfig
 
@@ -20,7 +21,7 @@ if typing.TYPE_CHECKING:
     from collections.abc import Callable
     from pathlib import Path
 
-    from fibsem.structures import ImageSettings
+    from fibsem.structures.settings import ImageSettings
 
 _AP_MILLING_CONFIG_SETTINGS: dict[str, typing.Any] = {
     "align_sem": True,
@@ -127,7 +128,7 @@ def test_runs(
     # Check Autolamella loads protocol correctly
     protocol = AutoLamellaTaskProtocol.load(str(protocol_path))
     milling_stages = protocol.task_config["Polishing"].milling["mill_polishing"].stages
-    protocol_strategy_config = milling_stages[0].strategy.config
+    protocol_strategy_config = milling_stages[0].strategy
 
     assert isinstance(
         protocol_strategy_config,
@@ -145,7 +146,7 @@ def test_runs(
     task_ddict = ddict["tasks"]["Polishing"]["milling"]["mill_polishing"]
     milling_task_config = FibsemMillingTaskConfig.from_dict(task_ddict)
 
-    assert milling_task_config.stages[0].strategy.config == protocol_strategy_config, (
+    assert milling_task_config.stages[0].strategy == protocol_strategy_config, (
         "The strategy and protocol configs do not match"
     )
 

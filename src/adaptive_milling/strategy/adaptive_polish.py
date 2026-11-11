@@ -17,7 +17,10 @@ from fibsem.milling import (
     MillingStrategy,
     setup_milling,
 )
-from fibsem.structures import BeamType
+from fibsem.milling.base import MillingStrategyResult
+from fibsem.milling.progress import MillingProgress, MillingProgressStatus
+from fibsem.services.milling import report_progress
+from fibsem.structures.settings import BeamType
 
 import adaptive_milling.utils as ap_utils
 from adaptive_milling._dataclasses import (
@@ -54,12 +57,8 @@ if typing.TYPE_CHECKING:
 
     from fibsem.microscope import FibsemMicroscope
     from fibsem.milling import FibsemMillingStage
-    from fibsem.structures import (
-        FibsemImage,
-        ImageSettings,
-        Point,
-    )
-    from fibsem.ui.widgets.milling_widget import FibsemMillingWidget2
+    from fibsem.structures.image import FibsemImage
+    from fibsem.structures.settings import ImageSettings, Point
     from numpy.typing import NDArray
 
     from adaptive_milling.models.abstract import AbstractAdaptivePolishingModel
@@ -94,27 +93,24 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         self,
         microscope: FibsemMicroscope,
         stage: FibsemMillingStage,
-        asynch: bool = False,  # what does this do
-        parent_ui: FibsemMillingWidget2 | None = None,  # what does this do
         stop_event: Event | None = None,
-    ) -> None:
+    ) -> MillingStrategyResult:
         """Run adaptive polishing
 
         Args:
             microscope (FibsemMicroscope): See `fibsem.microscope.FibsemMicroscope`
             stage (FibsemMillingStage): See `fibsem.milling.base.FibsemMillingStage`
-            asynch (bool, optional): Run asynchronously? Defaults to False.
-            parent_ui (FibsemMillingWidget2, optional): Defaults to None.
-            stop_event (Event, optional): Defaults to None.
+            stop_event (Event, optional): Set to stop. Defaults to None.
+
+        Returns:
+            MillingStrategyResult: why it stopped, the cycles run and the summary
+            plot, for the experiment's record and the History tab.
         """
         _logger.info("Running %s for %s", self.fullname, stage.name)
         run_info = StrategyRunInformation(
             strategy_name=self.name,
             stage_name=stage.name,
         )
-
-        if stop_event is None and parent_ui is not None:
-            stop_event = getattr(parent_ui, "_milling_stop_event", None)
 
         with run_info.timestamps.strategy:
             with run_info.timestamps.setup:
@@ -127,17 +123,19 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                     stage
                 )
 
-                if fib_imaging_settings.path is None:
-                    raise ValueError(f"Imaging path has not been set for {stage.name}")
-
-                # output_directory is <lamella name>/Milling/<task name>
-                output_directory = Path(fib_imaging_settings.path)
-                lamella_directory = output_directory.parent.parent
-                lamella_name = lamella_directory.stem
-                if not lamella_directory.is_dir():
-                    raise FileNotFoundError(
-                        f"Lamella directory '{lamella_directory}' does not exist"
-                    )
+                # the folder fibsem gives this stage for its files (a stage run
+                # by itself, outside a milling task, has only its imaging path)
+                output_dir = stage.output_dir or fib_imaging_settings.path
+                if output_dir is None:
+                    raise ValueError(f"No output folder has been set for {stage.name}")
+                output_directory = Path(output_dir)
+                # the lamella this run is for; outside a workflow (the Milling
+                # tab, a script) there is none, so read it from the folders,
+                # <lamella>/Milling/<task>
+                experiment = microscope.experiment
+                lamella_name = (
+                    experiment.item_name if experiment is not None else None
+                ) or output_directory.parent.parent.stem
                 run_info.lamella_name = lamella_name
                 lamella_ap_directory = (
                     output_directory / f"adaptive_polish_{fs_utils.current_timestamp()}"
@@ -231,7 +229,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                                 expected_lamella_centre_m=lamella_centre_m,
                                 # Don't mill on the final cycle, just run checks
                                 mill=milling_cycle < self.config.max_milling_cycles,
-                                asynch=asynch,
                                 stop_event=stop_event,
                             )
                     _logger.info(
@@ -271,6 +268,8 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                     except Exception:
                         _logger.exception("Failed to create summary plot(s)")
 
+        return _strategy_result(run_info, lamella_ap_directory)
+
     def _run_milling_cycle(
         self,
         cycle_info: CycleInformation,
@@ -282,7 +281,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         stage: FibsemMillingStage,
         expected_lamella_centre_m: Point | None,
         mill: bool = True,
-        asynch: bool = False,
         stop_event: Event | None = None,
     ) -> None:
         # Acquire images
@@ -327,7 +325,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
                         cycle_info.milling_cycle,
                         microscope=microscope,
                         stage=stage,
-                        asynch=asynch,
                         stop_event=stop_event,
                     )
                     if cycle_info.lamella_statistics is not None:
@@ -650,7 +647,6 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
         milling_cycle: int,
         microscope: FibsemMicroscope,
         stage: FibsemMillingStage,
-        asynch: bool = False,
         stop_event: Event | None = None,
     ) -> float | None:
         # Process UI stop after checks to ensure reporting isn't skipped
@@ -678,25 +674,19 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
             _logger.info(
                 f"Estimated time for {stage.name}: {estimated_time:.2f} seconds"
             )
-            if hasattr(microscope, "milling_progress_signal"):
-                microscope.milling_progress_signal.emit(
-                    {
-                        "msg": f"Running {stage.name} cycle {milling_cycle}...",
-                        "progress": {
-                            "started": True,
-                            "start_time": time.time(),
-                            "estimated_time": estimated_time,
-                            "name": stage.name,
-                        },
-                    }
-                )
+            report_progress(
+                microscope,
+                MillingProgress(
+                    status=MillingProgressStatus.STAGE_UPDATE,
+                    message=f"Running {stage.name} cycle {milling_cycle}...",
+                    stage_name=stage.name,
+                    start_time=time.time(),
+                    estimated_time=estimated_time,
+                ),
+            )
 
             # mill
-            microscope.run_milling(
-                milling_current=stage.milling.milling_current,
-                milling_voltage=stage.milling.milling_voltage,
-                asynch=asynch,
-            )
+            microscope.run_milling(stop_event=stop_event)
             _logger.info("Completed milling cycle %i", milling_cycle)
             return estimated_time
         except Exception:
@@ -831,12 +821,24 @@ class AdaptivePolishMillingStrategy(MillingStrategy[TAdaptivePolishMillingConfig
     def _acquire_image(
         self, microscope: FibsemMicroscope, imaging_settings: ImageSettings
     ) -> FibsemImage:
-        return acquire.new_image(microscope, imaging_settings)
+        return acquire.acquire_image(microscope, imaging_settings)
+
+
+def _strategy_result(
+    run_info: StrategyRunInformation, save_directory: Path
+) -> MillingStrategyResult:
+    """What the run says about itself for the experiment's record."""
+    summary_plot = save_directory / "AP_summary_plots.png"
+    return MillingStrategyResult(
+        end_reason=run_info.strategy_end_reason,
+        facts={"Cycles run": len(run_info.cycle_information)},
+        figure=str(summary_plot) if summary_plot.is_file() else None,
+    )
 
 
 def _format_microscope_patterns(microscope: FibsemMicroscope) -> list[str]:
     pattern_string_list: list[str] = []
-    for pattern in microscope._patterns:
+    for pattern in getattr(microscope.milling, "_patterns", []):
         pattern_name = pattern.__class__.__name__
         attr_list: list[str] = []
         for attr_name in dir(pattern):

@@ -13,7 +13,7 @@ from adaptive_milling.enums import StopReasons
 if TYPE_CHECKING:
     from typing import Any
 
-    from fibsem.structures import FibsemImage
+    from fibsem.structures.image import FibsemImage
     from numpy.typing import NDArray
 
 

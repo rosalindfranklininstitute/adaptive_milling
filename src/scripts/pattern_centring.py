@@ -14,7 +14,7 @@ from adaptive_milling.processing.lamella import (
     crop_xlims_convolve_filtered,
 )
 from fibsem.milling import FibsemMillingStage, get_milling_stages
-from fibsem.structures import FibsemImage
+from fibsem.structures.image import FibsemImage
 from fibsem.utils import load_protocol
 
 from adaptive_milling._dataclasses import CycleInformation, CycleTimestamps

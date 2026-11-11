@@ -2,53 +2,35 @@ from __future__ import annotations
 
 import math
 import typing
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from fibsem.milling.patterning import BasePattern
 from fibsem.milling.properties import (
-    DEFAULT_ANGLE_METADATA,
-    DEFAULT_CROSS_SECTION_METADATA,
-    DEFAULT_DISTANCE_METADATA,
+    angle_param,
+    cross_section_param,
+    distance_param,
 )
-from fibsem.structures import CrossSectionPattern, FibsemRectangleSettings
+from fibsem.structures.params import param
+from fibsem.structures.settings import CrossSectionPattern, FibsemRectangleSettings
 
 
 @dataclass
 class AsymmetricFiducialPattern(BasePattern[FibsemRectangleSettings]):
-    width: float = field(
-        default=0.1e-6,
-        metadata={
-            "label": "Width",
-            **DEFAULT_DISTANCE_METADATA,
-            "tooltip": "Width of the asymmetric fiducial pattern.",
-        },
+    width: float = param(
+        0.1e-6, distance_param("Width", "Width of the asymmetric fiducial pattern.")
     )
-    height: float = field(
-        default=10.0e-6,
-        metadata={
-            "label": "Height",
-            **DEFAULT_DISTANCE_METADATA,
-            "tooltip": "Width of the asymmetric fiducial pattern.",
-        },
+    height: float = param(
+        10.0e-6, distance_param("Height", "Height of the asymmetric fiducial pattern.")
     )
-    depth: float = field(
-        default=0.5e-6,
-        metadata={
-            "label": "Depth",
-            **DEFAULT_DISTANCE_METADATA,
-            "tooltip": "Depth of the asymmetric fiducial pattern.",
-        },
+    depth: float = param(
+        0.5e-6, distance_param("Depth", "Depth of the asymmetric fiducial pattern.")
     )
-    rotation: float = field(
-        default=45.0,
-        metadata={
-            **DEFAULT_ANGLE_METADATA,
-            "tooltip": "Rotation of the asymmetric fiducial in degrees.",
-        },
+    rotation: float = param(
+        45.0,
+        angle_param("Rotation", "Rotation of the asymmetric fiducial in degrees."),
     )
-    cross_section: CrossSectionPattern = field(
-        default=CrossSectionPattern.Rectangle,
-        metadata=DEFAULT_CROSS_SECTION_METADATA,
+    cross_section: CrossSectionPattern = param(
+        CrossSectionPattern.Rectangle, cross_section_param()
     )
 
     name: typing.ClassVar[str] = "AsymmetricFiducial"

@@ -23,13 +23,12 @@ authors = [
 classifiers = [
   "Development Status :: 5 - Production/Stable",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
   "pandas",
   "matplotlib",
@@ -39,7 +38,7 @@ dependencies = [
   "tifffile",
   "imagecodecs",
   "segmentation-models-pytorch >= 0.4.0",
-  "fibsem >= 0.5.1",
+  "fibsem >= 0.6.0rc1",
   "torch >= 2.7.0",
   "torch >= 2.7.0, <2.9.0 ; platform_system == 'Windows'",
   "torchvision >= 0.22.0",
@@ -79,10 +78,10 @@ scripts = [
 ]
 ui = [
   "pyqt5-qt5 == 5.15.2 ; platform_system == 'Windows'",
-  "fibsem[ui] >= 0.5.1",
+  "fibsem[ui] >= 0.6.0rc1",
 ]
 reporting = [
-  "fibsem[reporting] >= 0.5.1",
+  "fibsem[reporting] >= 0.6.0rc1",
 ]
 all = [
   "adaptive-milling[scripts,ui,reporting]",
@@ -167,11 +166,11 @@ name = "pytorch-cu128"
 url = "https://download.pytorch.org/whl/cu128"
 explicit = true
 
-[project.entry-points.'fibsem.strategies']
+[project.entry-points.'fibsem.milling.strategies']
 # Make the strategy discoverable by fibsem
 adaptive_polish = "adaptive_milling.strategy:AdaptivePolishMillingStrategy"
 
-[project.entry-points.'fibsem.patterns']
+[project.entry-points.'fibsem.milling.patterns']
 asymmetric_fiducial = "adaptive_milling.patterns:AsymmetricFiducialPattern"
 
 [tool.pytest.ini_options]
@@ -196,6 +195,10 @@ include = [
   "src/**/*.ipynb",
   "tests/**/*.py",
 ]
+
+[tool.ruff.lint.flake8-bugbear]
+# fibsem's param() declares a dataclass field, like dataclasses.field()
+extend-immutable-calls = ["fibsem.structures.params.param"]
 
 [dependency-groups]
 test = [
