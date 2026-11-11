@@ -9,7 +9,8 @@ import numpy as np
 from fibsem import constants
 from fibsem.milling import FibsemMillingStage
 from fibsem.milling.patterning.plotting import draw_milling_patterns
-from fibsem.structures import FibsemImage, Point
+from fibsem.structures.image import FibsemImage
+from fibsem.structures.settings import Point
 from matplotlib.colors import ListedColormap
 from matplotlib.patches import Rectangle
 from matplotlib_scalebar.scalebar import ScaleBar
@@ -20,7 +21,7 @@ if typing.TYPE_CHECKING:
     from collections.abc import Sequence
     from os import PathLike
 
-    from fibsem.structures import FibsemImage
+    from fibsem.structures.image import FibsemImage
     from matplotlib.axes import Axes
     from numpy.typing import ArrayLike, NDArray
 

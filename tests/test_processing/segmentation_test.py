@@ -6,7 +6,7 @@ from unittest.mock import ANY, MagicMock, patch
 
 import numpy as np
 import pytest
-from fibsem.detection.detection import AdaptiveLamellaCentre
+from fibsem.detection.detection import detect_centre_point
 from numpy.testing import assert_array_equal
 
 from adaptive_milling.processing import image as image_proc
@@ -281,9 +281,8 @@ def test_get_lamella_centre() -> None:
 def test_methods_equivalent_for_simple_rectangle() -> None:
     # Required to be fairly big due to `detect_centre_point` threshold defaulting to 500
     test_lamella = SimpleRectangleLamellaMask((1000, 2000))
-    centre_point = AdaptiveLamellaCentre().detect(
-        test_lamella.array, mask=test_lamella.array.astype(np.uint8) * 2
-    )
+    # the lamella is class 2 in the mask
+    centre_point = detect_centre_point(test_lamella.array.astype(np.uint8) * 2 == 2)
     centre_1 = (centre_point.y, centre_point.x)  # type: ignore
     # get_lamella_centre returns (y, x), whereas Point is (x, y)
     centre_2 = seg_proc.get_lamella_centre(

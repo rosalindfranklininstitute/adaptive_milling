@@ -12,7 +12,8 @@ import pytest
 from fibsem import acquire
 from fibsem import utils as fibsem_utils
 from fibsem.applications.autolamella.structures import AutoLamellaTaskProtocol
-from fibsem.structures import BeamType, FibsemImage, Point
+from fibsem.structures.image import FibsemImage
+from fibsem.structures.settings import BeamType, Point
 from numpy.testing import assert_array_equal
 from PIL import Image
 
@@ -128,7 +129,7 @@ def test_milling_stage_loads_defaults(
     config_dict = {"model_path": str(model_path)}
     config = ap_strategy.AdaptivePolishMillingConfig.from_dict(config_dict)
     stages = get_polishing_stages(config_dict, protocol_template_path, tmp_path)
-    strategy = stages[0].strategy
+    strategy = stages[0].get_strategy()
     assert isinstance(strategy, ap_strategy.AdaptivePolishMillingStrategy), (
         "Milling stage strategy is not AdaptivePolishMillingStrategy"
     )
@@ -421,7 +422,6 @@ def test_max_milling_cycles_not_exceeded(
                     i,
                     microscope=microscope,
                     stage=milling_stages[i],
-                    asynch=False,
                     stop_event=None,
                 )
                 for i in range(max_milling_cycles)
@@ -537,7 +537,6 @@ def test_results_saved(
                     _,
                     microscope=microscope,
                     stage=mock_update_milling_stage.return_value,
-                    asynch=False,
                     stop_event=None,
                 )
                 for _ in range(max_milling_cycles)
@@ -638,7 +637,7 @@ def test_align_beam(
     sem_image, _ = acquire.take_reference_images(microscope, settings.image)
 
     sem_imaging_settings = microscope.get_imaging_settings(BeamType.ELECTRON)
-    microscope.electron_system.beam.shift = Point(0, 0)
+    microscope.set_beam_shift(Point(0, 0), BeamType.ELECTRON)
 
     # Y,X
     lamella_centre_px = (60, 40)
@@ -682,7 +681,7 @@ def test_align_beam(
         )
 
         def mock_beam_shift_fn(dx, dy, beam_type) -> None:
-            microscope.electron_system.beam.shift = new_beam_shift
+            microscope.set_beam_shift(new_beam_shift, BeamType.ELECTRON)
 
         mock_beam_shift.side_effect = mock_beam_shift_fn
 
@@ -853,31 +852,31 @@ def test_restore_beam_shifts(microscope_config_path: Path) -> None:
     new_electron_shift = Point(20, -80)
     new_ion_shift = Point(-2, 10)
 
-    microscope.set("shift", initial_electron_shift, BeamType.ELECTRON)
-    microscope.set("shift", initial_ion_shift, BeamType.ION)
+    microscope.set_beam_shift(initial_electron_shift, BeamType.ELECTRON)
+    microscope.set_beam_shift(initial_ion_shift, BeamType.ION)
 
-    assert microscope.get("shift", BeamType.ELECTRON) == initial_electron_shift, (
+    assert microscope.get_beam_shift(BeamType.ELECTRON) == initial_electron_shift, (
         "Failed to set electron beam shift"
     )
-    assert microscope.get("shift", BeamType.ION) == initial_ion_shift, (
+    assert microscope.get_beam_shift(BeamType.ION) == initial_ion_shift, (
         "Failed to set ion beam shift"
     )
 
     with ap_strategy._restore_beam_shifts(microscope):
-        microscope.set("shift", new_electron_shift, BeamType.ELECTRON)
-        microscope.set("shift", new_ion_shift, BeamType.ION)
+        microscope.set_beam_shift(new_electron_shift, BeamType.ELECTRON)
+        microscope.set_beam_shift(new_ion_shift, BeamType.ION)
 
-        assert microscope.get("shift", BeamType.ELECTRON) == new_electron_shift, (
+        assert microscope.get_beam_shift(BeamType.ELECTRON) == new_electron_shift, (
             "Failed to set electron beam shift"
         )
-        assert microscope.get("shift", BeamType.ION) == new_ion_shift, (
+        assert microscope.get_beam_shift(BeamType.ION) == new_ion_shift, (
             "Failed to set ion beam shift"
         )
 
-    assert microscope.get("shift", BeamType.ELECTRON) == initial_electron_shift, (
+    assert microscope.get_beam_shift(BeamType.ELECTRON) == initial_electron_shift, (
         "Failed to restore electron beam shift"
     )
-    assert microscope.get("shift", BeamType.ION) == initial_ion_shift, (
+    assert microscope.get_beam_shift(BeamType.ION) == initial_ion_shift, (
         "Failed to restore ion beam shift"
     )
 

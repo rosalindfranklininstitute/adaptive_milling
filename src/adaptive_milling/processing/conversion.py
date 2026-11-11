@@ -4,7 +4,7 @@ import typing
 
 import numpy as np
 from fibsem import conversions
-from fibsem.structures import Point
+from fibsem.structures.settings import Point
 
 from adaptive_milling.exceptions import CentringException
 from adaptive_milling.processing.image import get_centre_from_bounding_box

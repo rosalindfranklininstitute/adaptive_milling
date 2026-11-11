@@ -10,9 +10,8 @@ from adaptive_milling.models.gen1 import Gen1Model
 
 if TYPE_CHECKING:
     from os import PathLike
-    from typing import Union
 
-    DeviceLikeType = Union[str, torch.device, int]
+    DeviceLikeType = str | torch.device | int
 
 _logger = logging.getLogger(__name__)
 
